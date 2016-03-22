@@ -25,7 +25,6 @@
 #import <Starboard.h>
 #include <NSLogging.h>
 #include <vector>
-
 #include "COMIncludes.h"
 #include "Wincodec.h"
 #include <wrl/client.h>
@@ -211,17 +210,10 @@ CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef isrc, size_t index, 
                                                            WICBitmapPaletteTypeCustom));
 
     const unsigned int frameSize = frameWidth * frameHeight * 4;
-    unsigned char* frameByteArray = static_cast<unsigned char*>(IwMalloc(frameSize));
-    if (!frameByteArray) {
-        NSTraceInfo(TAG, @"CGImageSourceCreateImageAtIndex cannot allocate memory");
-        return nullptr;
-    }
+    std::vector<unsigned char> frameByteVector(frameSize);
+    RETURN_NULL_IF_FAILED(imageFormatConverter->CopyPixels(0, frameWidth * 4, frameSize, &frameByteVector[0]));
 
-    auto cleanup = wil::ScopeExit([&]() { IwFree(frameByteArray); });
-    RETURN_NULL_IF_FAILED(imageFormatConverter->CopyPixels(0, frameWidth * 4, frameSize, frameByteArray));
-    cleanup.Dismiss();
-
-    NSData* frameData = [NSData dataWithBytesNoCopy:frameByteArray length:frameSize freeWhenDone:YES];    
+    NSData* frameData = [NSData dataWithBytesNoCopy:&frameByteVector[0] length:frameSize freeWhenDone:YES];    
     CGDataProviderRef frameDataProvider =  CGDataProviderCreateWithCFData((CFDataRef)frameData);
     CGColorSpaceRef colorspaceRgb = CGColorSpaceCreateDeviceRGB();
     CGImageRef imageRef = CGImageCreate(frameWidth, 
@@ -350,20 +342,13 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
                                                            WICBitmapPaletteTypeCustom));
 
     const unsigned int thumbnailSize = thumbnailWidth * thumbnailHeight * 4;
-    unsigned char* thumbnailByteArray = static_cast<unsigned char*>(IwMalloc(thumbnailSize));
-    if (!thumbnailByteArray) {
-        NSTraceInfo(TAG, @"CGImageSourceCreateThumbnailAtIndex cannot allocate memory");
-        return nullptr;    
-    }
-
-    auto cleanup = wil::ScopeExit([&]() { IwFree(thumbnailByteArray); });
+    std::vector<unsigned char> thumbnailByteVector(thumbnailSize);
     RETURN_NULL_IF_FAILED(imageFormatConverter->CopyPixels(0, 
                                                            thumbnailWidth * 4, 
                                                            thumbnailSize, 
-                                                           thumbnailByteArray));
-    cleanup.Dismiss();
+                                                           &thumbnailByteVector[0]));
 
-    NSData* thumbnailData = [NSData dataWithBytesNoCopy:thumbnailByteArray length:thumbnailSize freeWhenDone:YES];    
+    NSData* thumbnailData = [NSData dataWithBytesNoCopy:&thumbnailByteVector[0] length:thumbnailSize freeWhenDone:YES];    
     CGDataProviderRef thumbnailDataProvider = CGDataProviderCreateWithCFData((CFDataRef)thumbnailData);
     CGColorSpaceRef colorspaceRgb = CGColorSpaceCreateDeviceRGB();
     CGImageRef imageRef = CGImageCreate(thumbnailWidth, 
