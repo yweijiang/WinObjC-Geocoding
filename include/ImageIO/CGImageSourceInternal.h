@@ -16,6 +16,22 @@
 //******************************************************************************
 #pragma once
 
+#import <Foundation/Foundation.h>
+#import <CoreGraphics/CGDataProvider.h>
+#import <ImageIO/ImageIO.h>
+#import <ImageIO/CGImageSource.h>
+#import <objc/runtime.h>
+#import <Starboard.h>
+#include <NSLogging.h>
+#include <vector>
+
+#include "COMIncludes.h"
+#include "Wincodec.h"
+#include <wrl/client.h>
+#include "COMIncludes_End.h"
+
+using namespace Microsoft::WRL;
+
 @interface ImageSource : NSObject
 @property (nonatomic) NSData *data;
 - (instancetype)initWithData:(CFDataRef)data;
