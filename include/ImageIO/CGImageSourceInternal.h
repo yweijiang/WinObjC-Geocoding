@@ -34,6 +34,7 @@ using namespace Microsoft::WRL;
 
 @interface ImageSource : NSObject
 @property (nonatomic) NSData *data;
+@property (atomic) bool isFinalIncrementalSet;
 - (instancetype)initWithData:(CFDataRef)data;
 - (instancetype)initWithURL:(CFURLRef)url;
 - (instancetype)initWithDataProvider:(CGDataProviderRef)provider;
