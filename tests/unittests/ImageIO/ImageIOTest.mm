@@ -469,3 +469,363 @@ TEST(ImageIO, TypeIdentifierTest) {
     ASSERT_TRUE_MSG([expectedTypeIdentifiers isEqualToArray:actualTypeIdentifiers], 
                     "FAILED: ImageIOTest::Incorrect TypeIdentifier list returned");
 }
+
+TEST(ImageIO, TypeIDTest) {
+    checkInt(CGImageSourceGetTypeID(), 286, "SourceTypeID");
+}
+/*
+TEST(ImageIO, CopyPropertiesTest) {
+    const wchar_t* imageFile = L"photo7_4layers_683x1024.gif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypeJPEG",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyProperties(imageSource, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyProperties returned nullptr");
+    if (imageProperties && CFDictionaryContainsKey(imageProperties, kCGImageSourceTypeIdentifierHint)) {
+        //int maxThumbnailSize = [(id)CFDictionaryGetValue(options, kCGImageSourceThumbnailMaxPixelSize) intValue];
+    }
+
+    //checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    CFRelease(imageSource);
+}
+*/
+TEST(ImageIO, CopyJPEGPropertiesAtIndexTest) {
+    const wchar_t* imageFile = L"photo6_1024x670.jpg";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypeJPEG",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    if (imageProperties) {
+        if (CFDictionaryContainsKey(imageProperties, kCGImagePropertyDPIHeight)) {
+            int actualDPIHeight = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyDPIHeight) intValue];
+            checkInt(actualDPIHeight, 72, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+        }
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyGIFPropertiesAtIndexTest) {
+    const wchar_t* imageFile = L"photo7_4layers_683x1024.gif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypeGIF",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    if (imageProperties) {
+        CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
+        CFStringRef actualDPIHeight;
+        if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void **)&actualDPIHeight)) {
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+        }
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyTIFPropertiesAtIndexTest) {
+    const wchar_t* imageFile = L"photo8_4layers_1024x683.tif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypeTIFF",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    if (imageProperties) {
+        CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
+        CFStringRef actualDPIHeight;
+        if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void **)&actualDPIHeight)) {
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+        }
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyPNGPropertiesAtIndexTest) {
+    const wchar_t* imageFile = L"seafloor_256x256.png";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypePNG",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    if (imageProperties) {
+        CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
+        CFStringRef actualDPIHeight;
+        if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void **)&actualDPIHeight)) {
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+        }
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, IncrementalJPEGImageWithData) {
+    const wchar_t* imageFile = L"photo6_1024x670.jpg";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 100 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef incImageSrcRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(incImageSrcRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset length:currentChunkSize freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(incImageSrcRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        CGImageRef incImg = CGImageSourceCreateImageAtIndex(incImageSrcRef, 0, nil);
+        if (!incImg) {
+            NSLog(@"ImageAtIndex1 unavailable. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageAtIndex1 displayed. Done - [%d]", imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatus(incImageSrcRef) == kCGImageStatusComplete) {
+            NSLog(@"Loading ImageTotal Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageTotal Load Status - [%d]. Done - [%d]", CGImageSourceGetStatus(incImageSrcRef), imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatusAtIndex(incImageSrcRef, 0) == kCGImageStatusComplete) {
+            NSLog(@"Loading Image1 Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"Image1 Load Status - [%d]. Done - [%d]", CGImageSourceGetStatusAtIndex(incImageSrcRef, 0), imageLength == imageOffset);
+        }
+    } while(imageOffset < imageLength);
+    CFRelease(incImageSrcRef);
+    /*
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 670, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+    size_t frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+    CFRelease(imageSource);
+    */
+}
+
+TEST(ImageIO, IncrementalBMPImageWithData) {
+    const wchar_t* imageFile = L"testimg_227x149.bmp";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 15 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef incImageSrcRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(incImageSrcRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset length:currentChunkSize freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(incImageSrcRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        CGImageRef incImg = CGImageSourceCreateImageAtIndex(incImageSrcRef, 0, nil);
+        if (!incImg) {
+            NSLog(@"ImageAtIndex1 unavailable. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageAtIndex1 displayed. Done - [%d]", imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatus(incImageSrcRef) == kCGImageStatusComplete) {
+            NSLog(@"Loading ImageTotal Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageTotal Load Status - [%d]. Done - [%d]", CGImageSourceGetStatus(incImageSrcRef), imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatusAtIndex(incImageSrcRef, 0) == kCGImageStatusComplete) {
+            NSLog(@"Loading Image1 Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"Image1 Load Status - [%d]. Done - [%d]", CGImageSourceGetStatusAtIndex(incImageSrcRef, 0), imageLength == imageOffset);
+        }
+    } while(imageOffset < imageLength);
+    CFRelease(incImageSrcRef);
+}
+
+TEST(ImageIO, IncrementalPNGImageWithData) {
+    const wchar_t* imageFile = L"seafloor_256x256.png";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 25 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef incImageSrcRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(incImageSrcRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset length:currentChunkSize freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(incImageSrcRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        CGImageRef incImg = CGImageSourceCreateImageAtIndex(incImageSrcRef, 0, nil);
+        if (!incImg) {
+            NSLog(@"ImageAtIndex1 unavailable. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageAtIndex1 displayed. Done - [%d]", imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatus(incImageSrcRef) == kCGImageStatusComplete) {
+            NSLog(@"Loading ImageTotal Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageTotal Load Status - [%d]. Done - [%d]", CGImageSourceGetStatus(incImageSrcRef), imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatusAtIndex(incImageSrcRef, 0) == kCGImageStatusComplete) {
+            NSLog(@"Loading Image1 Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"Image1 Load Status - [%d]. Done - [%d]", CGImageSourceGetStatusAtIndex(incImageSrcRef, 0), imageLength == imageOffset);
+        }
+    } while(imageOffset < imageLength);
+    CFRelease(incImageSrcRef);
+}
+
+TEST(ImageIO, IncrementalGIFImageWithData) {
+    const wchar_t* imageFile = L"photo7_4layers_683x1024.gif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 300 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef incImageSrcRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(incImageSrcRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset length:currentChunkSize freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(incImageSrcRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        CGImageRef incImg = CGImageSourceCreateImageAtIndex(incImageSrcRef, 0, nil);
+        if (!incImg) {
+            NSLog(@"ImageAtIndex1 unavailable. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageAtIndex1 displayed. Done - [%d]", imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatus(incImageSrcRef) == kCGImageStatusComplete) {
+            NSLog(@"Loading ImageTotal Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageTotal Load Status - [%d]. Done - [%d]", CGImageSourceGetStatus(incImageSrcRef), imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatusAtIndex(incImageSrcRef, 0) == kCGImageStatusComplete) {
+            NSLog(@"Loading Image1 Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"Image1 Load Status - [%d]. Done - [%d]", CGImageSourceGetStatusAtIndex(incImageSrcRef, 0), imageLength == imageOffset);
+        }
+    } while(imageOffset < imageLength);
+    CFRelease(incImageSrcRef);
+}
+
+TEST(ImageIO, IncrementalTIFFImageWithData) {
+    const wchar_t* imageFile = L"photo8_4layers_1024x683.tif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 1000 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef incImageSrcRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(incImageSrcRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset length:currentChunkSize freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(incImageSrcRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        CGImageRef incImg = CGImageSourceCreateImageAtIndex(incImageSrcRef, 0, nil);
+        if (!incImg) {
+            NSLog(@"ImageAtIndex1 unavailable. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageAtIndex1 displayed. Done - [%d]", imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatus(incImageSrcRef) == kCGImageStatusComplete) {
+            NSLog(@"Loading ImageTotal Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageTotal Load Status - [%d]. Done - [%d]", CGImageSourceGetStatus(incImageSrcRef), imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatusAtIndex(incImageSrcRef, 0) == kCGImageStatusComplete) {
+            NSLog(@"Loading Image1 Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"Image1 Load Status - [%d]. Done - [%d]", CGImageSourceGetStatusAtIndex(incImageSrcRef, 0), imageLength == imageOffset);
+        }
+    } while(imageOffset < imageLength);
+    CFRelease(incImageSrcRef);
+}
+
+TEST(ImageIO, IncrementalICOImageWithData) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 400 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef incImageSrcRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(incImageSrcRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset length:currentChunkSize freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(incImageSrcRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        CGImageRef incImg = CGImageSourceCreateImageAtIndex(incImageSrcRef, 0, nil);
+        if (!incImg) {
+            NSLog(@"ImageAtIndex1 unavailable. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageAtIndex1 displayed. Done - [%d]", imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatus(incImageSrcRef) == kCGImageStatusComplete) {
+            NSLog(@"Loading ImageTotal Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"ImageTotal Load Status - [%d]. Done - [%d]", CGImageSourceGetStatus(incImageSrcRef), imageLength == imageOffset);
+        }
+
+        if (CGImageSourceGetStatusAtIndex(incImageSrcRef, 0) == kCGImageStatusComplete) {
+            NSLog(@"Loading Image1 Complete. Done - [%d]", imageLength == imageOffset);
+        } else {
+            NSLog(@"Image1 Load Status - [%d]. Done - [%d]", CGImageSourceGetStatusAtIndex(incImageSrcRef, 0), imageLength == imageOffset);
+        }
+    } while(imageOffset < imageLength);
+    CFRelease(incImageSrcRef);
+}
