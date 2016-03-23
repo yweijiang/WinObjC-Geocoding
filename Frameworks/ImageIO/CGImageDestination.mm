@@ -75,8 +75,6 @@ enum imageTypes { typeJPEG,
         _idFactory = (IWICImagingFactory*)imageQueryInterface.pItf;
         RETURN_NULL_IF_FAILED(_idFactory->CreateStream(&_idStream));
 
-        NSMutableData *dataNSPointer = static_cast<NSMutableData*>(data);
-        unsigned char* dataPointer = static_cast<unsigned char*>([dataNSPointer mutableBytes]);
         IStream* dataStream;
         CreateStreamOnHGlobal(NULL, true, &dataStream);
         RETURN_NULL_IF_FAILED(_idStream->InitializeFromIStream(dataStream));
@@ -198,7 +196,7 @@ CGImageDestinationRef CGImageDestinationCreateWithDataConsumer(CGDataConsumerRef
 /**
  @Status Caveat
  @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO. 
-        Not all formats are supported.
+        Not all formats are supported. For CreateWithData, the CFMutableDataRef is not modified until finalize.
 */
 CGImageDestinationRef CGImageDestinationCreateWithData(CFMutableDataRef data, CFStringRef type, size_t count, CFDictionaryRef options) {
     if (!data) {
@@ -453,8 +451,9 @@ void CGImageDestinationSetProperties(CGImageDestinationRef idst, CFDictionaryRef
 }
 
 /**
- @Status Stub
- @Notes
+ @Status Caveat
+ @Notes All data is not finalized until CFRelease is called on the idst object
+        because the idst object contains pointers for the stream and encoder.
 */
 bool CGImageDestinationFinalize(CGImageDestinationRef idst) {
     if (!idst) {
