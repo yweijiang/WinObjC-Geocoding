@@ -32,13 +32,13 @@
 using namespace Microsoft::WRL;
 
 @interface ImageDestination : NSObject
-@property (nonatomic)enum imageTypes type;
-@property (nonatomic)size_t count;
-@property (nonatomic)size_t maxCount;
-@property (nonatomic)CFMutableDataRef outData;
-@property (nonatomic)ComPtr<IWICImagingFactory> idFactory;
-@property (nonatomic)ComPtr<IWICStream> idStream;
-@property (nonatomic)ComPtr<IWICBitmapEncoder> idEncoder;
+@property (atomic)enum imageTypes type;
+@property (atomic)size_t count;
+@property (atomic)size_t maxCount;
+@property (atomic)CFMutableDataRef outData;
+@property (atomic)ComPtr<IWICImagingFactory> idFactory;
+@property (atomic)ComPtr<IWICStream> idStream;
+@property (atomic)ComPtr<IWICBitmapEncoder> idEncoder;
 
 -(instancetype)initWithDataConsumer:(CGDataConsumerRef)imgConsumer type : (CFStringRef)imgType frames : (size_t)numFrames;
 -(instancetype)initWithData:(CFMutableDataRef)imgData type : (CFStringRef)imgType frames : (size_t)numFrames;
