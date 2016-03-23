@@ -981,7 +981,7 @@ TEST(ImageIO, DestinationTest) {
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeBMP, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
-
+    CFRelease(myImageDest);
     // Read back in the newly written image to check properties
     
     CFRelease(imageSource);
@@ -1001,7 +1001,6 @@ TEST(ImageIO, DestinationTest) {
     frameCount = CGImageSourceGetCount(imageSource);
     checkInt(frameCount, 1, "FrameCount");
     
-    CFRelease(myImageDest);
     CFRelease(imageSource);
 }
 
@@ -1125,6 +1124,7 @@ TEST(ImageIO, DestinationFromSourceTest) {
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeBMP, 1, NULL);
     CGImageDestinationAddImageFromSource(myImageDest, imageSource, 0, NULL);
     CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
 
     // Read back in the newly written image to check properties
     CFRelease(imageSource);
@@ -1144,7 +1144,6 @@ TEST(ImageIO, DestinationFromSourceTest) {
     frameCount = CGImageSourceGetCount(imageSource);
     checkInt(frameCount, 1, "FrameCount");
     
-    CFRelease(myImageDest);
     CFRelease(imageSource);
 }
 
@@ -1182,6 +1181,7 @@ TEST(ImageIO, DestinationMultiFrameTest) {
     CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 0, NULL);
     CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 2, NULL);
     CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
 
     // Read back in the newly written image to check properties
     CFRelease(imageSource);
@@ -1222,7 +1222,6 @@ TEST(ImageIO, DestinationMultiFrameTest) {
     checkInt(CGImageGetHeight(imageRef), 683, "Height");
     checkInt(CGImageGetWidth(imageRef), 1024, "Width");
 
-    CFRelease(myImageDest);
     CFRelease(imageSource);
 }
 
@@ -1240,6 +1239,7 @@ TEST(ImageIO, DestinationDataTest) {
     CGImageDestinationRef myImageDest = CGImageDestinationCreateWithData((CFMutableDataRef)dataBuffer, kUTTypeTIFF, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
 
     CFRelease(imageSource);
     imageSource = CGImageSourceCreateWithData((CFDataRef)dataBuffer, NULL);
@@ -1256,7 +1256,6 @@ TEST(ImageIO, DestinationDataTest) {
     checkInt(CGImageGetHeight(imageRef), 683, "Height");
     checkInt(CGImageGetWidth(imageRef), 1024, "Width");
 
-    CFRelease(myImageDest);
     CFRelease(imageSource);
 }
 */
