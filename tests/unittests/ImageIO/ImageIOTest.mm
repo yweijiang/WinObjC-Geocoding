@@ -1225,15 +1225,12 @@ TEST(ImageIO, DestinationMultiFrameTest) {
     CFRelease(imageSource);
 }
 
-// Destination as data is pending rewrites
-/*
 TEST(ImageIO, DestinationDataTest) {
     const wchar_t* imageFile = L"photo2_683x1024.ico";
     NSData* imageData = getDataFromImageFile(imageFile);
     CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
     CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
     
-    unsigned char blankData = 0;
     NSMutableData *dataBuffer = [NSMutableData dataWithCapacity:10000000];
 
     CGImageDestinationRef myImageDest = CGImageDestinationCreateWithData((CFMutableDataRef)dataBuffer, kUTTypeTIFF, 1, NULL);
@@ -1253,9 +1250,68 @@ TEST(ImageIO, DestinationDataTest) {
     checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
     checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
     checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 1024, "Height");
+    checkInt(CGImageGetWidth(imageRef), 683, "Width");
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, DestinationMultiFrameDataTest) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+
+    const wchar_t* imageFile2 = L"photo8_4layers_1024x683.tif";
+    NSData* imageData2 = getDataFromImageFile(imageFile2);
+    CGImageSourceRef imageSource2 = CGImageSourceCreateWithData((CFDataRef)imageData2, NULL);
+    CGImageRef imageRef2 = CGImageSourceCreateImageAtIndex(imageSource2, 0, NULL);
+    
+    NSMutableData *dataBuffer = [NSMutableData dataWithCapacity:10000000];
+
+    CGImageDestinationRef myImageDest = CGImageDestinationCreateWithData((CFMutableDataRef)dataBuffer, kUTTypeTIFF, 3, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, NULL);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 0, NULL);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 2, NULL);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    // Read back in the newly written image to check properties
+    CFRelease(imageSource);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)dataBuffer, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    size_t frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 3, "FrameCount");
+
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 1024, "Height");
+    checkInt(CGImageGetWidth(imageRef), 683, "Width");
+
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 1, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 683, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 2, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
     checkInt(CGImageGetHeight(imageRef), 683, "Height");
     checkInt(CGImageGetWidth(imageRef), 1024, "Width");
 
     CFRelease(imageSource);
 }
-*/

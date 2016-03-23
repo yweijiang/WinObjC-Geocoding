@@ -42,71 +42,6 @@ enum imageTypes { typeJPEG,
 
 @implementation ImageDestination
 
-- (instancetype)initWithDataConsumer:(CGDataConsumerRef)consumer
-                                type:(CFStringRef)type
-                              frames:(size_t)frames {
-    if (self = [super init]) {
-        _maxCount = frames;
-        _count = 0;
-        _outData = NULL;
-
-        if (CFStringCompare(type, kUTTypeJPEG, NULL) == kCFCompareEqualTo) {
-            _type = typeJPEG;
-        } else if (CFStringCompare(type, kUTTypeTIFF, NULL) == kCFCompareEqualTo) {
-            _type = typeTIFF;
-        } else if (CFStringCompare(type, kUTTypeGIF, NULL) == kCFCompareEqualTo) {
-            _type = typeGIF;
-        } else if (CFStringCompare(type, kUTTypePNG, NULL) == kCFCompareEqualTo) {
-            _type = typePNG;
-        } else if (CFStringCompare(type, kUTTypeBMP, NULL) == kCFCompareEqualTo) {
-            _type = typeBMP;
-        } else if (CFStringCompare(type, kUTTypeICO, NULL) == kCFCompareEqualTo) {
-            _type = typeICO;
-        } else {
-            _type = typeError;
-        }
-
-        MULTI_QI imageQueryInterface = {0};
-        const GUID IID_IWICImagingFactory = {0xec5ec8a9,0xc395,0x4314,0x9c,0x77,0x54,0xd7,0xa9,0x35,0xff,0x70};
-        imageQueryInterface.pIID = &IID_IWICImagingFactory;
-        RETURN_NULL_IF_FAILED(
-            CoCreateInstanceFromApp(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, nullptr, 1, &imageQueryInterface));
-        
-        _idFactory = (IWICImagingFactory*)imageQueryInterface.pItf;
-        RETURN_NULL_IF_FAILED(_idFactory->CreateStream(&_idStream));
-
-        switch (_type) {
-            case typeJPEG:
-                RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatJpeg, NULL, &_idEncoder));
-                break;
-            case typeTIFF:
-                RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatTiff, NULL, &_idEncoder));
-                break;
-            case typeGIF:
-                RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatGif, NULL, &_idEncoder));
-                break;
-            case typePNG:
-                RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatPng, NULL, &_idEncoder));
-                break;
-            case typeBMP:
-                RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatBmp, NULL, &_idEncoder));
-                break;
-            case typeICO:
-                RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatIco, NULL, &_idEncoder));
-                break;
-            default:
-                return NULL;
-        }
-
-        RETURN_NULL_IF_FAILED(_idEncoder->Initialize(_idStream.Get(), WICBitmapEncoderNoCache));
-
-        // Not handling the consumer right now because it's not implemented.
-        // The API that would call this is stubbed out right now as well, so this won't be called.
-    }                  
-                  
-    return self;
-}
-
 - (instancetype)initWithData:(CFMutableDataRef)data
                         type:(CFStringRef)type
                       frames:(size_t)frames {
@@ -143,9 +78,9 @@ enum imageTypes { typeJPEG,
         NSMutableData *dataNSPointer = static_cast<NSMutableData*>(data);
         unsigned char* dataPointer = static_cast<unsigned char*>([dataNSPointer mutableBytes]);
         IStream* dataStream;
-        CreateStreamOnHGlobal(dataPointer, false, &dataStream);
+        CreateStreamOnHGlobal(NULL, true, &dataStream);
         RETURN_NULL_IF_FAILED(_idStream->InitializeFromIStream(dataStream));
-        // Create a stream on the memory that data points to, then initialize the image stream
+        // Create a stream on the memory to store the image data
 
         switch (_type) {
             case typeJPEG:
@@ -321,8 +256,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     
     // HRESULT status = imageEncoder->CreateNewFrame(&imageBitmapFrame, &pPropertybag);
     HRESULT status = imageEncoder->CreateNewFrame(&imageBitmapFrame, NULL);
-    if (!SUCCEEDED(status))
-    {
+    if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"CreateNewFrame failed with status=%x\n", status);
         return;
     }
@@ -335,8 +269,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     varValue.vt = VT_UI1;
     varValue.bVal = WICTiffCompressionZIP;      
     status = pPropertybag->Write(1, &option, &varValue);
-    if (!SUCCEEDED(status))
-    {
+    if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"Property Bag Write failed with status=%x\n", status);
         return;
     }
@@ -344,8 +277,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     */
 
     status = imageBitmapFrame->Initialize(pPropertybag);
-    if (!SUCCEEDED(status))
-    {
+    if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"Frame Initialize failed with status=%x\n", status);
         return;
     }
@@ -354,8 +286,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     unsigned int uiHeight = CGImageGetHeight(image);
 
     status = imageBitmapFrame->SetSize(uiWidth, uiHeight);
-    if (!SUCCEEDED(status))
-    {
+    if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"Set Frame Size failed with status=%x\n", status);
         return;
     }
@@ -387,8 +318,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     }
     
     status = imageBitmapFrame->SetPixelFormat(&formatGUID);
-    if (!SUCCEEDED(status))
-    {
+    if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"Set Pixel Format failed with status=%x\n", status);
         return;
     }
@@ -460,15 +390,9 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
 
     if (pbBuffer != NULL)
     {
-        if (imageDestination.outData) {
-            NSMutableData *dataNSPointer = static_cast<NSMutableData*>(imageDestination.outData);
-            [dataNSPointer increaseLengthBy:frameSize];
-        }
-
         imageDestination.count++;
         status = imageBitmapFrame->WritePixels(uiHeight, frameStride, frameSize, pbBuffer);
-        if (!SUCCEEDED(status))
-        {
+        if (!SUCCEEDED(status)) {
             NSTraceInfo(TAG, @"Write Pixels failed with status=%x\n", status);
             return;
         }
@@ -481,8 +405,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     }
     
     status = imageBitmapFrame->Commit();
-    if (!SUCCEEDED(status))
-    {
+    if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"Commit Frame failed with status=%x\n", status);
         return;
     }
@@ -549,9 +472,35 @@ bool CGImageDestinationFinalize(CGImageDestinationRef idst) {
     ComPtr<IWICBitmapEncoder> imageEncoder = imageDestination.idEncoder;
 
     HRESULT status = imageEncoder->Commit();
-    {
+    if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"Encoder Commit failed with status=%x\n", status);
         return false;
+    }
+
+    if (imageDestination.outData) {
+        NSMutableData *dataNSPointer = static_cast<NSMutableData*>(imageDestination.outData);
+
+        LARGE_INTEGER li;
+        li.QuadPart = 0;
+        status = imageStream->Seek(li, STREAM_SEEK_SET, NULL);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Stream Seek failed with status=%x\n", status);
+            return false;
+        }
+        // Seek to beginning of stream after image data all written
+
+        STATSTG streamStats;
+        status = imageStream->Stat(&streamStats, STATFLAG_NONAME);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Fetch stream stats failed with status=%x\n", status);
+            return false;
+        }
+        // Get stream stats in order to determine number of bytes that were written
+
+        [dataNSPointer increaseLengthBy:streamStats.cbSize.QuadPart];
+        unsigned long readBytes;
+        status = imageStream->Read([dataNSPointer mutableBytes], (unsigned long)[dataNSPointer length], &readBytes);
+        // Copy stream into the mutable data
     }
     
     return true;
