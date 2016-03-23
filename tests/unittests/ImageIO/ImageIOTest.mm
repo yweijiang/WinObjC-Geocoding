@@ -22,6 +22,14 @@
 #include "Starboard.h"
 #include <windows.h>
 
+const CFStringRef kUTTypeJPEG = static_cast<const CFStringRef>(@"public.jpeg");
+const CFStringRef kUTTypeTIFF = static_cast<const CFStringRef>(@"public.tiff");
+const CFStringRef kUTTypeGIF = static_cast<const CFStringRef>(@"com.compuserve.gif");
+const CFStringRef kUTTypePNG = static_cast<const CFStringRef>(@"public.png");
+const CFStringRef kUTTypeBMP = static_cast<const CFStringRef>(@"com.microsoft.bmp");
+const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ico");
+const CFStringRef kUTTypeData = static_cast<const CFStringRef>(@"public.data");
+
 static void checkInt(int res, int expected, const char* name) {
     ASSERT_NEAR_MSG(res, expected, 0, "TEST FAILED: %s \nEXPECTED: %i\nFOUND: %i", name, expected, res);
 }
@@ -468,6 +476,15 @@ TEST(ImageIO, TypeIdentifierTest) {
     NSArray* actualTypeIdentifiers = (NSArray*)CGImageSourceCopyTypeIdentifiers();
     ASSERT_TRUE_MSG([expectedTypeIdentifiers isEqualToArray:actualTypeIdentifiers], 
                     "FAILED: ImageIOTest::Incorrect TypeIdentifier list returned");
+
+    NSArray* expectedDestinationTypeIdentifiers = [NSArray arrayWithObjects:@"public.png", 
+                                                                            @"public.jpeg", 
+                                                                            @"public.tiff", 
+                                                                            @"com.microsoft.bmp", 
+                                                                            nil];
+    NSArray* actualDestinationTypeIdentifiers = (NSArray*)CGImageDestinationCopyTypeIdentifiers();
+    ASSERT_TRUE_MSG([expectedDestinationTypeIdentifiers isEqualToArray:actualDestinationTypeIdentifiers], 
+                    "FAILED: ImageIOTest::Incorrect Destination TypeIdentifier list returned");
 }
 
 TEST(ImageIO, TypeIDTest) {
@@ -493,6 +510,7 @@ TEST(ImageIO, CopyPropertiesTest) {
     CFRelease(imageSource);
 }
 */
+
 TEST(ImageIO, CopyJPEGPropertiesAtIndexTest) {
     const wchar_t* imageFile = L"photo6_1024x670.jpg";
     NSData* imageData = getDataFromImageFile(imageFile);
@@ -829,3 +847,416 @@ TEST(ImageIO, IncrementalICOImageWithData) {
     } while(imageOffset < imageLength);
     CFRelease(incImageSrcRef);
 }
+
+TEST(ImageIO, DestinationTest) {
+    const wchar_t* imageFile = L"photo6_1024x670.jpg";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypeJPEG",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 670, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+    size_t frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+    
+    // get test startup full path
+    wchar_t fullPath[_MAX_PATH];
+    GetModuleFileNameW(NULL, fullPath, _MAX_PATH);
+
+    // split test startup full path into components like drive, directory, filename and ext etc.
+    wchar_t drive[_MAX_DRIVE];
+    wchar_t directory[_MAX_DIR];
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+
+    // reconstruct fullpath for test artifact file. e.g., C:\WinObjc\WinObjC\build\Debug\data\photo6_1024x670.jpg
+    const wchar_t* outFile = L"outphoto.tif";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), L"data\\");
+    wcscat_s(fullPath, _countof(fullPath), outFile);
+    NSString* directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    CFURLRef imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile];
+
+    CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeTIFF, 1, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, NULL);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    // Read back in the newly written image to check properties
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 670, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+    frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+    const wchar_t* outFile2 = L"outphoto.jpg";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), outFile2);
+    directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
+
+    myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeJPEG, 1, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, NULL);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    // Read back in the newly written image to check properties
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile2);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile2);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 670, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+    frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+    const wchar_t* outFile3 = L"outphoto.png";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), outFile3);
+    directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
+
+    myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypePNG, 1, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, NULL);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    // Read back in the newly written image to check properties
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile3);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile3);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 670, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+    frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+    const wchar_t* outFile4 = L"outphoto.bmp";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), outFile4);
+    directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
+
+    myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeBMP, 1, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, NULL);
+    CGImageDestinationFinalize(myImageDest);
+
+    // Read back in the newly written image to check properties
+    
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile4);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile4);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 670, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+    frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+    
+    CFRelease(myImageDest);
+    CFRelease(imageSource);
+}
+
+
+TEST(ImageIO, DestinationFromSourceTest) {
+    const wchar_t* imageFile = L"testimg_227x149.bmp";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    
+    // get test startup full path
+    wchar_t fullPath[_MAX_PATH];
+    GetModuleFileNameW(NULL, fullPath, _MAX_PATH);
+
+    // split test startup full path into components like drive, directory, filename and ext etc.
+    wchar_t drive[_MAX_DRIVE];
+    wchar_t directory[_MAX_DIR];
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+
+    // reconstruct fullpath for test artifact file. e.g., C:\WinObjc\WinObjC\build\Debug\data\photo6_1024x670.jpg
+    const wchar_t* outFile = L"outphoto2.tif";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), L"data\\");
+    wcscat_s(fullPath, _countof(fullPath), outFile);
+    NSString* directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    CFURLRef imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
+
+    CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeTIFF, 1, NULL);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource, 0, NULL);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    // Read back in the newly written image to check properties
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 149, "Height");
+    checkInt(CGImageGetWidth(imageRef), 227, "Width");
+    size_t frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+    const wchar_t* outFile2 = L"outphoto2.jpg";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), outFile2);
+    directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
+
+    myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeJPEG, 1, NULL);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource, 0, NULL);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    // Read back in the newly written image to check properties
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile2);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile2);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 149, "Height");
+    checkInt(CGImageGetWidth(imageRef), 227, "Width");
+    frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+    const wchar_t* outFile3 = L"outphoto2.png";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), outFile3);
+    directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
+
+    myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypePNG, 1, NULL);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource, 0, NULL);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    // Read back in the newly written image to check properties
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile3);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile3);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 149, "Height");
+    checkInt(CGImageGetWidth(imageRef), 227, "Width");
+    frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+    const wchar_t* outFile4 = L"outphoto2.bmp";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), outFile4);
+    directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
+
+    myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeBMP, 1, NULL);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource, 0, NULL);
+    CGImageDestinationFinalize(myImageDest);
+
+    // Read back in the newly written image to check properties
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile4);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile4);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 149, "Height");
+    checkInt(CGImageGetWidth(imageRef), 227, "Width");
+    frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+    
+    CFRelease(myImageDest);
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, DestinationMultiFrameTest) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+
+    const wchar_t* imageFile2 = L"photo8_4layers_1024x683.tif";
+    NSData* imageData2 = getDataFromImageFile(imageFile2);
+    CGImageSourceRef imageSource2 = CGImageSourceCreateWithData((CFDataRef)imageData2, NULL);
+    CGImageRef imageRef2 = CGImageSourceCreateImageAtIndex(imageSource2, 0, NULL);
+    
+    // get test startup full path
+    wchar_t fullPath[_MAX_PATH];
+    GetModuleFileNameW(NULL, fullPath, _MAX_PATH);
+
+    // split test startup full path into components like drive, directory, filename and ext etc.
+    wchar_t drive[_MAX_DRIVE];
+    wchar_t directory[_MAX_DIR];
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+
+    // reconstruct fullpath for test artifact file. e.g., C:\WinObjc\WinObjC\build\Debug\data\photo6_1024x670.jpg
+    const wchar_t* outFile = L"outphoto_multiframe.tif";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), L"data\\");
+    wcscat_s(fullPath, _countof(fullPath), outFile);
+    NSString* directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    CFURLRef imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
+
+    CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeTIFF, 3, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, NULL);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 0, NULL);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 2, NULL);
+    CGImageDestinationFinalize(myImageDest);
+
+    // Read back in the newly written image to check properties
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    size_t frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 3, "FrameCount");
+
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 1024, "Height");
+    checkInt(CGImageGetWidth(imageRef), 683, "Width");
+
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 1, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 683, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 2, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 683, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+
+    CFRelease(myImageDest);
+    CFRelease(imageSource);
+}
+
+// Destination as data is pending rewrites
+/*
+TEST(ImageIO, DestinationDataTest) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    
+    unsigned char blankData = 0;
+    NSMutableData *dataBuffer = [NSMutableData dataWithCapacity:10000000];
+
+    CGImageDestinationRef myImageDest = CGImageDestinationCreateWithData((CFMutableDataRef)dataBuffer, kUTTypeTIFF, 1, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, NULL);
+    CGImageDestinationFinalize(myImageDest);
+
+    CFRelease(imageSource);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)dataBuffer, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    size_t frameCount = CGImageSourceGetCount(imageSource);
+    checkInt(frameCount, 1, "FrameCount");
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageGetAlphaInfo(imageRef), 4, "AlphaInfo");
+    checkInt(CGImageGetBitmapInfo(imageRef), 4, "BitmapInfo");
+    checkInt(CGImageGetBitsPerComponent(imageRef), 8, "BitsPerComponent");
+    checkInt(CGImageGetBitsPerPixel(imageRef), 32, "BitsPerPixel");
+    checkInt(CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(imageRef)), 3, "ColorSpaceComponentCount");
+    checkInt(CGImageGetHeight(imageRef), 683, "Height");
+    checkInt(CGImageGetWidth(imageRef), 1024, "Width");
+
+    CFRelease(myImageDest);
+    CFRelease(imageSource);
+}
+*/
