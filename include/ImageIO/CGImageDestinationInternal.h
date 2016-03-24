@@ -39,6 +39,7 @@ using namespace Microsoft::WRL;
 @property (atomic)ComPtr<IWICImagingFactory> idFactory;
 @property (atomic)ComPtr<IWICStream> idStream;
 @property (atomic)ComPtr<IWICBitmapEncoder> idEncoder;
+@property (atomic)ComPtr<IWICMetadataQueryWriter> idGifEncoderMetadataQueryWriter;
 
 -(instancetype)initWithData:(CFMutableDataRef)imgData type : (CFStringRef)imgType frames : (size_t)numFrames;
 -(instancetype)initWithUrl:(CFURLRef)url type : (CFStringRef)imgType frames : (size_t)numFrames;
