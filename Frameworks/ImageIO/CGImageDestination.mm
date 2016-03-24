@@ -104,6 +104,9 @@ enum imageTypes { typeJPEG,
         }
 
         RETURN_NULL_IF_FAILED(_idEncoder->Initialize(_idStream.Get(), WICBitmapEncoderNoCache));
+        if (_type == typeGIF) {
+            RETURN_NULL_IF_FAILED(_idEncoder->GetMetadataQueryWriter(&_idGifEncoderMetadataQueryWriter));
+        }
     }
     
     return self;
@@ -173,6 +176,9 @@ enum imageTypes { typeJPEG,
         }
 
         RETURN_NULL_IF_FAILED(_idEncoder->Initialize(_idStream.Get(), WICBitmapEncoderNoCache));
+        if (_type == typeGIF) {
+            RETURN_NULL_IF_FAILED(_idEncoder->GetMetadataQueryWriter(&_idGifEncoderMetadataQueryWriter));
+        }
     }
 
     return self;
@@ -242,18 +248,10 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     ComPtr<IWICImagingFactory> imageFactory = imageDestination.idFactory;
     ComPtr<IWICStream> imageStream = imageDestination.idStream;
     ComPtr<IWICBitmapEncoder> imageEncoder = imageDestination.idEncoder;
+    ComPtr<IWICMetadataQueryWriter> imageMetadataQueryWriter = imageDestination.idGifEncoderMetadataQueryWriter;
+    PROPVARIANT writePropValue;
 
-    if (!imageFactory) {
-        return;
-    }
-
-    if (!imageStream) {
-        return;
-    }
-
-    if (!imageEncoder) {
-        return;
-    }
+    PropVariantInit(&writePropValue);
     
     HRESULT status = imageEncoder->CreateNewFrame(&imageBitmapFrame, &pPropertybag);
     if (!SUCCEEDED(status)) {
@@ -268,10 +266,12 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         VariantInit(&varValue);
         varValue.vt = VT_R4;
         varValue.bVal = [(id)CFDictionaryGetValue(properties, kCGImageDestinationLossyCompressionQuality) doubleValue];
-        status = pPropertybag->Write(1, &option, &varValue);
-        if (!SUCCEEDED(status)) {
-            NSTraceInfo(TAG, @"Property Bag Write failed with status=%x\n", status);
-            return;
+        if (varValue.bVal > 0.0 && varValue.bVal < 1.0) {
+            status = pPropertybag->Write(1, &option, &varValue);
+            if (!SUCCEEDED(status)) {
+                NSTraceInfo(TAG, @"Property Bag Write failed with status=%x\n", status);
+                return;
+            }
         }
     }
 
@@ -290,6 +290,9 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         return;
     }
 
+    NSString *pElemsString = @"NETSCAPE2.0";
+    // This is specific to gif, but declaring it here because variables can't be initialized in switches
+
     // Set the pixel format based on file format
     WICPixelFormatGUID formatGUID;
     switch (imageDestination.type) {
@@ -301,6 +304,10 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             break;
         case typeGIF:
             formatGUID = GUID_WICPixelFormat8bppIndexed;
+            writePropValue.vt = VT_UI1 | VT_VECTOR;
+            writePropValue.caub.cElems = 11;
+            writePropValue.caub.pElems = (unsigned char*)[pElemsString UTF8String];
+            status = imageMetadataQueryWriter->SetMetadataByName(L"/appext/Application", &writePropValue);
             break;
         case typePNG:
             formatGUID = GUID_WICPixelFormat32bppRGBA;
@@ -447,7 +454,21 @@ CFTypeID CGImageDestinationGetTypeID() {
  @Notes
 */
 void CGImageDestinationSetProperties(CGImageDestinationRef idst, CFDictionaryRef properties) {
-    UNIMPLEMENTED();
+    if (!idst) {
+        return;
+    }
+
+    ImageDestination* imageDestination = (ImageDestination*)idst;
+    if (imageDestination.count >= imageDestination.maxCount) {
+        return;
+    }
+
+    ComPtr<IWICImagingFactory> imageFactory = imageDestination.idFactory;
+    ComPtr<IWICStream> imageStream = imageDestination.idStream;
+    ComPtr<IWICBitmapEncoder> imageEncoder = imageDestination.idEncoder;
+    ComPtr<IWICMetadataQueryWriter> imageMetadataQueryWriter = imageDestination.idGifEncoderMetadataQueryWriter;
+
+
 }
 
 /**
