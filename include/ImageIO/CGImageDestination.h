@@ -48,6 +48,6 @@ IMAGEIO_EXPORT void CGImageDestinationAddImageFromSource(CGImageDestinationRef i
     size_t index,
     CFDictionaryRef properties);
 IMAGEIO_EXPORT CFArrayRef CGImageDestinationCopyTypeIdentifiers();
-IMAGEIO_EXPORT CFTypeID CGImageDestinationGetTypeID() STUB_METHOD;
+IMAGEIO_EXPORT CFTypeID CGImageDestinationGetTypeID();
 IMAGEIO_EXPORT void CGImageDestinationSetProperties(CGImageDestinationRef idst, CFDictionaryRef properties) STUB_METHOD;
 IMAGEIO_EXPORT bool CGImageDestinationFinalize(CGImageDestinationRef idst);
