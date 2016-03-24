@@ -142,10 +142,10 @@ enum imageTypes { typeJPEG,
         _idFactory = (IWICImagingFactory*)imageQueryInterface.pItf;
         RETURN_NULL_IF_FAILED(_idFactory->CreateStream(&_idStream));
 
-        NSString *urlNSString = [[(NSURL *)url path] substringFromIndex:1];
-        const char *urlString = [urlNSString UTF8String];
+        NSString* urlNSString = [[(NSURL*)url path] substringFromIndex:1];
+        const char* urlString = [urlNSString UTF8String];
         const size_t urlSize = strlen(urlString) + 1;
-        wchar_t *wideUrl = new wchar_t[urlSize];
+        wchar_t* wideUrl = new wchar_t[urlSize];
         mbstowcs(wideUrl, urlString, urlSize);
         RETURN_NULL_IF_FAILED(_idStream->InitializeFromFilename(wideUrl, GENERIC_WRITE));
 
@@ -221,7 +221,7 @@ CGImageDestinationRef CGImageDestinationCreateWithURL(CFURLRef url, CFStringRef 
 
 /**
  @Status Caveat
- @Notes The current implementation supports common image file formats such as JPEG, TIFF, BMP, and PNG. 
+ @Notes The current implementation supports common image file formats such as JPEG, TIFF, BMP, GIF, and PNG. 
         Not all formats are supported.
 */
 void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CFDictionaryRef properties) {
@@ -235,7 +235,10 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     }
 
     ComPtr<IWICBitmapFrameEncode> imageBitmapFrame;
-    IPropertyBag2 *pPropertybag = NULL;
+    IPropertyBag2* pPropertybag = NULL;
+    ComPtr<IWICBitmap> inputImage;
+    ComPtr<IWICFormatConverter> imageFormatConverter;
+    ComPtr<IWICBitmapSource> inputBitmapSource;
     ComPtr<IWICImagingFactory> imageFactory = imageDestination.idFactory;
     ComPtr<IWICStream> imageStream = imageDestination.idStream;
     ComPtr<IWICBitmapEncoder> imageEncoder = imageDestination.idEncoder;
@@ -252,27 +255,25 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         return;
     }
     
-    // HRESULT status = imageEncoder->CreateNewFrame(&imageBitmapFrame, &pPropertybag);
-    HRESULT status = imageEncoder->CreateNewFrame(&imageBitmapFrame, NULL);
+    HRESULT status = imageEncoder->CreateNewFrame(&imageBitmapFrame, &pPropertybag);
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"CreateNewFrame failed with status=%x\n", status);
         return;
     }
 
-    /*
-    PROPBAG2 option = { 0 };
-    option.pstrName = L"TiffCompressionMethod";
-    VARIANT varValue;    
-    VariantInit(&varValue);
-    varValue.vt = VT_UI1;
-    varValue.bVal = WICTiffCompressionZIP;      
-    status = pPropertybag->Write(1, &option, &varValue);
-    if (!SUCCEEDED(status)) {
-        NSTraceInfo(TAG, @"Property Bag Write failed with status=%x\n", status);
-        return;
+    if (properties && CFDictionaryContainsKey(properties, kCGImageDestinationLossyCompressionQuality)) {
+        PROPBAG2 option = { 0 };
+        option.pstrName = L"ImageQuality";
+        VARIANT varValue;    
+        VariantInit(&varValue);
+        varValue.vt = VT_R4;
+        varValue.bVal = [(id)CFDictionaryGetValue(properties, kCGImageDestinationLossyCompressionQuality) doubleValue];
+        status = pPropertybag->Write(1, &option, &varValue);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Property Bag Write failed with status=%x\n", status);
+            return;
+        }
     }
-    // TODO: make cases for other formats
-    */
 
     status = imageBitmapFrame->Initialize(pPropertybag);
     if (!SUCCEEDED(status)) {
@@ -296,16 +297,16 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             formatGUID = GUID_WICPixelFormat24bppBGR;
             break;
         case typeTIFF:
-            formatGUID = GUID_WICPixelFormat32bppBGRA;
+            formatGUID = GUID_WICPixelFormat32bppRGBA;
             break;
         case typeGIF:
-            status = 0x80004001;
+            formatGUID = GUID_WICPixelFormat8bppIndexed;
             break;
         case typePNG:
-            formatGUID = GUID_WICPixelFormat32bppBGRA;
+            formatGUID = GUID_WICPixelFormat32bppRGBA;
             break;
         case typeBMP:
-            formatGUID = GUID_WICPixelFormat32bppBGRA;
+            formatGUID = GUID_WICPixelFormat32bppRGBA;
             break;
         case typeICO:
             NSTraceInfo(TAG, @"ICO type not implemented\n");
@@ -324,74 +325,73 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     CGDataProviderRef provider = CGImageGetDataProvider(image);
     NSData* imageByteData = (id)CGDataProviderCopyData(provider);
 
-    unsigned char *pbBuffer = (unsigned char*)[imageByteData bytes];
+    unsigned char* pbBuffer = (unsigned char*)[imageByteData bytes];
     // Turn image into a byte array
 
-    unsigned int frameStride;
-    unsigned int frameSize;
-    unsigned char* frameByteArray;
+    status = imageFactory->CreateBitmapFromMemory(uiWidth,
+                                                  uiHeight,
+                                                  GUID_WICPixelFormat32bppRGBA,
+                                                  uiWidth * 4,
+                                                  uiHeight * uiWidth * 4,
+                                                  pbBuffer,
+                                                  &inputImage);
+    if (!SUCCEEDED(status)) {
+        NSTraceInfo(TAG, @"CreateBitmapFromMemory failed with status=%x\n", status);
+        return;
+    }
+    // All our input coming in from CGImagesource is in 32bppRGBA
 
-    // Switch R and B channels because we decode in RGB and encode as BGR
-    for (int i = 0; i < uiWidth * 4 * uiHeight; i++) {
-        if (i % 4 == 2) {
-            pbBuffer[i] += pbBuffer[i-2];
-            pbBuffer[i-2] = pbBuffer[i] - pbBuffer[i-2];
-            pbBuffer[i] -= pbBuffer[i-2];
+    status = imageFactory->CreateFormatConverter(&imageFormatConverter);
+    if (!SUCCEEDED(status)) {
+        NSTraceInfo(TAG, @"CreateFormatConverter failed with status=%x\n", status);
+        return;
+    }
+
+    if (imageDestination.type == typeGIF) {
+        ComPtr<IWICPalette> imagePalette;
+
+        if (imagePalette == NULL) {
+            status = imageFactory->CreatePalette(&imagePalette);
+            if (!SUCCEEDED(status)) {
+                NSTraceInfo(TAG, @"CreatePalette failed with status=%x\n", status);
+                return;
+            }
+
+            imagePalette->InitializeFromBitmap((IWICBitmapSource*)inputImage.Get(), 256, TRUE);
+        }
+
+        status = imageFormatConverter->Initialize(inputImage.Get(), 
+                                                  formatGUID,
+                                                  WICBitmapDitherTypeNone, 
+                                                  imagePalette.Get(), 
+                                                  0.f, 
+                                                  WICBitmapPaletteTypeFixedWebPalette);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Initialize ImageFormatConverter failed with status=%x\n", status);
+            return;
+        }
+    } else {
+        status = imageFormatConverter->Initialize(inputImage.Get(), 
+                                                  formatGUID,
+                                                  WICBitmapDitherTypeNone, 
+                                                  nullptr, 
+                                                  0.f, 
+                                                  WICBitmapPaletteTypeCustom);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Initialize ImageFormatConverter failed with status=%x\n", status);
+            return;
         }
     }
 
-    // Handling various image formats
-    int i, j = 0;
-
-    switch (imageDestination.type) {
-        case typeJPEG:
-            frameStride = uiWidth * 3/***WICGetStride***/;
-            frameSize = uiHeight * frameStride;
-            frameByteArray = new unsigned char[frameSize];
-                
-            for (i = 0; i < frameSize; i++) {
-                if (j % 4 == 3) {
-                    j++;
-                }
-                // Change from 32bpp format to 24bpp format by removing every 4th element
-                    
-                pbBuffer[i] = pbBuffer[j];
-                j++;
-            }
-
-            break;
-        case typeTIFF:
-            frameStride = uiWidth * 4/***WICGetStride***/;
-            frameSize = uiHeight * frameStride;
-            frameByteArray = new unsigned char[frameSize];
-            break;
-        case typeGIF:
-            status = 0x80004001;
-            break;
-        case typePNG:
-            frameStride = uiWidth * 4/***WICGetStride***/;
-            frameSize = uiHeight * frameStride;
-            frameByteArray = new unsigned char[frameSize];
-            break;
-        case typeBMP:
-            frameStride = uiWidth * 4/***WICGetStride***/;
-            frameSize = uiHeight * frameStride;
-            frameByteArray = new unsigned char[frameSize];
-            break;
-        case typeICO:
-            NSTraceInfo(TAG, @"ICO type not implemented\n");
-            return;
-        default:
-            NSTraceInfo(TAG, @"Unknown type encountered");
-            return;
-    }
+    status = imageFormatConverter->QueryInterface(IID_PPV_ARGS(&inputBitmapSource));
 
     if (pbBuffer != NULL)
     {
         imageDestination.count++;
-        status = imageBitmapFrame->WritePixels(uiHeight, frameStride, frameSize, pbBuffer);
+
+        status = imageBitmapFrame->WriteSource(inputBitmapSource.Get(), NULL);
         if (!SUCCEEDED(status)) {
-            NSTraceInfo(TAG, @"Write Pixels failed with status=%x\n", status);
+            NSTraceInfo(TAG, @"Write Source failed with status=%x\n", status);
             return;
         }
         delete[] pbBuffer;
@@ -413,7 +413,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
 
 /**
  @Status Caveat
- @Notes The current implementation supports common image file formats such as JPEG, TIFF, BMP, and PNG. 
+ @Notes The current implementation supports common image file formats such as JPEG, TIFF, BMP, GIF, and PNG. 
         Not all formats are supported.
 */
 void CGImageDestinationAddImageFromSource(CGImageDestinationRef idst, CGImageSourceRef isrc, size_t index, CFDictionaryRef properties) {
@@ -424,22 +424,22 @@ void CGImageDestinationAddImageFromSource(CGImageDestinationRef idst, CGImageSou
 
 /**
  @Status Caveat
- @Notes Current release supports JPEG, BMP, PNG, & TIFF image formats only 
+ @Notes Current release supports JPEG, BMP, PNG, GIF, & TIFF image formats only 
 */
 CFArrayRef CGImageDestinationCopyTypeIdentifiers() {
-    CFIndex formatsSupported = 4;
-    CFStringRef typeIdentifiers[] = {kUTTypePNG, kUTTypeJPEG, kUTTypeTIFF, kUTTypeBMP};
+    CFIndex formatsSupported = 5;
+    CFStringRef typeIdentifiers[] = {kUTTypePNG, kUTTypeJPEG, kUTTypeTIFF, kUTTypeGIF, kUTTypeBMP};
     CFArrayRef imageTypeIdentifiers = CFArrayCreate(nullptr, (const void**)typeIdentifiers, formatsSupported, &kCFTypeArrayCallBacks);
     return imageTypeIdentifiers;
 }
 
 /**
- @Status Stub
- @Notes
+ @Status Caveat
+ @Notes The CFTypeID for an opaque type changes from release to release and so has been hard-coded in current implementation
 */
 CFTypeID CGImageDestinationGetTypeID() {
-    UNIMPLEMENTED();
-    return StubReturn();
+    CFTypeID imageTypeID = 269;
+    return imageTypeID;
 }
 
 /**
@@ -477,7 +477,7 @@ bool CGImageDestinationFinalize(CGImageDestinationRef idst) {
     }
 
     if (imageDestination.outData) {
-        NSMutableData *dataNSPointer = static_cast<NSMutableData*>(imageDestination.outData);
+        NSMutableData* dataNSPointer = static_cast<NSMutableData*>(imageDestination.outData);
 
         LARGE_INTEGER li;
         li.QuadPart = 0;
