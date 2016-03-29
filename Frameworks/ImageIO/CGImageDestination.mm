@@ -1,6 +1,6 @@
 //******************************************************************************
 //
-// Copyright (c) 2016, Intel Corporation
+// Copyright (c) 2016 Intel Corporation
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -19,6 +19,7 @@
 #import <ImageIO/CGImageDestinationInternal.h>
 #import <StubReturn.h>
 #include <windows.h>
+#include <vector.h>
 
 static const wchar_t* TAG = L"CGImageDestination"; 
 const CFStringRef kCGImageDestinationLossyCompressionQuality = static_cast<CFStringRef>(@"kCGImageDestinationLossyCompressionQuality");
@@ -37,39 +38,22 @@ enum imageTypes { typeJPEG,
                   typeBMP,
                   typeUnknown };
 
+enum destinationTypes { toData,
+                        toURL,
+                        toConsumer };
+
 @implementation ImageDestination
 
-- (REFGUID)initSharedReturnGUID:(CFStringRef)type
-                         frames:(size_t)frames {
-    self.maxCount = frames;
-
-    if (CFStringCompare(type, kUTTypeJPEG, NULL) == kCFCompareEqualTo) {
-        self.type = typeJPEG;
-        return GUID_ContainerFormatJpeg;
-    } else if (CFStringCompare(type, kUTTypeTIFF, NULL) == kCFCompareEqualTo) {
-        self.type = typeTIFF;
-        return GUID_ContainerFormatTiff;
-    } else if (CFStringCompare(type, kUTTypeGIF, NULL) == kCFCompareEqualTo) {
-        self.type = typeGIF;
-        return GUID_ContainerFormatGif;
-    } else if (CFStringCompare(type, kUTTypePNG, NULL) == kCFCompareEqualTo) {
-        self.type = typePNG;
-        return GUID_ContainerFormatPng;
-    } else if (CFStringCompare(type, kUTTypeBMP, NULL) == kCFCompareEqualTo) {
-        self.type = typeBMP;
-        return GUID_ContainerFormatBmp;
-    } else {
-        self.type = typeUnknown;
-        return { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } }; // Empty GUID
-    }
-}
-
-- (instancetype)initWithData:(CFMutableDataRef)data
-                        type:(CFStringRef)type
-                      frames:(size_t)frames {
+- (instancetype)initToDestination:(destinationTypes)destinationType
+                             data:(CFMutableDataRef)data
+                             type:(CFStringRef)type
+                           frames:(size_t)frames 
+                              url:(CFURLRef)url {
     if (self = [super init]) {
-        REFGUID containerType = [self initSharedReturnGUID:type frames:frames];
-        _outData = data;
+        RETURN_NULL_IF(![(NSURL*)url isFileURL] && destinationType == toURL);
+        RETURN_NULL_IF(!data && destinationType == toData);
+
+        self.maxCount = frames;
 
         MULTI_QI imageQueryInterface = {0};
         static const GUID IID_IWICImagingFactory = {0xec5ec8a9,0xc395,0x4314,0x9c,0x77,0x54,0xd7,0xa9,0x35,0xff,0x70};
@@ -80,46 +64,50 @@ enum imageTypes { typeJPEG,
         _idFactory = (IWICImagingFactory*)imageQueryInterface.pItf;
         RETURN_NULL_IF_FAILED(_idFactory->CreateStream(&_idStream));
 
-        // Create a stream on the memory to store the image data
-        IStream* dataStream;
-        CreateStreamOnHGlobal(NULL, true, &dataStream);
-        RETURN_NULL_IF_FAILED(_idStream->InitializeFromIStream(dataStream));
-        RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(containerType, NULL, &_idEncoder));
-        RETURN_NULL_IF_FAILED(_idEncoder->Initialize(_idStream.Get(), WICBitmapEncoderNoCache));
-        if (_type == typeGIF) {
-            RETURN_NULL_IF_FAILED(_idEncoder->GetMetadataQueryWriter(&_idGifEncoderMetadataQueryWriter));
+        if (CFStringCompare(type, kUTTypeJPEG, NULL) == kCFCompareEqualTo) {
+            _type = typeJPEG;
+            RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatJpeg, NULL, &_idEncoder));
+        } else if (CFStringCompare(type, kUTTypeTIFF, NULL) == kCFCompareEqualTo) {
+            _type = typeTIFF;
+            RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatTiff, NULL, &_idEncoder));
+        } else if (CFStringCompare(type, kUTTypeGIF, NULL) == kCFCompareEqualTo) {
+            _type = typeGIF;
+            RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatGif, NULL, &_idEncoder));
+        } else if (CFStringCompare(type, kUTTypePNG, NULL) == kCFCompareEqualTo) {
+            _type = typePNG;
+            RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatPng, NULL, &_idEncoder));
+        } else if (CFStringCompare(type, kUTTypeBMP, NULL) == kCFCompareEqualTo) {
+            _type = typeBMP;
+            RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(GUID_ContainerFormatBmp, NULL, &_idEncoder));
+        } else {
+            _type = typeUnknown;
+            return NULL;
         }
-    }
-    
-    return self;
-}
 
-- (instancetype)initWithUrl:(CFURLRef)url
-                       type:(CFStringRef)type
-                     frames:(size_t)frames {
-    if (self = [super init]) {
-        REFGUID containerType = [self initSharedReturnGUID:type frames:frames];
+        if (destinationType == toURL) {
+            NSString* urlNSString = [[(NSURL*)url path] substringFromIndex:1];
+            const char* urlString = [urlNSString UTF8String];
+            const size_t wideUrlSize = strlen(urlString) + 1;
+            std::vector<wchar_t> wideUrl(wideUrlSize);
+            size_t charactersCopied = mbstowcs(&wideUrl[0], urlString, wideUrlSize);
+            RETURN_NULL_IF(charactersCopied != wideUrlSize - 1);
+            RETURN_NULL_IF_FAILED(_idStream->InitializeFromFilename(&wideUrl[0], GENERIC_WRITE));
+            
+            if (![(NSURL*)url checkResourceIsReachableAndReturnError:NULL]) {
+                return NULL;
+            }
+        } else if (destinationType == toData) {
+            _outData = data;
 
-        MULTI_QI imageQueryInterface = {0};
-        static const GUID IID_IWICImagingFactory = {0xec5ec8a9,0xc395,0x4314,0x9c,0x77,0x54,0xd7,0xa9,0x35,0xff,0x70};
-        imageQueryInterface.pIID = &IID_IWICImagingFactory;
-        RETURN_NULL_IF_FAILED(
-            CoCreateInstanceFromApp(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, nullptr, 1, &imageQueryInterface));
-        
-        _idFactory = (IWICImagingFactory*)imageQueryInterface.pItf;
-        RETURN_NULL_IF_FAILED(_idFactory->CreateStream(&_idStream));
+            IStream* dataStream;
+            CreateStreamOnHGlobal(NULL, true, &dataStream);
+            RETURN_NULL_IF_FAILED(_idStream->InitializeFromIStream(dataStream));
+        } else if (destinationType == toConsumer) {
+            // We are not currently handling data consumer as destination
+        }
 
-        _outData = NULL;
-
-        NSString* urlNSString = [[(NSURL*)url path] substringFromIndex:1];
-        const char* urlString = [urlNSString UTF8String];
-        const size_t wideUrlSize = strlen(urlString) + 1;
-        wchar_t* wideUrl = new wchar_t[wideUrlSize];
-        size_t charactersCopied = mbstowcs(wideUrl, urlString, wideUrlSize);
-        RETURN_NULL_IF(charactersCopied != wideUrlSize - 1);
-        RETURN_NULL_IF_FAILED(_idStream->InitializeFromFilename(wideUrl, GENERIC_WRITE));
-        RETURN_NULL_IF_FAILED(_idFactory->CreateEncoder(containerType, NULL, &_idEncoder));
         RETURN_NULL_IF_FAILED(_idEncoder->Initialize(_idStream.Get(), WICBitmapEncoderNoCache));
+
         if (_type == typeGIF) {
             RETURN_NULL_IF_FAILED(_idEncoder->GetMetadataQueryWriter(&_idGifEncoderMetadataQueryWriter));
         }
@@ -151,7 +139,7 @@ CGImageDestinationRef CGImageDestinationCreateWithDataConsumer(CGDataConsumerRef
 CGImageDestinationRef CGImageDestinationCreateWithData(CFMutableDataRef data, CFStringRef type, size_t count, CFDictionaryRef options) {
     RETURN_NULL_IF(!data);
     
-    return (CGImageDestinationRef)[[ImageDestination alloc] initWithData:data type:type frames:count];
+    return (CGImageDestinationRef)[[ImageDestination alloc] initToDestination:toData data:data type:type frames:count url:NULL];
 }
 
 /**
@@ -162,7 +150,7 @@ CGImageDestinationRef CGImageDestinationCreateWithData(CFMutableDataRef data, CF
 CGImageDestinationRef CGImageDestinationCreateWithURL(CFURLRef url, CFStringRef type, size_t count, CFDictionaryRef options) {
     RETURN_NULL_IF(!url);
     
-    return (CGImageDestinationRef)[[ImageDestination alloc] initWithUrl:url type:type frames:count];
+    return (CGImageDestinationRef)[[ImageDestination alloc] initToDestination:toURL data:NULL type:type frames:count url:url];
 }
 
 /**
@@ -245,6 +233,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             return;
     }
 
+    // Placeholder for writing image properties, the GIF looping properties are not shared between AddImage and SetProperties in iOS
     if (imageDestination.type == typeGIF) {
         char loopCountMSB = 0;
         char loopCountLSB = 0;
@@ -268,7 +257,6 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             return;
         }
 
-        writePropValue.vt = VT_UI1 | VT_VECTOR;
         writePropValue.caub.cElems = 5;
         writePropValue.caub.pElems = 
             (unsigned char*)[[NSString stringWithFormat:@"%c%c%c%c%c", 3, 1, loopCountLSB, loopCountMSB, 0] UTF8String];
@@ -305,6 +293,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         return;
     }
 
+    CGDataProviderRelease(provider);
+
     ComPtr<IWICFormatConverter> imageFormatConverter;
     status = imageFactory->CreateFormatConverter(&imageFormatConverter);
     if (!SUCCEEDED(status)) {
@@ -340,7 +330,6 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         return;
     }
 
-    imageDestination.count++;
     status = imageBitmapFrame->WriteSource(inputBitmapSource.Get(), NULL);
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"Write Source failed with status=%x\n", status);
@@ -352,6 +341,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         NSTraceInfo(TAG, @"Commit Frame failed with status=%x\n", status);
         return;
     }
+    imageDestination.count++;
     
     return;
 }
@@ -359,7 +349,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
 /**
  @Status Caveat
  @Notes The current implementation supports common image file formats such as JPEG, TIFF, BMP, GIF, and PNG. 
-        Not all formats are supported.
+        Not all formats are supported. Also, the option for kCGImageDestinationBackgroundColor is currently not supported.
 */
 void CGImageDestinationAddImageFromSource(CGImageDestinationRef idst, CGImageSourceRef isrc, size_t index, CFDictionaryRef properties) {
     // Pull image reference from the image source using CGImageSource API, then calls AddImage
@@ -423,7 +413,6 @@ void CGImageDestinationSetProperties(CGImageDestinationRef idst, CFDictionaryRef
             return;
         }
 
-        writePropValue.vt = VT_UI1 | VT_VECTOR;
         writePropValue.caub.cElems = 5;
         writePropValue.caub.pElems =
             (unsigned char*)[[NSString stringWithFormat:@"%c%c%c%c%c", 3, 1, loopCountLSB, loopCountMSB, 0] UTF8String];
@@ -448,6 +437,7 @@ bool CGImageDestinationFinalize(CGImageDestinationRef idst) {
     ImageDestination* imageDestination = (ImageDestination*)idst;
 
     if (imageDestination.count != imageDestination.maxCount) {
+        NSTraceInfo(TAG, @"CGImageDestinationFinalize image destination does not have enough images");
         return false;
     }
 
