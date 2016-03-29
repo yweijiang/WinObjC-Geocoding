@@ -41,6 +41,9 @@ using namespace Microsoft::WRL;
 @property (atomic)ComPtr<IWICBitmapEncoder> idEncoder;
 @property (atomic)ComPtr<IWICMetadataQueryWriter> idGifEncoderMetadataQueryWriter;
 
--(instancetype)initWithData:(CFMutableDataRef)data type:(CFStringRef)yype frames:(size_t)frames;
--(instancetype)initWithUrl:(CFURLRef)url type:(CFStringRef)type frames:(size_t)frames;
+-(instancetype)initToDestination:(enum destinationTypes)destinationType
+                            data:(CFMutableDataRef)data
+                            type:(CFStringRef)type
+                          frames:(size_t)frames
+                             url:(CFURLRef)url;
 @end
