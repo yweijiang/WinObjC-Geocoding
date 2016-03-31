@@ -169,6 +169,13 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     IPropertyBag2* pPropertybag = NULL;
     
     ComPtr<IWICBitmapEncoder> imageEncoder = imageDestination.idEncoder;
+
+    // If there is no Encoder, the destination has either been already finalized or not initialized yet, so return
+    if (!imageEncoder) {
+        NSTraceInfo(TAG, @"Destination object has no Encoder");
+        return;
+    }
+
     HRESULT status = imageEncoder->CreateNewFrame(&imageBitmapFrame, &pPropertybag);
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"CreateNewFrame failed with status=%x\n", status);
@@ -383,7 +390,12 @@ void CGImageDestinationSetProperties(CGImageDestinationRef idst, CFDictionaryRef
     }
 
     ImageDestination* imageDestination = (ImageDestination*)idst;
-    
+
+    // If Encoder or is missing, the destination has either been already finalized or not initialized yet, so return
+    if (!imageDestination.idEncoder) {
+        NSTraceInfo(TAG, @"CGImageDestinationFinalize did not find an Encoder");
+        return;
+    }
 
     // Looping properties for GIFs
     if (imageDestination.type == typeGIF) {
@@ -440,6 +452,12 @@ bool CGImageDestinationFinalize(CGImageDestinationRef idst) {
     ComPtr<IWICBitmapEncoder> imageEncoder = imageDestination.idEncoder;
     ComPtr<IWICStream> imageStream = imageDestination.idStream;
 
+    // If Encoder or Stream are missing, the destination has either been already finalized or not initialized yet, so return
+    if (!imageEncoder || !imageStream) {
+        NSTraceInfo(TAG, @"CGImageDestinationFinalize did not find an Encoder or Stream");
+        return false;
+    }
+
     HRESULT status = imageEncoder->Commit();
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"Encoder Commit failed with status=%x\n", status);
@@ -477,10 +495,7 @@ bool CGImageDestinationFinalize(CGImageDestinationRef idst) {
     imageDestination.idEncoder = nullptr;
     imageDestination.idStream = nullptr;
     imageDestination.idFactory = nullptr;
-
-    if (imageDestination.idGifEncoderMetadataQueryWriter) {
-        imageDestination.idGifEncoderMetadataQueryWriter = nullptr;
-    }
+    imageDestination.idGifEncoderMetadataQueryWriter = nullptr;
     
     return true;
 }
