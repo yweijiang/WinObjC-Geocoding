@@ -44,14 +44,13 @@ enum destinationTypes { toData,
 
 @implementation ImageDestination
 
-- (instancetype)initToDestination:(destinationTypes)destinationType
-                             data:(CFMutableDataRef)data
+- (instancetype)initToDestination:(size_t)frames
                              type:(CFStringRef)type
-                           frames:(size_t)frames 
+                             data:(CFMutableDataRef)data
                               url:(CFURLRef)url {
     if (self = [super init]) {
-        RETURN_NULL_IF(![(NSURL*)url isFileURL] && destinationType == toURL);
-        RETURN_NULL_IF(!data && destinationType == toData);
+        RETURN_NULL_IF(url && ![(NSURL*)url isFileURL]);
+        RETURN_NULL_IF(!data && !url);
 
         self.maxCount = frames;
 
@@ -84,26 +83,23 @@ enum destinationTypes { toData,
             return NULL;
         }
 
-        if (destinationType == toURL) {
+        if (url) {
             NSString* urlNSString = [[(NSURL*)url path] substringFromIndex:1];
-            const char* urlString = [urlNSString UTF8String];
-            const size_t wideUrlSize = strlen(urlString) + 1;
-            std::vector<wchar_t> wideUrl(wideUrlSize);
-            size_t charactersCopied = mbstowcs(&wideUrl[0], urlString, wideUrlSize);
-            RETURN_NULL_IF(charactersCopied != wideUrlSize - 1);
-            RETURN_NULL_IF_FAILED(_idStream->InitializeFromFilename(&wideUrl[0], GENERIC_WRITE));
-            
+            NSData* urlAsData = [urlNSString dataUsingEncoding:NSUTF16StringEncoding];
+            std::wstring wideUrl((wchar_t*)[urlAsData bytes], [urlAsData length]/sizeof(wchar_t));
+            RETURN_NULL_IF_FAILED(_idStream->InitializeFromFilename(wideUrl.c_str(), GENERIC_WRITE));
+
             if (![(NSURL*)url checkResourceIsReachableAndReturnError:NULL]) {
                 return NULL;
             }
-        } else if (destinationType == toData) {
+        } else if (data) {
             _outData = data;
 
             IStream* dataStream;
             CreateStreamOnHGlobal(NULL, true, &dataStream);
             RETURN_NULL_IF_FAILED(_idStream->InitializeFromIStream(dataStream));
-        } else if (destinationType == toConsumer) {
-            // We are not currently handling data consumer as destination
+        } else {
+            // We are not currently handling data consumer as destination because data consumer is not implemented in WinObjC
         }
 
         RETURN_NULL_IF_FAILED(_idEncoder->Initialize(_idStream.Get(), WICBitmapEncoderNoCache));
@@ -139,7 +135,7 @@ CGImageDestinationRef CGImageDestinationCreateWithDataConsumer(CGDataConsumerRef
 CGImageDestinationRef CGImageDestinationCreateWithData(CFMutableDataRef data, CFStringRef type, size_t count, CFDictionaryRef options) {
     RETURN_NULL_IF(!data);
     
-    return (CGImageDestinationRef)[[ImageDestination alloc] initToDestination:toData data:data type:type frames:count url:NULL];
+    return (CGImageDestinationRef)[[ImageDestination alloc] initToDestination:count type:type data:data url:NULL];
 }
 
 /**
@@ -150,7 +146,7 @@ CGImageDestinationRef CGImageDestinationCreateWithData(CFMutableDataRef data, CF
 CGImageDestinationRef CGImageDestinationCreateWithURL(CFURLRef url, CFStringRef type, size_t count, CFDictionaryRef options) {
     RETURN_NULL_IF(!url);
     
-    return (CGImageDestinationRef)[[ImageDestination alloc] initToDestination:toURL data:NULL type:type frames:count url:url];
+    return (CGImageDestinationRef)[[ImageDestination alloc] initToDestination:count type:type data:NULL url:url];
 }
 
 /**
@@ -478,14 +474,12 @@ bool CGImageDestinationFinalize(CGImageDestinationRef idst) {
         }
     }
 
-    ComPtr<IWICImagingFactory> imageFactory = imageDestination.idFactory;
-    ComPtr<IWICMetadataQueryWriter> metadataQueryWriter = imageDestination.idGifEncoderMetadataQueryWriter;
-    imageFactory.Reset();
-    imageEncoder.Reset();
-    imageStream.Reset();
-    
-    if (metadataQueryWriter) {
-        metadataQueryWriter.Reset();
+    imageDestination.idEncoder = nullptr;
+    imageDestination.idStream = nullptr;
+    imageDestination.idFactory = nullptr;
+
+    if (imageDestination.idGifEncoderMetadataQueryWriter) {
+        imageDestination.idGifEncoderMetadataQueryWriter = nullptr;
     }
     
     return true;
