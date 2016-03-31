@@ -30,8 +30,6 @@
 #include <wrl/client.h>
 #include "COMIncludes_End.h"
 
-using namespace Microsoft::WRL;
-
 static const wchar_t* TAG = L"CGImageSource"; 
 const CFStringRef kCGImageSourceTypeIdentifierHint = static_cast<CFStringRef>(@"kCGImageSourceTypeIdentifierHint");
 const CFStringRef kCGImageSourceShouldAllowFloat = static_cast<CFStringRef>(@"kCGImageSourceShouldAllowFloat");
@@ -117,8 +115,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 /**
  @Status Caveat
  @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO. 
-        Not all formats are supported.
-        kCGImageSourceTypeIdentifierHint is not supported when passed in as an options dictionary key. 
+        Not all formats are supported. 
 */
 CGImageSourceRef CGImageSourceCreateWithDataProvider(CGDataProviderRef provider, CFDictionaryRef options) {
     RETURN_NULL_IF(!provider);
@@ -132,8 +129,7 @@ CGImageSourceRef CGImageSourceCreateWithDataProvider(CGDataProviderRef provider,
 /**
  @Status Caveat
  @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO. 
-        Not all formats are supported.
-        kCGImageSourceTypeIdentifierHint is not supported when passed in as an options dictionary key. 
+        Not all formats are supported. 
 */
 CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data, CFDictionaryRef options) {
     RETURN_NULL_IF(!data);
@@ -148,7 +144,6 @@ CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data, CFDictionaryRef opt
  @Status Caveat
  @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO. 
         Not all formats are supported.
-        kCGImageSourceTypeIdentifierHint is not supported when passed in as an options dictionary key.
 */
 CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url, CFDictionaryRef options) {
     RETURN_NULL_IF(!url);
