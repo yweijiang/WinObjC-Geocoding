@@ -1,4 +1,4 @@
-//******************************************************************************
+﻿//******************************************************************************
 //
 // Copyright (c) 2016, Intel Corporation
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
@@ -888,7 +888,6 @@ TEST(ImageIO, DestinationTest) {
     CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeTIFF, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
-    CFRelease(myImageDest);
 
     // Read back in the newly written image to check properties
     CFRelease(imageSource);
@@ -919,7 +918,6 @@ TEST(ImageIO, DestinationTest) {
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeJPEG, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
-    CFRelease(myImageDest);
 
     // Read back in the newly written image to check properties
     CFRelease(imageSource);
@@ -950,7 +948,6 @@ TEST(ImageIO, DestinationTest) {
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypePNG, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
-    CFRelease(myImageDest);
 
     // Read back in the newly written image to check properties
     CFRelease(imageSource);
@@ -981,7 +978,6 @@ TEST(ImageIO, DestinationTest) {
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeBMP, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
-    CFRelease(myImageDest);
     
     // Read back in the newly written image to check properties
     CFRelease(imageSource);
@@ -1012,7 +1008,6 @@ TEST(ImageIO, DestinationTest) {
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeGIF, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
-    CFRelease(myImageDest);
     
     // Read back in the newly written image to check properties
     CFRelease(imageSource);
@@ -1032,6 +1027,7 @@ TEST(ImageIO, DestinationTest) {
     frameCount = CGImageSourceGetCount(imageSource);
     checkInt(frameCount, 1, "FrameCount");
     
+    CFRelease(myImageDest);
     CFRelease(imageSource);
 }
 
