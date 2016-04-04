@@ -1,6 +1,6 @@
 //******************************************************************************
 //
-// Copyright (c) 2016 Intel Corporation
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -19,7 +19,7 @@
 #import <ImageIO/CGImageDestinationInternal.h>
 #import <StubReturn.h>
 #include <windows.h>
-#include <vector.h>
+#include <vector>
 
 static const wchar_t* TAG = L"CGImageDestination"; 
 const CFStringRef kCGImageDestinationLossyCompressionQuality = static_cast<CFStringRef>(@"kCGImageDestinationLossyCompressionQuality");
@@ -182,14 +182,16 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         return;
     }
 
-    if (properties && CFDictionaryContainsKey(properties, kCGImageDestinationLossyCompressionQuality)) {
+    // JPEG lossy compression property
+    if (properties && CFDictionaryContainsKey(properties, kCGImageDestinationLossyCompressionQuality) &&
+            imageDestination.type == typeJPEG) {
         PROPBAG2 option = { 0 };
         option.pstrName = L"ImageQuality";
         VARIANT varValue;    
         VariantInit(&varValue);
         varValue.vt = VT_R4;
         varValue.bVal = [(id)CFDictionaryGetValue(properties, kCGImageDestinationLossyCompressionQuality) doubleValue];
-        if (varValue.bVal > 0.0 && varValue.bVal < 1.0) {
+        if (varValue.bVal >= 0.0 && varValue.bVal <= 1.0) {
             status = pPropertybag->Write(1, &option, &varValue);
             if (!SUCCEEDED(status)) {
                 NSTraceInfo(TAG, @"Property Bag Write failed with status=%x\n", status);
@@ -236,37 +238,1260 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             return;
     }
 
-    // Placeholder for writing image properties, the GIF looping properties are not shared between AddImage and SetProperties in iOS
-    if (imageDestination.type == typeGIF) {
-        char loopCountMSB = 0;
-        char loopCountLSB = 0;
-
-        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGIFLoopCount)) {
-            int loopCount = [(id)CFDictionaryGetValue(properties, kCGImagePropertyGIFLoopCount) intValue];
-            loopCountLSB = loopCount & 0xff;
-            loopCountMSB = (loopCount >> 8) & 0xff;
+    // Setting up writing properties to individual image frame
+    ComPtr<IWICMetadataQueryWriter> imageFrameMetadataWriter;
+    if (properties) {
+        status = imageBitmapFrame->GetMetadataQueryWriter(&imageFrameMetadataWriter);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Get Frame Metadata Writer failed with status=%x\n", status);
+            return;
         }
+    }
+    
+    // Image metadata for JPEG images
+    if (imageDestination.type == typeJPEG) {
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyOrientation)) {
+            PROPVARIANT value;
+            PropVariantInit(&value);
+            value.vt = VT_UI2;
+            value.iVal = [(id)CFDictionaryGetValue(properties, kCGImagePropertyOrientation) intValue];
+            status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/{ushort=274}", &value);
+            if (!SUCCEEDED(status)) {
+                NSTraceInfo(TAG, @"Set Image Orientation property failed with status=%x\n", status);
+                return;
+            }
+        }
+
+        // GPS information, must be found in GPS Dictionary
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGPSDictionary)) {
+            CFDictionaryRef gpsDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGPSDictionary);
         
-        PROPVARIANT writePropValue;
-        PropVariantInit(&writePropValue);
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSAltitude)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSAltitude) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=6}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Altitude property failed with status=%x\n", status);
+                    return;
+                }
+            }
 
-        ComPtr<IWICMetadataQueryWriter> imageMetadataQueryWriter = imageDestination.idGifEncoderMetadataQueryWriter;
-        writePropValue.vt = VT_UI1 | VT_VECTOR;
-        writePropValue.caub.cElems = 11;
-        writePropValue.caub.pElems = (unsigned char*)[@"NETSCAPE2.0" UTF8String];
-        status = imageMetadataQueryWriter->SetMetadataByName(L"/appext/Application", &writePropValue);
-        if (!SUCCEEDED(status)) {
-            NSTraceInfo(TAG, @"Write global gif metadata failed with status=%x\n", status);
-            return;
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSAltitudeRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI1;
+                value.bVal = (unsigned char)[(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSAltitudeRef) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=5}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Altitude Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSDateStamp)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSDateStamp) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=29}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Date Stamp property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSDOP)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSDOP) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=11}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS DOP property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSImgDirection)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSImgDirection) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=17}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Image Direction property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSImgDirectionRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSImgDirectionRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=16}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Image Direction Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLatitude)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                //value.vt = VT_UI8;
+                value.vt = VT_R8;
+                //value.uhVal.QuadPart = (unsigned long long)[(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
+                value.dblVal = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=2}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Latitude property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLatitudeRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitudeRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=1}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Latitude Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLongitude)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=4}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Longitude property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLongitudeRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitudeRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=3}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Longitude Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSSpeed)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSSpeed) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=13}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Speed property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSSpeedRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSSpeedRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=12}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Speed Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSTimeStamp)) {
+                // Not handling this property at the moment
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = (VT_VECTOR | VT_UI8);
+                NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTimeStamp);
+                value.cauh.cElems = 0;
+                for (int timeStampIndex = 0; timeStampIndex < value.cauh.cElems; timeStampIndex++) {
+                    value.cauh.pElems[timeStampIndex].QuadPart = 0;
+                }
+                // Metadata name is L"/app1/ifd/gps/{ushort=7}", not writing at the moment
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSTrack)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTrack) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=15}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Track property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSTrackRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTrackRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=14}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Track Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSVersion)) {
+                // Not handling this property at the moment
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = (VT_VECTOR | VT_UI1);
+                NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSVersion);
+                value.caub.cElems = 0;
+                for (int timeStampIndex = 0; timeStampIndex < value.cauh.cElems; timeStampIndex++) {
+                    value.caub.pElems[timeStampIndex] = 0;
+                }
+                // Metadata name is L"/app1/ifd/gps/{ushort=0}", not writing at the moment
+            }
         }
 
-        writePropValue.caub.cElems = 5;
-        writePropValue.caub.pElems = 
-            (unsigned char*)[[NSString stringWithFormat:@"%c%c%c%c%c", 3, 1, loopCountLSB, loopCountMSB, 0] UTF8String];
-        status = imageMetadataQueryWriter->SetMetadataByName(L"/appext/Data", &writePropValue);
-        if (!SUCCEEDED(status)) {
-            NSTraceInfo(TAG, @"Write global gif metadata failed with status=%x\n", status);
-            return;
+        // Exif information, must be found in Exif Dictionary
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyExifDictionary)) {
+            CFDictionaryRef exifDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyExifDictionary);
+        
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifExposureTime)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureTime) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=33434}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Exposure Time property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifApertureValue)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifApertureValue) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37378}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Aperture Value property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifBrightnessValue)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifBrightnessValue) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37379}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Brightness Value property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifDateTimeDigitized)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDateTimeDigitized) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=36868}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Date and Time Digitized property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifDateTimeOriginal)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDateTimeOriginal) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=36867}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Date and Time Original property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifDigitalZoomRatio)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDigitalZoomRatio) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=41988}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Digital Zoom Ratio property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifExposureMode)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureMode) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=41986}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Exposure Mode property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifExposureProgram)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureProgram) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=34850}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Exposure Program property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifFlash)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFlash) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37385}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Flash property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifFNumber)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFNumber) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=33437}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Number property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifFocalLength)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFocalLength) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37386}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Focal Length property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifISOSpeedRatings)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI4;
+                value.ulVal = (unsigned long)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifISOSpeedRatings) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=34867}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif ISO Speed Ratings property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifLensMake)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifLensMake) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=42035}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Lens Make property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifLensModel)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifLensModel) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=42036}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Model property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifMakerNote)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_BLOB;
+                NSData* exifMakerNote = (NSData*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifMakerNote);
+                value.blob.cbSize = [exifMakerNote length];
+                value.blob.pBlobData = (unsigned char*)[exifMakerNote bytes];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37500}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Maker Note property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifMeteringMode)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifMeteringMode) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37383}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Metering Mode property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifSceneCaptureType)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifSceneCaptureType) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=41990}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Scene Capture Type property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifShutterSpeedValue)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_I8;
+                value.hVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifShutterSpeedValue) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37377}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Shutter Speed Value property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifUserComment)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPWSTR;
+                NSString* exifUserComment = (NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifUserComment);
+                value.pwszVal = (wchar_t*)[exifUserComment cStringUsingEncoding:NSUTF16StringEncoding];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37510}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif User Comment property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifVersion)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_BLOB;
+                NSData* exifVersion = (NSData*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifVersion);
+                value.blob.cbSize = [exifVersion length];
+                value.blob.pBlobData = (unsigned char*)[exifVersion bytes];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=36864}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Version property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifWhiteBalance)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifWhiteBalance) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=41987}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif White Balance property failed with status=%x\n", status);
+                    return;
+                }
+            }
+        }
+    }
+
+    if (imageDestination.type == typeGIF) {
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGIFDictionary)) {
+            CFDictionaryRef gifDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGIFDictionary);
+            
+            if (CFDictionaryContainsKey(gifDictionary, kCGImagePropertyGIFDelayTime)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(gifDictionary, kCGImagePropertyGIFDelayTime) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/grctlext/Delay", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Gif Delay Time property failed with status=%x\n", status);
+                    return;
+                }
+            }
+        }
+    }
+
+    if (imageDestination.type == typeTIFF) {
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyOrientation)) {
+            PROPVARIANT value;
+            PropVariantInit(&value);
+            value.vt = VT_UI2;
+            value.iVal = [(id)CFDictionaryGetValue(properties, kCGImagePropertyOrientation) intValue];
+            status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=274}", &value);
+            if (!SUCCEEDED(status)) {
+                NSTraceInfo(TAG, @"Set Image Orientation property failed with status=%x\n", status);
+                return;
+            }
+        }
+
+        // GPS information, must be found in GPS Dictionary
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGPSDictionary)) {
+            CFDictionaryRef gpsDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGPSDictionary);
+        
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSAltitude)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSAltitude) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=6}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Altitude property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSAltitudeRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI1;
+                value.bVal = (unsigned char)[(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSAltitudeRef) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=5}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Altitude Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSDateStamp)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSDateStamp) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=29}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Date Stamp property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSDOP)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSDOP) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=11}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS DOP property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSImgDirection)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSImgDirection) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=17}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Image Direction property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSImgDirectionRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSImgDirectionRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=16}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Image Direction Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLatitude)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=2}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Latitude property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLatitudeRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitudeRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=1}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Latitude Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLongitude)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=4}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Longitude property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLongitudeRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitudeRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=3}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Longitude Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSSpeed)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSSpeed) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=13}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Speed property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSSpeedRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSSpeedRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=12}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Speed Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSTimeStamp)) {
+                // Not handling this property at the moment
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = (VT_VECTOR | VT_UI8);
+                NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTimeStamp);
+                value.cauh.cElems = 0;
+                for (int timeStampIndex = 0; timeStampIndex < value.cauh.cElems; timeStampIndex++) {
+                    value.cauh.pElems[timeStampIndex].QuadPart = 0;
+                }
+                // Metadata name is L"/ifd/gps/{ushort=7}", not writing at the moment
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSTrack)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTrack) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=15}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Track property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSTrackRef)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTrackRef) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=14}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Track Reference property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSVersion)) {
+                // Not handling this property at the moment
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = (VT_VECTOR | VT_UI1);
+                NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSVersion);
+                value.caub.cElems = 0;
+                for (int timeStampIndex = 0; timeStampIndex < value.cauh.cElems; timeStampIndex++) {
+                    value.caub.pElems[timeStampIndex] = 0;
+                }
+                // Metadata name is L"/ifd/gps/{ushort=0}", not writing at the moment
+            }
+        }
+
+        // Exif information, must be found in Exif Dictionary
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyExifDictionary)) {
+            CFDictionaryRef exifDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyExifDictionary);
+        
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifExposureTime)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureTime) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=33434}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Exposure Time property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifApertureValue)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifApertureValue) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37378}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Aperture Value property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifBrightnessValue)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifBrightnessValue) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37379}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Brightness Value property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifDateTimeDigitized)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDateTimeDigitized) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=36868}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Date and Time Digitized property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifDateTimeOriginal)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDateTimeOriginal) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=36867}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Date and Time Original property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifDigitalZoomRatio)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDigitalZoomRatio) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=41988}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Digital Zoom Ratio property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifExposureMode)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureMode) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=41986}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Exposure Mode property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifExposureProgram)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureProgram) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=34850}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Exposure Program property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifFlash)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFlash) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37385}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Flash property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifFNumber)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFNumber) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=33437}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Number property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifFocalLength)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFocalLength) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37386}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Focal Length property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifISOSpeedRatings)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI4;
+                value.ulVal = (unsigned long)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifISOSpeedRatings) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=34867}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif ISO Speed Ratings property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifLensMake)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifLensMake) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=42035}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Lens Make property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifLensModel)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifLensModel) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=42036}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Model property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifMakerNote)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_BLOB;
+                NSData* exifMakerNote = (NSData*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifMakerNote);
+                value.blob.cbSize = [exifMakerNote length];
+                value.blob.pBlobData = (unsigned char*)[exifMakerNote bytes];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37500}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Maker Note property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifMeteringMode)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifMeteringMode) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37383}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Metering Mode property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifSceneCaptureType)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifSceneCaptureType) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=41990}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Scene Capture Type property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifShutterSpeedValue)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_I8;
+                value.hVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifShutterSpeedValue) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37377}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Shutter Speed Value property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifUserComment)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPWSTR;
+                NSString* exifUserComment = (NSString*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifUserComment);
+                value.pwszVal = (wchar_t*)[exifUserComment cStringUsingEncoding:NSUTF16StringEncoding];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37510}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif User Comment property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifVersion)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_BLOB;
+                NSData* exifVersion = (NSData*)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifVersion);
+                value.blob.cbSize = [exifVersion length];
+                value.blob.pBlobData = (unsigned char*)[exifVersion bytes];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=36864}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif Version property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifWhiteBalance)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifWhiteBalance) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=41987}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set Exif White Balance property failed with status=%x\n", status);
+                    return;
+                }
+            }
+        }
+
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyTIFFDictionary)) {
+            CFDictionaryRef tiffDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyTIFFDictionary);
+            
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFCompression)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFCompression) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=259}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Compression property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFPhotometricInterpretation)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(tiffDictionary,
+                                                                        kCGImagePropertyTIFFPhotometricInterpretation) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=262}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Photometric Interpretation property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFImageDescription)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFImageDescription) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=270}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Image Description property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFMake)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFMake) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=271}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Make property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFModel)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFModel) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=272}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Model property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFOrientation)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFOrientation) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=274}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Orientation property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFXResolution)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFXResolution) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=282}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF X Resolution property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFYResolution)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI8;
+                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFYResolution) longLongValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=283}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Y Resolution property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFResolutionUnit)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFResolutionUnit) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=296}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Resolution Unit property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFSoftware)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFSoftware) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=305}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Software property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFDateTime)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFDateTime) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=306}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Date and Time property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFArtist)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFArtist) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=315}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Artist property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFCopyright)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFCopyright) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=33432}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF Copyright property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFWhitePoint)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI2;
+                value.uiVal = (unsigned short)[(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFWhitePoint) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=41987}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set TIFF White Point property failed with status=%x\n", status);
+                    return;
+                }
+            }
+        }
+    }
+
+    if (imageDestination.type == typePNG) {
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyOrientation)) {
+            PROPVARIANT value;
+            PropVariantInit(&value);
+            value.vt = VT_UI2;
+            value.iVal = [(id)CFDictionaryGetValue(properties, kCGImagePropertyOrientation) intValue];
+            status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=274}", &value);
+            if (!SUCCEEDED(status)) {
+                NSTraceInfo(TAG, @"Set Image Orientation property failed with status=%x\n", status);
+                return;
+            }
+        }
+
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyProfileName)) {
+            PROPVARIANT value;
+            PropVariantInit(&value);
+            value.vt = VT_LPSTR;
+            value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(properties, kCGImagePropertyProfileName) UTF8String];
+            status = imageFrameMetadataWriter->SetMetadataByName(L"/iCCP/ProfileName", &value);
+            if (!SUCCEEDED(status)) {
+                NSTraceInfo(TAG, @"Set PNG Property Profile Name property failed with status=%x\n", status);
+                return;
+            }
+        }
+
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyPNGDictionary)) {
+            CFDictionaryRef pngDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyPNGDictionary);
+
+            if (CFDictionaryContainsKey(pngDictionary, kCGImagePropertyPNGGamma)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI4;
+                value.ulVal = (unsigned long)[(id)CFDictionaryGetValue(pngDictionary, kCGImagePropertyPNGGamma) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/gAMA/ImageGamma", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set PNG Gamma property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(pngDictionary, kCGImagePropertyPNGsRGBIntent)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_UI1;
+                value.bVal = (unsigned char)[(id)CFDictionaryGetValue(pngDictionary, kCGImagePropertyPNGsRGBIntent) intValue];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/sRGB/RenderingIntent", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set PNG sRGB Intent property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(pngDictionary, kCGImagePropertyPNGChromaticities)) {
+                // Not handling this property at the moment
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = (VT_VECTOR | VT_UI1);
+                NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(pngDictionary, kCGImagePropertyPNGChromaticities);
+                value.caub.cElems = 0;
+                for (int timeStampIndex = 0; timeStampIndex < value.cauh.cElems; timeStampIndex++) {
+                    value.caub.pElems[timeStampIndex] = 0;
+                }
+                // Metadata name is L"/chrominance/TableEntry", not writing at the moment
+            }
+
+            if (CFDictionaryContainsKey(pngDictionary, kCGImagePropertyPNGCopyright)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(pngDictionary, kCGImagePropertyPNGCopyright) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=33432}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set PNG Copyright property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(pngDictionary, kCGImagePropertyPNGDescription)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(pngDictionary, kCGImagePropertyPNGDescription) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=270}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set PNG Description property failed with status=%x\n", status);
+                    return;
+                }
+            }
+
+            if (CFDictionaryContainsKey(pngDictionary, kCGImagePropertyPNGSoftware)) {
+                PROPVARIANT value;
+                PropVariantInit(&value);
+                value.vt = VT_LPSTR;
+                value.pszVal = (char*)[(NSString*)CFDictionaryGetValue(pngDictionary, kCGImagePropertyPNGSoftware) UTF8String];
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=305}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set PNG Software property failed with status=%x\n", status);
+                    return;
+                }
+            }
         }
     }
 
@@ -297,7 +1522,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     }
 
     CGDataProviderRelease(provider);
-
+    /*
     ComPtr<IWICFormatConverter> imageFormatConverter;
     status = imageFactory->CreateFormatConverter(&imageFormatConverter);
     if (!SUCCEEDED(status)) {
@@ -330,6 +1555,14 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     status = imageFormatConverter->QueryInterface(IID_PPV_ARGS(&inputBitmapSource));
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"QueryInterface for inputBitmapSource failed with status=%x\n", status);
+        return;
+    }
+    */
+
+    ComPtr<IWICBitmapSource> inputBitmapSource;
+    status = WICConvertBitmapSource(formatGUID, inputImage.Get(), &inputBitmapSource);
+    if (!SUCCEEDED(status)) {
+        NSTraceInfo(TAG, @"Convert Bitmap Source failed with status=%x\n", status);
         return;
     }
 
@@ -402,10 +1635,13 @@ void CGImageDestinationSetProperties(CGImageDestinationRef idst, CFDictionaryRef
         char loopCountMSB = 0;
         char loopCountLSB = 0;
 
-        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGIFLoopCount)) {
-            int loopCount = [(id)CFDictionaryGetValue(properties, kCGImagePropertyGIFLoopCount) intValue];
-            loopCountLSB = loopCount & 0xff;
-            loopCountMSB = (loopCount >> 8) & 0xff;
+        if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGIFDictionary)) {
+            CFDictionaryRef gifDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGIFDictionary);
+            if (CFDictionaryContainsKey(gifDictionary, kCGImagePropertyGIFLoopCount)) {
+                int loopCount = [(id)CFDictionaryGetValue(gifDictionary, kCGImagePropertyGIFLoopCount) intValue];
+                loopCountLSB = loopCount & 0xff;
+                loopCountMSB = (loopCount >> 8) & 0xff;
+            }
         }
 
         ComPtr<IWICMetadataQueryWriter> imageMetadataQueryWriter = imageDestination.idGifEncoderMetadataQueryWriter;

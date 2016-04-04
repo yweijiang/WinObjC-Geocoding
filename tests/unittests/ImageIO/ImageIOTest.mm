@@ -1,6 +1,6 @@
 ﻿//******************************************************************************
 //
-// Copyright (c) 2016, Intel Corporation
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -479,6 +479,7 @@ TEST(ImageIO, TypeIdentifierTest) {
 
     NSArray* expectedDestinationTypeIdentifiers = [NSArray arrayWithObjects:@"public.png", 
                                                                             @"public.jpeg", 
+                                                                            @"com.compuserve.gif", 
                                                                             @"public.tiff", 
                                                                             @"com.microsoft.bmp", 
                                                                             nil];
@@ -846,7 +847,7 @@ TEST(ImageIO, IncrementalICOImageWithData) {
         }
     } while(imageOffset < imageLength);
     CFRelease(incImageSrcRef);
-}
+} 
 
 TEST(ImageIO, DestinationTest) {
     const wchar_t* imageFile = L"photo6_1024x670.jpg";
@@ -915,6 +916,7 @@ TEST(ImageIO, DestinationTest) {
     directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
     imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
 
+    CFRelease(myImageDest);
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeJPEG, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
@@ -945,6 +947,7 @@ TEST(ImageIO, DestinationTest) {
     directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
     imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
 
+    CFRelease(myImageDest);
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypePNG, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
@@ -975,6 +978,7 @@ TEST(ImageIO, DestinationTest) {
     directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
     imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
 
+    CFRelease(myImageDest);
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeBMP, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
@@ -1005,6 +1009,7 @@ TEST(ImageIO, DestinationTest) {
     directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
     imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile]; 
 
+    CFRelease(myImageDest);
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeGIF, 1, NULL);
     CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationFinalize(myImageDest);
@@ -1495,14 +1500,18 @@ TEST(ImageIO, DestinationOptionsTest) {
     int loopCount = 15;
     NSNumber* gifLoops = [NSNumber numberWithInt:loopCount];
     NSDictionary *gifEncodeOptions = @{
-        (__bridge id)kCGImagePropertyGIFLoopCount:gifLoops,
+        (id)kCGImagePropertyGIFLoopCount:gifLoops,
+    };
+
+    NSDictionary *encodeDictionary = @{
+        (id)kCGImagePropertyGIFDictionary:gifEncodeOptions,
     };
 
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeGIF, 3, NULL);
-    CGImageDestinationAddImage(myImageDest, imageRef, (CFDictionaryRef)gifEncodeOptions);
+    CGImageDestinationSetProperties(myImageDest, (CFDictionaryRef)encodeDictionary);
+    CGImageDestinationAddImage(myImageDest, imageRef, NULL);
     CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 0, NULL);
-    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 2, (CFDictionaryRef)gifEncodeOptions);
-    CGImageDestinationSetProperties(myImageDest, (CFDictionaryRef)gifEncodeOptions);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 2, NULL);
     CGImageDestinationFinalize(myImageDest);
     CFRelease(myImageDest);
 
@@ -1546,4 +1555,61 @@ TEST(ImageIO, DestinationOptionsTest) {
     checkInt(CGImageGetWidth(imageRef), 1024, "Width");
 
     CFRelease(imageSource);
+}
+
+TEST(ImageIO, DestinationImageOptionsTest) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypeJPEG",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    
+    // get test startup full path
+    wchar_t fullPath[_MAX_PATH];
+    GetModuleFileNameW(NULL, fullPath, _MAX_PATH);
+
+    // split test startup full path into components like drive, directory, filename and ext etc.
+    wchar_t drive[_MAX_DRIVE];
+    wchar_t directory[_MAX_DIR];
+    ::_wsplitpath_s(fullPath, drive, _countof(drive), directory, _countof(directory), NULL, 0, NULL, 0);
+
+    // reconstruct fullpath for test artifact file. e.g., C:\WinObjc\WinObjC\build\Debug\data\photo6_1024x670.jpg
+    const wchar_t* outFile = L"outphoto_options.jpg";
+    wcscpy_s(fullPath, _countof(fullPath), drive);
+    wcscat_s(fullPath, _countof(fullPath), directory);
+    wcscat_s(fullPath, _countof(fullPath), L"data\\");
+    wcscat_s(fullPath, _countof(fullPath), outFile);
+    NSString* directoryWithFile = [NSString stringWithCharacters:(const unichar*)fullPath length:_MAX_PATH];
+    CFURLRef imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile];
+
+    NSDictionary *gpsOptions = @{
+        (id)kCGImagePropertyGPSLatitude:[NSNumber numberWithDouble:100.0],
+        (id)kCGImagePropertyGPSLongitude:[NSNumber numberWithDouble:200.0],
+        (id)kCGImagePropertyGPSLatitudeRef:@"N",
+        (id)kCGImagePropertyGPSLongitudeRef:@"W",
+        (id)kCGImagePropertyGPSAltitude:[NSNumber numberWithDouble:150],
+        (id)kCGImagePropertyGPSAltitudeRef:[NSNumber numberWithShort:1],
+        (id)kCGImagePropertyGPSImgDirection:[NSNumber numberWithFloat:2.4],
+        (id)kCGImagePropertyGPSImgDirectionRef:@"test",
+    };
+
+    NSDictionary *exifOptions = @{
+        (id)kCGImagePropertyExifUserComment:@"test",
+    };
+
+    int orientation = 3;
+    NSNumber* encodeOrientation = [NSNumber numberWithInt:orientation];
+
+    NSDictionary *encodeOptions = @{
+        (id)kCGImagePropertyGPSDictionary:gpsOptions,
+        (id)kCGImagePropertyOrientation:encodeOrientation,
+        (id)kCGImagePropertyExifDictionary:exifOptions,
+    };
+
+    CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeJPEG, 1, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, (CFDictionaryRef)encodeOptions);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
 }
