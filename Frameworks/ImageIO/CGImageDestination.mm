@@ -252,9 +252,9 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             return;
     }
 
-    // Setting up writing properties to individual image frame
+    // Setting up writing properties to individual image frame, bitmaps cannot have metadata
     ComPtr<IWICMetadataQueryWriter> imageFrameMetadataWriter;
-    if (properties) {
+    if (imageDestination.type != typeBMP) {
         status = imageBitmapFrame->GetMetadataQueryWriter(&imageFrameMetadataWriter);
         if (!SUCCEEDED(status)) {
             NSTraceInfo(TAG, @"Get Frame Metadata Writer failed with status=%x\n", status);
@@ -264,6 +264,26 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     
     // Image metadata for JPEG images
     if (imageDestination.type == typeJPEG) {
+        PROPVARIANT propWidth;
+        PropVariantInit(&propWidth);
+        propWidth.vt = VT_UI2;
+        propWidth.iVal = uiWidth;
+        status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/{ushort=256}", &propWidth);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Set Image Pixel Width property failed with status=%x\n", status);
+            return;
+        }
+
+        PROPVARIANT propHeight;
+        PropVariantInit(&propHeight);
+        propHeight.vt = VT_UI2;
+        propHeight.iVal = uiHeight;
+        status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/{ushort=257}", &propHeight);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Set Image Pixel Height property failed with status=%x\n", status);
+            return;
+        }
+
         if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyOrientation)) {
             PROPVARIANT value;
             PropVariantInit(&value);
@@ -781,6 +801,26 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     }
 
     if (imageDestination.type == typeGIF) {
+        PROPVARIANT propWidth;
+        PropVariantInit(&propWidth);
+        propWidth.vt = VT_UI2;
+        propWidth.iVal = uiWidth;
+        status = imageFrameMetadataWriter->SetMetadataByName(L"/imgdesc/Width", &propWidth);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Set Image Pixel Width property failed with status=%x\n", status);
+            return;
+        }
+
+        PROPVARIANT propHeight;
+        PropVariantInit(&propHeight);
+        propHeight.vt = VT_UI2;
+        propHeight.iVal = uiHeight;
+        status = imageFrameMetadataWriter->SetMetadataByName(L"/imgdesc/Height", &propHeight);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Set Image Pixel Height property failed with status=%x\n", status);
+            return;
+        }
+
         if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGIFDictionary)) {
             CFDictionaryRef gifDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGIFDictionary);
             
@@ -799,6 +839,26 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     }
 
     if (imageDestination.type == typeTIFF) {
+        PROPVARIANT propWidth;
+        PropVariantInit(&propWidth);
+        propWidth.vt = VT_UI2;
+        propWidth.iVal = uiWidth;
+        status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=256}", &propWidth);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Set Image Pixel Width property failed with status=%x\n", status);
+            return;
+        }
+
+        PROPVARIANT propHeight;
+        PropVariantInit(&propHeight);
+        propHeight.vt = VT_UI2;
+        propHeight.iVal = uiHeight;
+        status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=257}", &propHeight);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Set Image Pixel Height property failed with status=%x\n", status);
+            return;
+        }
+
         if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyOrientation)) {
             PROPVARIANT value;
             PropVariantInit(&value);
@@ -1489,6 +1549,29 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     }
 
     if (imageDestination.type == typePNG) {
+        /*
+        // The following 3 properties are listed in CGImageSource as common PNG properties but writing to these causes
+        // the image to be corrupt and I cannot find MSDN documentation listing these. The paths seem wrong as well.
+        PROPVARIANT propWidth;
+        PropVariantInit(&propWidth);
+        propWidth.vt = VT_UI2;
+        propWidth.iVal = uiWidth;
+        status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=256}", &propWidth);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Set Image Pixel Width property failed with status=%x\n", status);
+            return;
+        }
+
+        PROPVARIANT propHeight;
+        PropVariantInit(&propHeight);
+        propHeight.vt = VT_UI2;
+        propHeight.iVal = uiHeight;
+        status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=257}", &propHeight);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Set Image Pixel Height property failed with status=%x\n", status);
+            return;
+        }
+
         if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyOrientation)) {
             PROPVARIANT value;
             PropVariantInit(&value);
@@ -1500,6 +1583,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 return;
             }
         }
+        */
 
         if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyProfileName)) {
             PROPVARIANT value;
@@ -1618,42 +1702,6 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     }
 
     CGDataProviderRelease(provider);
-    /*
-    ComPtr<IWICFormatConverter> imageFormatConverter;
-    status = imageFactory->CreateFormatConverter(&imageFormatConverter);
-    if (!SUCCEEDED(status)) {
-        NSTraceInfo(TAG, @"CreateFormatConverter failed with status=%x\n", status);
-        return;
-    }
-
-    ComPtr<IWICPalette> imagePalette = NULL;
-    if (imageDestination.type == typeGIF) {
-        status = imageFactory->CreatePalette(&imagePalette);
-        if (!SUCCEEDED(status)) {
-            NSTraceInfo(TAG, @"CreatePalette failed with status=%x\n", status);
-            return;
-        }
-        imagePalette->InitializeFromBitmap((IWICBitmapSource*)inputImage.Get(), 256, TRUE);
-    }
-
-    status = imageFormatConverter->Initialize(inputImage.Get(), 
-                                              formatGUID,
-                                              WICBitmapDitherTypeNone, 
-                                              imagePalette ? imagePalette.Get() : NULL, 
-                                              0.f, 
-                                              WICBitmapPaletteTypeFixedWebPalette);
-    if (!SUCCEEDED(status)) {
-        NSTraceInfo(TAG, @"Init Image Format Converter failed with status=%x\n", status);
-        return;
-    }
-
-    ComPtr<IWICBitmapSource> inputBitmapSource;
-    status = imageFormatConverter->QueryInterface(IID_PPV_ARGS(&inputBitmapSource));
-    if (!SUCCEEDED(status)) {
-        NSTraceInfo(TAG, @"QueryInterface for inputBitmapSource failed with status=%x\n", status);
-        return;
-    }
-    */
 
     ComPtr<IWICBitmapSource> inputBitmapSource;
     status = WICConvertBitmapSource(formatGUID, inputImage.Get(), &inputBitmapSource);
