@@ -1,6 +1,6 @@
 //******************************************************************************
 //
-// Copyright (c) 2016, Intel Corporation
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -15,20 +15,9 @@
 //
 //******************************************************************************
 
-#import <Foundation/Foundation.h>
-#import <CoreGraphics/CGDataProvider.h>
-#import <ImageIO/ImageIO.h>
 #import <ImageIO/CGImageSource.h>
 #import <ImageIO/CGImageSourceInternal.h>
 #import <StubReturn.h>
-#import <objc/runtime.h>
-#import <Starboard.h>
-#include <NSLogging.h>
-#include <vector>
-#include "COMIncludes.h"
-#include "Wincodec.h"
-#include <wrl/client.h>
-#include "COMIncludes_End.h"
 
 static const wchar_t* TAG = L"CGImageSource"; 
 const CFStringRef kCGImageSourceTypeIdentifierHint = static_cast<CFStringRef>(@"kCGImageSourceTypeIdentifierHint");
@@ -197,7 +186,7 @@ CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef isrc, size_t index, 
                                                           CGImageSourceGetType(isrc) == kUTTypePNG || 
                                                           CGImageSourceGetType(isrc) == kUTTypeGIF)) {
         ComPtr<IWICProgressiveLevelControl> progressiveControl;
-        //RETURN_NULL_IF_FAILED(imageFrame->QueryInterface(IID_PPV_ARGS(&progressiveControl)));
+        RETURN_NULL_IF_FAILED(imageFrame.Get()->QueryInterface(IID_PPV_ARGS(&progressiveControl)));
         HRESULT progressiveStatus = S_OK;
         for (int currentLevel = 0; SUCCEEDED(progressiveStatus); currentLevel++) {
             progressiveStatus = progressiveControl->SetCurrentLevel(currentLevel);
@@ -227,7 +216,8 @@ CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef isrc, size_t index, 
     std::vector<unsigned char> frameByteVector(frameSize);
     RETURN_NULL_IF_FAILED(imageFormatConverter->CopyPixels(0, frameWidth * 4, frameSize, &frameByteVector[0]));
 
-    NSData* frameData = [NSData dataWithBytesNoCopy:&frameByteVector[0] length:frameSize freeWhenDone:YES];    
+    //NSData* frameData = [NSData dataWithBytesNoCopy:&frameByteVector[0] length:frameSize freeWhenDone:YES];    
+    NSData* frameData = [NSData dataWithBytes:&frameByteVector[0] length:frameSize];
     CGDataProviderRef frameDataProvider =  CGDataProviderCreateWithCFData((CFDataRef)frameData);
     CGColorSpaceRef colorspaceRgb = CGColorSpaceCreateDeviceRGB();
     CGImageRef imageRef = CGImageCreate(frameWidth, 
