@@ -114,6 +114,20 @@ enum destinationTypes { toData,
 
 @end
 
+// Helper function for setting the property write values when formatting image metadata.
+// Image metadata stores decimal numbers as an integer divided by another integer.
+// The HighPart is a number representing what to divide the LowPart by to get the actual value.
+void setHighLowParts(ULARGE_INTEGER* valueLarge, double valueDouble) {
+    // Check to see if the value has a decimal component. If not, just divide by 1.
+    if (valueDouble - (int)valueDouble == 0) {
+        (*valueLarge).LowPart = (int)valueDouble;
+        (*valueLarge).HighPart = 1;
+    } else {
+        (*valueLarge).LowPart = (int)(valueDouble * 100);
+        (*valueLarge).HighPart = 100;
+    }
+}
+
 /**
  @Status Stub
  @Notes
@@ -270,7 +284,9 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSAltitude) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSAltitude) doubleValue];
+                
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=6}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Altitude property failed with status=%x\n", status);
@@ -306,7 +322,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSDOP) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSDOP) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=11}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS DOP property failed with status=%x\n", status);
@@ -318,7 +335,9 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSImgDirection) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSImgDirection) doubleValue];
+                
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=17}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Image Direction property failed with status=%x\n", status);
@@ -341,10 +360,20 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLatitude)) {
                 PROPVARIANT value;
                 PropVariantInit(&value);
-                //value.vt = VT_UI8;
-                value.vt = VT_R8;
-                //value.uhVal.QuadPart = (unsigned long long)[(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
-                value.dblVal = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
+                value.vt = VT_VECTOR | VT_UI8;
+                double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
+                double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*60;
+                double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*60;
+                
+                ULARGE_INTEGER gpsValues[3];
+                gpsValues[0].LowPart = (int)gpsDegrees;
+                gpsValues[0].HighPart = 1;
+                gpsValues[1].LowPart = (int)gpsMinutes;
+                gpsValues[1].HighPart = 1;
+                setHighLowParts(&gpsValues[2], gpsSeconds);
+
+                value.cauh.cElems = 3;
+                value.cauh.pElems = gpsValues;
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=2}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Latitude property failed with status=%x\n", status);
@@ -367,8 +396,20 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLongitude)) {
                 PROPVARIANT value;
                 PropVariantInit(&value);
-                value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) longLongValue];
+                value.vt = VT_VECTOR | VT_UI8;
+                double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) doubleValue];
+                double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*60;
+                double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*6000;
+                                
+                ULARGE_INTEGER gpsValues[3];
+                gpsValues[0].LowPart = (int)gpsDegrees;
+                gpsValues[0].HighPart = 1;
+                gpsValues[1].LowPart = (int)gpsMinutes;
+                gpsValues[1].HighPart = 1;
+                setHighLowParts(&gpsValues[2], gpsSeconds);
+
+                value.cauh.cElems = 3;
+                value.cauh.pElems = gpsValues;
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=4}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Longitude property failed with status=%x\n", status);
@@ -392,7 +433,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSSpeed) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSSpeed) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=13}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Speed property failed with status=%x\n", status);
@@ -429,7 +471,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTrack) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTrack) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=15}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Track property failed with status=%x\n", status);
@@ -450,16 +493,20 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             }
 
             if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSVersion)) {
-                // Not handling this property at the moment
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = (VT_VECTOR | VT_UI1);
                 NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSVersion);
-                value.caub.cElems = 0;
-                for (int timeStampIndex = 0; timeStampIndex < value.cauh.cElems; timeStampIndex++) {
-                    value.caub.pElems[timeStampIndex] = 0;
+                const char* versionArray = [imageGPSVersion UTF8String];
+                value.caub.cElems = 4;
+                for (int index = 0; index < value.cauh.cElems; index++) {
+                    value.caub.pElems[index] = versionArray[index];
                 }
-                // Metadata name is L"/app1/ifd/gps/{ushort=0}", not writing at the moment
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Version property failed with status=%x\n", status);
+                    return;
+                }
             }
         }
 
@@ -471,7 +518,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureTime) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureTime) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=33434}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Exposure Time property failed with status=%x\n", status);
@@ -483,7 +531,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifApertureValue) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifApertureValue) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37378}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Aperture Value property failed with status=%x\n", status);
@@ -495,7 +544,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifBrightnessValue) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifBrightnessValue) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37379}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Brightness Value property failed with status=%x\n", status);
@@ -531,7 +581,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDigitalZoomRatio) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDigitalZoomRatio) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=41988}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Digital Zoom Ratio property failed with status=%x\n", status);
@@ -579,10 +630,11 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFNumber) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFNumber) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=33437}", &value);
                 if (!SUCCEEDED(status)) {
-                    NSTraceInfo(TAG, @"Set Exif Number property failed with status=%x\n", status);
+                    NSTraceInfo(TAG, @"Set Exif F-Number property failed with status=%x\n", status);
                     return;
                 }
             }
@@ -591,7 +643,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFocalLength) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFocalLength) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37386}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Focal Length property failed with status=%x\n", status);
@@ -677,7 +730,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_I8;
-                value.hVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifShutterSpeedValue) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifShutterSpeedValue) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/app1/ifd/exif/{ushort=37377}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Shutter Speed Value property failed with status=%x\n", status);
@@ -765,7 +819,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSAltitude) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSAltitude) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=6}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Altitude property failed with status=%x\n", status);
@@ -801,7 +856,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSDOP) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSDOP) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=11}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS DOP property failed with status=%x\n", status);
@@ -813,7 +869,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSImgDirection) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSImgDirection) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=17}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Image Direction property failed with status=%x\n", status);
@@ -836,8 +893,20 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLatitude)) {
                 PROPVARIANT value;
                 PropVariantInit(&value);
-                value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) longLongValue];
+                value.vt = VT_VECTOR | VT_UI8;
+                double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
+                double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*60;
+                double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*6000;
+                
+                ULARGE_INTEGER gpsValues[3];
+                gpsValues[0].LowPart = (int)gpsDegrees;
+                gpsValues[0].HighPart = 1;
+                gpsValues[1].LowPart = (int)gpsMinutes;
+                gpsValues[1].HighPart = 1;
+                setHighLowParts(&gpsValues[2], gpsSeconds);
+
+                value.cauh.cElems = 3;
+                value.cauh.pElems = gpsValues;
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=2}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Latitude property failed with status=%x\n", status);
@@ -860,8 +929,20 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLongitude)) {
                 PROPVARIANT value;
                 PropVariantInit(&value);
-                value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) longLongValue];
+                value.vt = VT_VECTOR | VT_UI8;
+                double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) doubleValue];
+                double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*60;
+                double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*6000;
+                
+                ULARGE_INTEGER gpsValues[3];
+                gpsValues[0].LowPart = (int)gpsDegrees;
+                gpsValues[0].HighPart = 1;
+                gpsValues[1].LowPart = (int)gpsMinutes;
+                gpsValues[1].HighPart = 1;
+                setHighLowParts(&gpsValues[2], gpsSeconds);
+
+                value.cauh.cElems = 3;
+                value.cauh.pElems = gpsValues;
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=4}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Longitude property failed with status=%x\n", status);
@@ -885,7 +966,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSSpeed) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSSpeed) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=13}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Speed property failed with status=%x\n", status);
@@ -922,7 +1004,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTrack) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSDOP) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=15}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set GPS Track property failed with status=%x\n", status);
@@ -943,16 +1026,20 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             }
 
             if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSVersion)) {
-                // Not handling this property at the moment
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = (VT_VECTOR | VT_UI1);
                 NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSVersion);
-                value.caub.cElems = 0;
-                for (int timeStampIndex = 0; timeStampIndex < value.cauh.cElems; timeStampIndex++) {
-                    value.caub.pElems[timeStampIndex] = 0;
+                const char* versionArray = [imageGPSVersion UTF8String];
+                value.caub.cElems = 4;
+                for (int index = 0; index < value.cauh.cElems; index++) {
+                    value.caub.pElems[index] = versionArray[index];
                 }
-                // Metadata name is L"/ifd/gps/{ushort=0}", not writing at the moment
+                status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/gps/{ushort=0}", &value);
+                if (!SUCCEEDED(status)) {
+                    NSTraceInfo(TAG, @"Set GPS Version property failed with status=%x\n", status);
+                    return;
+                }
             }
         }
 
@@ -964,7 +1051,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureTime) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureTime) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=33434}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Exposure Time property failed with status=%x\n", status);
@@ -976,7 +1064,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifApertureValue) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifApertureValue) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37378}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Aperture Value property failed with status=%x\n", status);
@@ -988,7 +1077,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifBrightnessValue) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureTime) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37379}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Brightness Value property failed with status=%x\n", status);
@@ -1024,7 +1114,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDigitalZoomRatio) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifDigitalZoomRatio) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=41988}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Digital Zoom Ratio property failed with status=%x\n", status);
@@ -1072,10 +1163,11 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFNumber) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFNumber) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=33437}", &value);
                 if (!SUCCEEDED(status)) {
-                    NSTraceInfo(TAG, @"Set Exif Number property failed with status=%x\n", status);
+                    NSTraceInfo(TAG, @"Set Exif F-Number property failed with status=%x\n", status);
                     return;
                 }
             }
@@ -1084,7 +1176,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFocalLength) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifFocalLength) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37386}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Focal Length property failed with status=%x\n", status);
@@ -1170,7 +1263,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_I8;
-                value.hVal.QuadPart = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifShutterSpeedValue) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifShutterSpeedValue) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/exif/{ushort=37377}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set Exif Shutter Speed Value property failed with status=%x\n", status);
@@ -1298,7 +1392,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFXResolution) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFXResolution) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=282}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set TIFF X Resolution property failed with status=%x\n", status);
@@ -1310,7 +1405,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                 PROPVARIANT value;
                 PropVariantInit(&value);
                 value.vt = VT_UI8;
-                value.uhVal.QuadPart = [(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFYResolution) longLongValue];
+                double doubleOut = [(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFYResolution) doubleValue];
+                setHighLowParts(&value.uhVal, doubleOut);
                 status = imageFrameMetadataWriter->SetMetadataByName(L"/ifd/{ushort=283}", &value);
                 if (!SUCCEEDED(status)) {
                     NSTraceInfo(TAG, @"Set TIFF Y Resolution property failed with status=%x\n", status);

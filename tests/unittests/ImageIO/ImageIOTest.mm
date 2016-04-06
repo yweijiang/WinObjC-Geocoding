@@ -1585,11 +1585,11 @@ TEST(ImageIO, DestinationImageOptionsTest) {
     CFURLRef imgUrl = (CFURLRef)[NSURL fileURLWithPath:directoryWithFile];
 
     NSDictionary *gpsOptions = @{
-        (id)kCGImagePropertyGPSLatitude:[NSNumber numberWithDouble:100.0],
+        (id)kCGImagePropertyGPSLatitude:[NSNumber numberWithDouble:100.55],
         (id)kCGImagePropertyGPSLongitude:[NSNumber numberWithDouble:200.0],
         (id)kCGImagePropertyGPSLatitudeRef:@"N",
         (id)kCGImagePropertyGPSLongitudeRef:@"W",
-        (id)kCGImagePropertyGPSAltitude:[NSNumber numberWithDouble:150],
+        (id)kCGImagePropertyGPSAltitude:[NSNumber numberWithDouble:150.25],
         (id)kCGImagePropertyGPSAltitudeRef:[NSNumber numberWithShort:1],
         (id)kCGImagePropertyGPSImgDirection:[NSNumber numberWithFloat:2.4],
         (id)kCGImagePropertyGPSImgDirectionRef:@"test",

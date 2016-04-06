@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -133,7 +134,7 @@ const CFStringRef kCGImagePropertyGPSLatitudeRef = static_cast<CFStringRef>(@"kC
 const CFStringRef kCGImagePropertyGPSLatitude = static_cast<CFStringRef>(@"kCGImagePropertyGPSLatitude");
 const CFStringRef kCGImagePropertyGPSLongitudeRef = static_cast<CFStringRef>(@"kCGImagePropertyGPSLongitudeRef");
 const CFStringRef kCGImagePropertyGPSLongitude = static_cast<CFStringRef>(@"kCGImagePropertyGPSLongitude");
-const CFStringRef kCGImagePropertyGPSAltitudeRef = static_cast<CFStringRef>(@"kCGImagePropertyGPSLongitude");
+const CFStringRef kCGImagePropertyGPSAltitudeRef = static_cast<CFStringRef>(@"kCGImagePropertyGPSAltitudeRef");
 const CFStringRef kCGImagePropertyGPSAltitude = static_cast<CFStringRef>(@"kCGImagePropertyGPSAltitude");
 const CFStringRef kCGImagePropertyGPSTimeStamp = static_cast<CFStringRef>(@"kCGImagePropertyGPSTimeStamp");
 const CFStringRef kCGImagePropertyGPSSatellites = static_cast<CFStringRef>(@"kCGImagePropertyGPSSatellites");
@@ -145,7 +146,7 @@ const CFStringRef kCGImagePropertyGPSSpeed = static_cast<CFStringRef>(@"kCGImage
 const CFStringRef kCGImagePropertyGPSTrackRef = static_cast<CFStringRef>(@"kCGImagePropertyGPSTrackRef");
 const CFStringRef kCGImagePropertyGPSTrack = static_cast<CFStringRef>(@"kCGImagePropertyGPSTrack");
 const CFStringRef kCGImagePropertyGPSImgDirectionRef = static_cast<CFStringRef>(@"kCGImagePropertyGPSImgDirectionRef");
-const CFStringRef kCGImagePropertyGPSImgDirection = static_cast<CFStringRef>(@"kCGImagePropertyGPSImgDirectionRef");
+const CFStringRef kCGImagePropertyGPSImgDirection = static_cast<CFStringRef>(@"kCGImagePropertyGPSImgDirection");
 const CFStringRef kCGImagePropertyGPSMapDatum = static_cast<CFStringRef>(@"kCGImagePropertyGPSMapDatum");
 const CFStringRef kCGImagePropertyGPSDestLatitudeRef = static_cast<CFStringRef>(@"kCGImagePropertyGPSDestLatitudeRef");
 const CFStringRef kCGImagePropertyGPSDestLatitude = static_cast<CFStringRef>(@"kCGImagePropertyGPSDestLatitude");
