@@ -1595,8 +1595,9 @@ TEST(ImageIO, DestinationImageOptionsTest) {
         (id)kCGImagePropertyGPSImgDirectionRef:@"test",
     };
 
+    // This actually works correctly here, where this user comment would give bad characters on iOS.
     NSDictionary *exifOptions = @{
-        (id)kCGImagePropertyExifUserComment:@"test2",
+        (id)kCGImagePropertyExifUserComment:@"中文",
         (id)kCGImagePropertyExifExposureTime:[NSNumber numberWithDouble:12.345],
     };
 
@@ -1607,6 +1608,7 @@ TEST(ImageIO, DestinationImageOptionsTest) {
         (id)kCGImagePropertyGPSDictionary:gpsOptions,
         (id)kCGImagePropertyOrientation:encodeOrientation,
         (id)kCGImagePropertyExifDictionary:exifOptions,
+        (id)kCGImagePropertyDPIWidth:[NSNumber numberWithDouble:1000],
     };
 
     CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeJPEG, 1, NULL);
