@@ -614,6 +614,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
     //JPEG Properties - Format-specific
     PropVariantClear(&propertyValue);
     NSMutableDictionary *jfifProperties = [[NSMutableDictionary alloc] init];
+    // Apple parses this as an array, expect 0x0101 here, which we read as 257. This represents version 1.01.
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=0}", &propertyValue)) && propertyValue.vt == VT_UI2) {
         [jfifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyJFIFVersion];
         PropVariantClear(&propertyValue);
@@ -728,7 +729,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
     
-    //GPS Properties - TIFF, matches JPEG but in a different location
+    //GPS Properties - TIFF - This is a copy of TIFF properties for JPEG but with different paths.
     PropVariantClear(&propertyValue);
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=6}", &propertyValue)) && propertyValue.vt == VT_UI8) {
         [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSAltitude];
@@ -941,7 +942,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
 
-    //Exif Properties - TIFF
+    //Exif Properties - TIFF - This is a copy of Exif properties for JPEG but with different paths.
     PropVariantClear(&propertyValue);
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=33434}", &propertyValue)) && propertyValue.vt == VT_UI8) {
         [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifExposureTime];
