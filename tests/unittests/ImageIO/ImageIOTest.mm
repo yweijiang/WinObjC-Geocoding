@@ -1596,10 +1596,11 @@ TEST(ImageIO, DestinationImageOptionsTest) {
     };
 
     NSDictionary *exifOptions = @{
-        (id)kCGImagePropertyExifUserComment:@"test",
+        (id)kCGImagePropertyExifUserComment:@"test2",
+        (id)kCGImagePropertyExifExposureTime:[NSNumber numberWithDouble:12.345],
     };
 
-    int orientation = 3;
+    int orientation = 2;
     NSNumber* encodeOrientation = [NSNumber numberWithInt:orientation];
 
     NSDictionary *encodeOptions = @{
@@ -1612,4 +1613,21 @@ TEST(ImageIO, DestinationImageOptionsTest) {
     CGImageDestinationAddImage(myImageDest, imageRef, (CFDictionaryRef)encodeOptions);
     CGImageDestinationFinalize(myImageDest);
     CFRelease(myImageDest);
+
+    CFRelease(imageSource);
+    imageData = getDataFromImageFile(outFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    if (imageProperties) {
+        CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
+        CFStringRef actualDPIHeight;
+        if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void**)&actualDPIHeight)) {
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+        }
+    }
+
+    CFRelease(imageSource);
 }
