@@ -110,6 +110,318 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 
     return imageFormat;
 }
+
+/**
+ @Notes Helper function to get the status of JPEG images at the provided index.
+        Progressively encoded JPEG images are not supported by Apple APIs and the current implementation does not support it.
+*/
+- (CGImageSourceStatus)getJPEGStatusAtIndex:(size_t)index {
+    unsigned int imageLength = [self.data length];
+    if (imageLength < 7) {
+        return kCGImageStatusUnknownType;
+    }
+
+    std::vector<unsigned char> imageDataVector(imageLength);
+    [self.data getBytes:imageDataVector.data() length:imageLength];
+
+    //Check if End Of File marker is present in data stream
+    std::vector<unsigned char> JPEGEndOfFileIdentifier = {0xFF, 0xD9};
+    if (std::equal(imageDataVector.begin() + imageLength - 2, 
+                   imageDataVector.end(), 
+                   JPEGEndOfFileIdentifier.begin(), 
+                   JPEGEndOfFileIdentifier.end())) {
+        return kCGImageStatusComplete;
+    }
+
+    //Check if Start Of Frame marker is present in data stream
+    std::vector<unsigned char> markerBytes = {imageDataVector[2], imageDataVector[3]};
+    std::vector<unsigned char> JPEGStartOfFrameIdentifier = {0xFF, 0xC0}; // {0xFF, 0xC2} - for progressive DCT
+    int startOfFrameOffset = 2;
+    while (!std::equal(markerBytes.begin(), markerBytes.end(), JPEGStartOfFrameIdentifier.begin(), JPEGStartOfFrameIdentifier.end())) {
+        startOfFrameOffset += (imageDataVector[startOfFrameOffset + 2] * 0x100) + imageDataVector[startOfFrameOffset + 3] + 2;
+        if (startOfFrameOffset + 3 >=  imageLength) {
+            return kCGImageStatusUnknownType;
+        }
+
+        markerBytes = {imageDataVector[startOfFrameOffset], imageDataVector[startOfFrameOffset + 1]};
+    }
+
+    return kCGImageStatusIncomplete;
+}
+
+/**
+ @Notes Helper function to get the status of TIFF images at the provided index
+*/
+- (CGImageSourceStatus)getTIFFStatusAtIndex:(size_t)index {
+    unsigned int imageLength = [self.data length];
+    if (imageLength < 8) {
+        return kCGImageStatusUnknownType;
+    }
+
+    std::vector<unsigned char> imageDataVector(imageLength);
+    [self.data getBytes:imageDataVector.data() length:imageLength];
+    int currentImageIndex = 0;
+    int startOfFrameOffset = 4;
+    while (1) {
+        if (imageLength < startOfFrameOffset + 4) {
+            return kCGImageStatusUnknownType;
+        }
+
+        //Check if any of the image frame data is present in the data stream
+        startOfFrameOffset = (imageDataVector[startOfFrameOffset]) + 
+                             (imageDataVector[startOfFrameOffset + 1] * 0x100) + 
+                             (imageDataVector[startOfFrameOffset + 2] * 0x10000) + 
+                             (imageDataVector[startOfFrameOffset + 3] * 0x1000000);
+        if (imageLength < startOfFrameOffset + 1) {
+            return kCGImageStatusUnknownType;
+        } 
+        
+        //Check if all image frame data is present in the data stream
+        startOfFrameOffset += 2 + (12 * (imageDataVector[startOfFrameOffset] + imageDataVector[startOfFrameOffset + 1] * 0x100));
+        if (index == currentImageIndex) {
+            if (imageLength > startOfFrameOffset + 4) {
+                return kCGImageStatusComplete;
+            } else {
+                return kCGImageStatusIncomplete;
+            }
+        } else {
+            currentImageIndex++;
+        } 
+    }
+}
+
+/**
+ @Notes Helper function to get the status of GIF images at the provided index
+        Interlaced GIF images are not supported by Apple APIs and the current implementation does not support it.
+*/
+- (CGImageSourceStatus)getGIFStatusAtIndex:(size_t)index {
+    unsigned int imageLength = [self.data length];
+    int startOfFrameOffset = 13;
+    if (imageLength < startOfFrameOffset) {
+        return kCGImageStatusUnknownType;
+    }
+
+    std::vector<unsigned char> imageDataVector(imageLength);
+    [self.data getBytes:imageDataVector.data() length:imageLength];
+
+    //Advance Start of Frame offset if global color table exists 
+    int globalColorTableExists = (imageDataVector[10] & 0xFF) >> 7;
+    if (globalColorTableExists) {
+        startOfFrameOffset += 3 * pow(2, ((imageDataVector[10] & 0x7) + 1));
+    }
+
+    int currentImageIndex = 0;
+    while (1) {
+        if (startOfFrameOffset > imageLength) {
+            return kCGImageStatusUnknownType;
+        }
+
+        //Advance Start of Frame offset through various Extensions - Graphic Control, Plain Text, Application & Comment
+        if (imageDataVector[startOfFrameOffset] == 0x21) {
+            startOfFrameOffset += 2;
+            if (startOfFrameOffset > imageLength) {
+                return kCGImageStatusUnknownType;
+            }
+
+            int blockLength = imageDataVector[startOfFrameOffset];
+            do {
+                startOfFrameOffset += blockLength + 1;
+                if (startOfFrameOffset > imageLength) {
+                    return kCGImageStatusUnknownType;
+                }
+
+                blockLength = imageDataVector[startOfFrameOffset];
+            } while (blockLength);
+            startOfFrameOffset++;
+        }
+
+        //Check for the start of an Image Descriptor
+        if (imageDataVector[startOfFrameOffset] == 0x2C) {
+            currentImageIndex++;
+            startOfFrameOffset += 10;
+            if (startOfFrameOffset > imageLength) {
+                if (index == currentImageIndex - 1) {
+                    return kCGImageStatusIncomplete;
+                } else {
+                    return kCGImageStatusUnknownType;
+                }
+            }
+
+            //Advance Start of Frame offset if local color table exists
+            int localColorTableExists = (imageDataVector[startOfFrameOffset - 1] & 0xFF) >> 7; 
+            if (localColorTableExists) {
+                startOfFrameOffset += 3 * pow(2, ((imageDataVector[startOfFrameOffset - 1] & 0x7) + 1));
+            }
+
+            //Advance Start of Frame offset to the Image Data section
+            startOfFrameOffset ++;
+            if (startOfFrameOffset > imageLength) {
+                if (index == currentImageIndex - 1) {
+                    return kCGImageStatusIncomplete;
+                } else {
+                    return kCGImageStatusUnknownType;
+                }
+            }
+
+            //Advance Start of Frame offset through the Image Data blocks
+            int blockLength = imageDataVector[startOfFrameOffset];
+            do {
+                startOfFrameOffset += blockLength + 1;
+                if (startOfFrameOffset > imageLength) {
+                    if (index == currentImageIndex - 1) {
+                        return kCGImageStatusIncomplete;
+                    } else {
+                        return kCGImageStatusUnknownType;
+                    }
+                }
+
+                blockLength = imageDataVector[startOfFrameOffset];
+            } while (blockLength);
+
+            if (index == currentImageIndex - 1) {
+                return kCGImageStatusComplete;
+            } 
+
+            startOfFrameOffset++;        
+        }
+    }
+
+    return kCGImageStatusIncomplete;
+}
+
+/**
+ @Notes Helper function to get the status of BMP images at the provided index
+*/
+- (CGImageSourceStatus)getBMPStatusAtIndex:(size_t)index {
+    unsigned int imageLength = [self.data length];
+    if (imageLength < 8) {
+        return kCGImageStatusUnknownType;
+    }
+
+    std::vector<unsigned char> imageDataVector(imageLength);
+    [self.data getBytes:imageDataVector.data() length:imageLength];
+
+    //Check if incoming data stream size matches image file size 
+    unsigned int fileSize = (imageDataVector[2]) + 
+                            (imageDataVector[3] * 0x100) + 
+                            (imageDataVector[4] * 0x10000) + 
+                            (imageDataVector[5] * 0x1000000);
+    if (imageLength == fileSize) {
+        return kCGImageStatusComplete;
+    }
+
+    //Check if partial image data is present in the data stream
+    unsigned int pixelArrayOffset = (imageDataVector[10]) + 
+                                    (imageDataVector[11] * 0x100) + 
+                                    (imageDataVector[12] * 0x10000) + 
+                                    (imageDataVector[13] * 0x1000000);
+    if (pixelArrayOffset >= imageLength) {
+        return kCGImageStatusIncomplete;
+    } else {
+        return kCGImageStatusUnknownType;
+    }
+}
+
+/**
+ @Notes Helper function to get the status of PNG images at the provided index
+        Interlaced PNG images are not supported by Apple APIs and the current implementation does not support it.
+*/
+- (CGImageSourceStatus)getPNGStatusAtIndex:(size_t)index {
+    unsigned int imageLength = [self.data length];
+    if (imageLength < 14) {
+        return kCGImageStatusUnknownType;
+    }   
+     
+    std::vector<unsigned char> imageDataVector(imageLength);
+    [self.data getBytes:imageDataVector.data() length:imageLength];
+
+    //Check if the End of Image identifier is present in the data stream
+    std::vector<unsigned char> PNGEndOfFileIdentifier = {0x49, 0x45, 0x4E, 0x44};
+    if (std::equal(imageDataVector.end() - 8, 
+                   imageDataVector.end() - 4, 
+                   PNGEndOfFileIdentifier.begin(), 
+                   PNGEndOfFileIdentifier.end())) {
+        return kCGImageStatusComplete;
+    }
+
+    //Check if the Start of Frame identifier is present in the data stream
+    int startOfFrameOffset = 8;
+    std::vector<unsigned char> PNGStartOfFrameIdentifier = {0x49, 0x44, 0x41, 0x54};
+    while (1) {
+        if (!std::equal(imageDataVector.begin() + startOfFrameOffset + 4, 
+                        imageDataVector.begin() + startOfFrameOffset + 8, 
+                        PNGStartOfFrameIdentifier.begin(), 
+                        PNGStartOfFrameIdentifier.end())) {
+            startOfFrameOffset += 4 + 
+                                  4 + 
+                                  imageDataVector[startOfFrameOffset + 3] + 
+                                  (imageDataVector[startOfFrameOffset + 2] * 0x100) + 
+                                  (imageDataVector[startOfFrameOffset + 1] * 0x10000) +
+                                  (imageDataVector[startOfFrameOffset] * 0x1000000) +
+                                  4;
+            if (startOfFrameOffset + 3 > imageLength) {
+                return kCGImageStatusUnknownType;
+            } 
+        } else {
+            return kCGImageStatusIncomplete;
+        } 
+    }
+}
+
+/**
+ @Notes Helper function to get the status of ICO images at the provided index
+*/
+- (CGImageSourceStatus)getICOStatusAtIndex:(size_t)index {
+    unsigned int imageLength = [self.data length];
+    if (imageLength < 6) {
+        return kCGImageStatusUnknownType;
+    }
+
+    std::vector<unsigned char> imageDataVector(imageLength);
+    [self.data getBytes:imageDataVector.data() length:imageLength];
+
+    int imageFrameHeaderOffset = 6;
+    int currentImageIndex = 0;
+    while (1) {
+        imageFrameHeaderOffset += 8;
+        if (imageFrameHeaderOffset + 3 > imageLength) {
+            return kCGImageStatusUnknownType;
+        } 
+
+        int imageFrameSize = (imageDataVector[imageFrameHeaderOffset]) + 
+                             (imageDataVector[imageFrameHeaderOffset + 1] * 0x100) + 
+                             (imageDataVector[imageFrameHeaderOffset + 2] * 0x10000) +
+                             (imageDataVector[imageFrameHeaderOffset + 3] * 0x1000000);
+
+        imageFrameHeaderOffset += 4;
+        if (imageFrameHeaderOffset + 3 > imageLength) {
+            return kCGImageStatusUnknownType;
+        } 
+
+        int imageFrameDataOffset = (imageDataVector[imageFrameHeaderOffset]) + 
+                                   (imageDataVector[imageFrameHeaderOffset + 1] * 0x100) + 
+                                   (imageDataVector[imageFrameHeaderOffset + 2] * 0x10000) +
+                                   (imageDataVector[imageFrameHeaderOffset + 3] * 0x1000000);
+
+        //Check if any of the image data is present in the data stream
+        if (imageFrameDataOffset > imageLength) {
+            return kCGImageStatusUnknownType;
+        }
+
+        //Check if all image data is present in the data stream
+        imageFrameDataOffset += imageFrameSize - 1;
+        if (imageFrameDataOffset < imageLength) {
+            if (index == currentImageIndex) {
+                return kCGImageStatusComplete;
+            } else {
+                imageFrameHeaderOffset += 4;
+                currentImageIndex++;
+            }
+        } else {
+            return kCGImageStatusIncomplete;
+        }
+    }
+}
 @end
 
 /**
@@ -383,37 +695,38 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
 }
 
 /**
- @Status Stub
- @Notes
+ @Status Caveat
+ @Notes The current implementation supports incremental loading for common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO.
+        Not all formats are supported.
 */
 CGImageSourceRef CGImageSourceCreateIncremental(CFDictionaryRef options) {
-    UNIMPLEMENTED();
-    return StubReturn();
+    return (CGImageSourceRef)[[ImageSource alloc] init];
 }
 
-/**
- @Status Stub
- @Notes
-*/
 void CGImageSourceUpdateData(CGImageSourceRef isrc, CFDataRef data, bool final) {
-    UNIMPLEMENTED();
+    if (!isrc || !data) {
+        return;
+    }
+
+    ((ImageSource*)isrc).data = (NSData*)data;
+    ((ImageSource*)isrc).isFinalIncrementalSet = final;
 }
 
-/**
- @Status Stub
- @Notes
-*/
 void CGImageSourceUpdateDataProvider(CGImageSourceRef isrc, CGDataProviderRef provider, bool final) {
-    UNIMPLEMENTED();
+    if (!isrc || !provider) {
+        return;
+    }
+
+    ((ImageSource*)isrc).data = (NSData*)CGDataProviderCopyData(provider);
+    ((ImageSource*)isrc).isFinalIncrementalSet = final;
 }
 
 /**
- @Status Stub
- @Notes
+ @Status Caveat
+ @Notes The CFTypeID for an opaque type differs across releases and has been hard-coded to one possible value in current implementation
 */
 CFTypeID CGImageSourceGetTypeID() {
-    UNIMPLEMENTED();
-    return StubReturn();
+    return 286;
 }
 
 /**
@@ -507,19 +820,49 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
 }
 
 /**
- @Status Stub
- @Notes
+ @Status Caveat
+ @Notes Current release returns kCGImageStatusComplete (or) kCGImageStatusIncomplete only. Other return values are not currently supported.
 */
 CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc) {
-    UNIMPLEMENTED();
-    return StubReturn();
+    if (((ImageSource*)isrc).isFinalIncrementalSet) {
+        return kCGImageStatusComplete;
+    } else {
+        return kCGImageStatusIncomplete;
+    }
 }
 
 /**
- @Status Stub
- @Notes
+ @Status Caveat
+ @Notes Current release returns kCGImageStatusComplete, kCGImageStatusIncomplete (or) kCGImageStatusUnknownType only 
 */
 CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t index) {
-    UNIMPLEMENTED();
-    return StubReturn();
+    if (!isrc) {
+        return kCGImageStatusUnknownType;
+    }
+
+    ImageSource* imageSrc = (ImageSource*)isrc;
+    if (!imageSrc.data) {
+        return kCGImageStatusUnknownType;
+    }
+
+    if (index > (CGImageSourceGetCount(isrc) - 1)) {
+        return kCGImageStatusUnknownType;
+    }
+
+    CFStringRef imageFormat = CGImageSourceGetType(isrc);
+    if (imageFormat == kUTTypeJPEG) {
+        return [imageSrc getJPEGStatusAtIndex:index];
+    } else if (imageFormat == kUTTypeTIFF) {
+        return [imageSrc getTIFFStatusAtIndex:index];
+    } else if (imageFormat == kUTTypeGIF) {
+        return [imageSrc getGIFStatusAtIndex:index];
+    } else if (imageFormat == kUTTypePNG) {
+        return [imageSrc getPNGStatusAtIndex:index];
+    } else if (imageFormat == kUTTypeBMP) {
+        return [imageSrc getBMPStatusAtIndex:index];
+    } else if (imageFormat == kUTTypeICO) {
+        return [imageSrc getICOStatusAtIndex:index];
+    } else {
+        return kCGImageStatusUnknownType;
+    } 
 }

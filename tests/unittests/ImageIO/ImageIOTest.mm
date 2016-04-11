@@ -469,3 +469,187 @@ TEST(ImageIO, TypeIdentifierTest) {
     ASSERT_TRUE_MSG([expectedTypeIdentifiers isEqualToArray:actualTypeIdentifiers], 
                     "FAILED: ImageIOTest::Incorrect TypeIdentifier list returned");
 }
+
+TEST(ImageIO, TypeIDTest) {
+    checkInt(CGImageSourceGetTypeID(), 286, "SourceTypeID");
+}
+
+TEST(ImageIO, IncrementalJPEGImageWithData) {
+    const wchar_t* imageFile = L"photo6_1024x670.jpg";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 100 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef imageRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+    static const int expectedImageStatus[] = {-1, -1, 0};
+    static const int expectedImageStatusAtIndex[] = {-1, -1, 0};
+    int expectedImageIndex = 0;
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
+                                            length:currentChunkSize 
+                                            freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        checkInt(CGImageSourceGetStatus(imageRef), expectedImageStatus[expectedImageIndex], "ImageStatus");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), expectedImageStatusAtIndex[expectedImageIndex++], "ImageStatusAtIndex");
+    } while(imageOffset < imageLength);
+    CFRelease(imageRef);
+}
+
+TEST(ImageIO, IncrementalBMPImageWithData) {
+    const wchar_t* imageFile = L"testimg_227x149.bmp";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 15 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef imageRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+    static const int expectedImageStatus[] = {-1, -1, 0};
+    static const int expectedImageStatusAtIndex[] = {-3, -3, 0};
+    int expectedImageIndex = 0;
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
+                                            length:currentChunkSize 
+                                            freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        checkInt(CGImageSourceGetStatus(imageRef), expectedImageStatus[expectedImageIndex], "ImageStatus");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), expectedImageStatusAtIndex[expectedImageIndex++], "ImageStatusAtIndex");
+    } while(imageOffset < imageLength);
+    CFRelease(imageRef);
+}
+
+TEST(ImageIO, IncrementalPNGImageWithData) {
+    const wchar_t* imageFile = L"seafloor_256x256.png";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 25 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef imageRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+    static const int expectedImageStatus[] = {-1, -1, 0};
+    static const int expectedImageStatusAtIndex[] = {-1, -1, 0};
+    int expectedImageIndex = 0;
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
+                                            length:currentChunkSize 
+                                            freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        checkInt(CGImageSourceGetStatus(imageRef), expectedImageStatus[expectedImageIndex], "ImageStatus");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), expectedImageStatusAtIndex[expectedImageIndex++], "ImageStatus");
+    } while(imageOffset < imageLength);
+    CFRelease(imageRef);
+}
+
+TEST(ImageIO, IncrementalGIFImageWithData) {
+    const wchar_t* imageFile = L"photo7_4layers_683x1024.gif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 300 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef imageRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+    static const int expectedImageStatus[] = {-1, -1, 0};
+    static const int expectedImageStatusAtIndex1[] = {-1, 0, 0};
+    static const int expectedImageStatusAtIndex2[] = {-3, 0, 0};
+    static const int expectedImageStatusAtIndex3[] = {-3, 0, 0};
+    static const int expectedImageStatusAtIndex4[] = {-3, -1, 0};
+    int expectedImageIndex = 0;
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
+                                            length:currentChunkSize 
+                                            freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        checkInt(CGImageSourceGetStatus(imageRef), expectedImageStatus[expectedImageIndex], "ImageStatus");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), expectedImageStatusAtIndex1[expectedImageIndex], "ImageStatusAtIndex1");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 1), expectedImageStatusAtIndex2[expectedImageIndex], "ImageStatusAtIndex2");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 2), expectedImageStatusAtIndex3[expectedImageIndex], "ImageStatusAtIndex3");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 3), expectedImageStatusAtIndex4[expectedImageIndex++], "ImageStatusAtIndex4");
+    } while(imageOffset < imageLength);
+    CFRelease(imageRef);
+}
+
+TEST(ImageIO, IncrementalTIFFImageWithData) {
+    const wchar_t* imageFile = L"photo8_4layers_1024x683.tif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 1000 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef imageRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+    static const int expectedImageStatus[] = {-1, -1, -1, -1, 0};
+    static const int expectedImageStatusAtIndex1[] = {-3, 0, 0, 0, 0};
+    static const int expectedImageStatusAtIndex2[] = {-3, 0, 0, 0, 0};
+    static const int expectedImageStatusAtIndex3[] = {-3, -3, -3, 0, 0};
+    static const int expectedImageStatusAtIndex4[] = {-3, -3, -3, -3, 0};
+    int expectedImageIndex = 0;
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
+                                            length:currentChunkSize 
+                                            freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        checkInt(CGImageSourceGetStatus(imageRef), expectedImageStatus[expectedImageIndex], "ImageStatus");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), expectedImageStatusAtIndex1[expectedImageIndex], "ImageStatusAtIndex1");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 1), expectedImageStatusAtIndex2[expectedImageIndex], "ImageStatusAtIndex2");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 2), expectedImageStatusAtIndex3[expectedImageIndex], "ImageStatusAtIndex3");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 3), expectedImageStatusAtIndex4[expectedImageIndex++], "ImageStatusAtIndex4");
+    } while(imageOffset < imageLength);
+    CFRelease(imageRef);
+}
+
+TEST(ImageIO, IncrementalICOImageWithData) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+    NSUInteger imageChunkSize = 200 * 1024;
+    NSUInteger imageOffset = 0;
+    CGImageSourceRef imageRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+    NSMutableData* incrementalImageData = [NSMutableData data];
+    static const int expectedImageStatus[] = {-1, -1, -1, -1, -1, 0};
+    static const int expectedImageStatusAtIndex[] = {-1, -1, -1, -1, -1, 0};
+    int expectedImageIndex = 0;
+
+    do {
+        NSUInteger currentChunkSize = imageLength - imageOffset > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
+                                            length:currentChunkSize 
+                                            freeWhenDone:NO];
+        [incrementalImageData appendData:currentImageChunk];
+        imageOffset += currentChunkSize;
+        CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
+        checkInt(CGImageSourceGetStatus(imageRef), expectedImageStatus[expectedImageIndex], "ImageStatus");
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), expectedImageStatusAtIndex[expectedImageIndex++], "ImageStatusAtIndex");
+    } while(imageOffset < imageLength);
+    CFRelease(imageRef);
+}
