@@ -709,8 +709,12 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
 
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=7}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI8)) {
-        //[gpsProperties setObject:[NSArray arrayWithObjects:(id)(propertyValue.cauh.pElems->QuadPart) count:propertyValue.cauh.cElems] forKey:(id)kCGImagePropertyGPSTimeStamp];
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=7}", &propertyValue)) && propertyValue.vt == VT_VECTOR | VT_UI8) {
+        double timeStampHours = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        double timeStampMinutes = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        double timeStampSeconds = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        [gpsProperties setObject:[NSString stringWithFormat:@"%.2d:%.2d:%.2f", (int)timeStampHours, (int)timeStampMinutes, timeStampSeconds] forKey:(id)kCGImagePropertyGPSTimeStamp];
         PropVariantClear(&propertyValue);
     }
 
@@ -724,7 +728,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
     
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI1)) {
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && propertyValue.vt == VT_VECTOR | VT_UI1) {
         //[gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyGPSVersion];
         PropVariantClear(&propertyValue);
     }
@@ -797,8 +801,11 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
 
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=7}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI8)) {
-        //[gpsProperties setObject:[NSArray arrayWithObjects:(id)(propertyValue.cauh.pElems->QuadPart) count:propertyValue.cauh.cElems] forKey:(id)kCGImagePropertyGPSTimeStamp];
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=7}", &propertyValue)) && propertyValue.vt == VT_VECTOR | VT_UI8) {
+        double timeStampHours = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        double timeStampMinutes = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        double timeStampSeconds = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        [gpsProperties setObject:[NSString stringWithFormat:@"%.2d:%.2d:%.2f", (int)timeStampHours, (int)timeStampMinutes, timeStampSeconds] forKey:(id)kCGImagePropertyGPSTimeStamp];
         PropVariantClear(&propertyValue);
     }
 
@@ -812,7 +819,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
 
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI1)) {
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && propertyValue.vt == VT_VECTOR | VT_UI1) {
         //[gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyGPSVersion];
         PropVariantClear(&propertyValue);
     }

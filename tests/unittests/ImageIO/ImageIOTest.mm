@@ -1593,6 +1593,7 @@ TEST(ImageIO, DestinationImageOptionsTest) {
         (id)kCGImagePropertyGPSAltitudeRef:[NSNumber numberWithShort:1],
         (id)kCGImagePropertyGPSImgDirection:[NSNumber numberWithFloat:2.4],
         (id)kCGImagePropertyGPSImgDirectionRef:@"test",
+        (id)kCGImagePropertyGPSTimeStamp:@"04:30:51.71",
     };
 
     // This actually works correctly here, where this user comment would give bad characters on iOS.
