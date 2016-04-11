@@ -469,3 +469,186 @@ TEST(ImageIO, TypeIdentifierTest) {
     ASSERT_TRUE_MSG([expectedTypeIdentifiers isEqualToArray:actualTypeIdentifiers], 
                     "FAILED: ImageIOTest::Incorrect TypeIdentifier list returned");
 }
+
+TEST(ImageIO, CopyJPEGPropertiesTest) {
+    const wchar_t* imageFile = L"photo6_1024x670.jpg";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, nil);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyProperties(imageSource, nil);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyProperties returned nullptr");
+    if (imageProperties && CFDictionaryContainsKey(imageProperties, kCGImagePropertyFileSize)) {
+        int fileSize = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyFileSize) intValue];
+        checkInt(fileSize, 218940, "FileSize");
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyGIFPropertiesTest) {
+    const wchar_t* imageFile = L"photo7_4layers_683x1024.gif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, nil);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyProperties(imageSource, nil);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyProperties returned nullptr");
+    if (imageProperties && CFDictionaryContainsKey(imageProperties, kCGImagePropertyFileSize)) {
+        int fileSize = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyFileSize) intValue];
+        checkInt(fileSize, 669893, "FileSize");
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyTIFFPropertiesTest) {
+    const wchar_t* imageFile = L"photo8_4layers_1024x683.tif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, nil);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyProperties(imageSource, nil);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyProperties returned nullptr");
+    if (imageProperties && CFDictionaryContainsKey(imageProperties, kCGImagePropertyFileSize)) {
+        int fileSize = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyFileSize) intValue];
+        checkInt(fileSize, 4187742, "FileSize");
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyPNGPropertiesTest) {
+    const wchar_t* imageFile = L"seafloor_256x256.png";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, nil);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyProperties(imageSource, nil);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyProperties returned nullptr");
+    if (imageProperties && CFDictionaryContainsKey(imageProperties, kCGImagePropertyFileSize)) {
+        int fileSize = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyFileSize) intValue];
+        checkInt(fileSize, 59506, "FileSize");
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyBMPPropertiesTest) {
+    const wchar_t* imageFile = L"testimg_227x149.bmp";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, nil);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyProperties(imageSource, nil);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyProperties returned nullptr");
+    if (imageProperties && CFDictionaryContainsKey(imageProperties, kCGImagePropertyFileSize)) {
+        int fileSize = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyFileSize) intValue];
+        checkInt(fileSize, 35050, "FileSize");
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyICOPropertiesTest) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, nil);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyProperties(imageSource, nil);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyProperties returned nullptr");
+    if (imageProperties && CFDictionaryContainsKey(imageProperties, kCGImagePropertyFileSize)) {
+        int fileSize = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyFileSize) intValue];
+        checkInt(fileSize, 1041876, "FileSize");
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyJPEGPropertiesAtIndexTest) {
+    const wchar_t* imageFile = L"photo6_1024x670.jpg";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypeJPEG",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    if (imageProperties) {
+        if (CFDictionaryContainsKey(imageProperties, kCGImagePropertyDPIHeight)) {
+            int actualDPIHeight = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyDPIHeight) intValue];
+            checkInt(actualDPIHeight, 72, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+        }
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyGIFPropertiesAtIndexTest) {
+    const wchar_t* imageFile = L"photo7_4layers_683x1024.gif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypeGIF",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    if (imageProperties) {
+        CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
+        CFStringRef actualDPIHeight;
+        if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void **)&actualDPIHeight)) {
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+        }
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyTIFPropertiesAtIndexTest) {
+    const wchar_t* imageFile = L"photo8_4layers_1024x683.tif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypeTIFF",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    if (imageProperties) {
+        CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
+        CFStringRef actualDPIHeight;
+        if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void **)&actualDPIHeight)) {
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+        }
+    }
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, CopyPNGPropertiesAtIndexTest) {
+    const wchar_t* imageFile = L"seafloor_256x256.png";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypePNG",
+                              @"kCGImageSourceShouldAllowFloat":@"kCFBooleanTrue",
+                              @"kCGImageSourceShouldCache":@"kCFBooleanTrue"};
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    if (imageProperties) {
+        CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
+        CFStringRef actualDPIHeight;
+        if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void **)&actualDPIHeight)) {
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+        }
+    }
+
+    CFRelease(imageSource);
+}
