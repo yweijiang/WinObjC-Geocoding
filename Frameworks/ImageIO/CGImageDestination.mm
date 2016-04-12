@@ -193,7 +193,6 @@ void setVariantFromDictionary(CFDictionaryRef dictionary,
         } else if (propertyType == VT_LPWSTR) {
             NSString* wideStringBuffer = (NSString*)CFDictionaryGetValue(dictionary, key);
             propertyToWrite.pwszVal = (wchar_t*)[wideStringBuffer cStringUsingEncoding:NSUnicodeStringEncoding];
-            PropVariantInit(&propertyToWrite);
         } else if (propertyType == VT_BLOB) {
             NSData* blobData = (NSData*)CFDictionaryGetValue(dictionary, key);
             propertyToWrite.blob.cbSize = [blobData length];
