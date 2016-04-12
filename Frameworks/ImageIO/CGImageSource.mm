@@ -291,7 +291,7 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
     bool thumbnailExists = false;
     ComPtr<IWICBitmapSource> imageThumbnail;
 
-    //Check if incoming image frame has an existing thumbnail. Return NULL if absent & thumbnail creation flags are not specified.
+    // Check if incoming image frame has an existing thumbnail. Return NULL if absent & thumbnail creation flags are not specified.
     if (!SUCCEEDED(imageFrame->GetThumbnail(&imageThumbnail))) {
         if (options && (CFDictionaryContainsKey(options, kCGImageSourceCreateThumbnailFromImageIfAbsent) || 
                         CFDictionaryContainsKey(options, kCGImageSourceCreateThumbnailFromImageAlways))) {
@@ -307,7 +307,7 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
         maxThumbnailSize = [(id)CFDictionaryGetValue(options, kCGImageSourceThumbnailMaxPixelSize) intValue];
     }
 
-    //Maintain aspect ratio if thumbnail size exceeds maximum thumbnail pixel size
+    // Maintain aspect ratio if thumbnail size exceeds maximum thumbnail pixel size
     if (maxThumbnailSize && ((thumbnailWidth > maxThumbnailSize) || (thumbnailHeight > maxThumbnailSize))) {
         if (thumbnailWidth >= thumbnailHeight) {
             thumbnailHeight = thumbnailHeight / thumbnailWidth * maxThumbnailSize;
@@ -323,7 +323,7 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
         }
     }
 
-    //Scale thumbnail according to the calculated dimensions
+    // Scale thumbnail according to the calculated dimensions
     if (!thumbnailExists || (thumbnailExists && 
                              options && 
                              CFDictionaryContainsKey(options, kCGImageSourceCreateThumbnailFromImageAlways))) {
@@ -493,18 +493,15 @@ size_t CGImageSourceGetCount(CGImageSourceRef isrc) {
  @Notes Current release supports prioritized image source container properties only  
 */
 CFDictionaryRef CGImageSourceCopyProperties(CGImageSourceRef isrc, CFDictionaryRef options) {
-    HRESULT status;
     RETURN_NULL_IF(!isrc);
     NSData* imageData = ((ImageSource*)isrc).data;
     RETURN_NULL_IF(!imageData);
 
     NSMutableDictionary *properties = [[NSMutableDictionary alloc] init]; 
-    int fileSize;
+    int fileSize = 0;
     CFStringRef imageFormat = CGImageSourceGetType(isrc);
     if (imageFormat) {
         fileSize = [imageData length];
-    } else {
-        fileSize = 0;
     }
 
     [properties setObject:[NSNumber numberWithInt:fileSize] forKey:(id)kCGImagePropertyFileSize];
@@ -514,10 +511,9 @@ CFDictionaryRef CGImageSourceCopyProperties(CGImageSourceRef isrc, CFDictionaryR
 
 /**
  @Status Caveat
- @Notes Current release supports prioritized individual image, EXIF, GPS, JFIF, PNG, TIFF & GIF properties only  
+ @Notes Current release supports a subset of image, EXIF, GPS, JFIF, PNG, TIFF & GIF properties  
 */
 CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t index, CFDictionaryRef options) {
-    HRESULT status;
     RETURN_NULL_IF(!isrc);
     NSData* imageData = ((ImageSource*)isrc).data;
     RETURN_NULL_IF(!imageData);
@@ -533,36 +529,38 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
     RETURN_NULL_IF_FAILED(imageFactory->CreateStream(&imageStream));
 
     unsigned char* imageByteArray = (unsigned char*)[imageData bytes];
-    int imageLength = [imageData length];
-    RETURN_NULL_IF_FAILED(imageStream->InitializeFromMemory(imageByteArray, imageLength));
+    RETURN_NULL_IF_FAILED(imageStream->InitializeFromMemory(imageByteArray, [imageData length]));
 
     if (options && CFDictionaryContainsKey(options, kCGImageSourceShouldCache)) {
         UNIMPLEMENTED_WITH_MSG("kCGImageSourceShouldCache is not supported in current implementation.");
     }
 
     ComPtr<IWICBitmapDecoder> imageDecoder;                
-    status = imageFactory->CreateDecoderFromStream(imageStream.Get(), nullptr, WICDecodeMetadataCacheOnDemand, &imageDecoder);    
+    RETURN_NULL_IF_FAILED(
+        imageFactory->CreateDecoderFromStream(imageStream.Get(), nullptr, WICDecodeMetadataCacheOnDemand, &imageDecoder));    
     ComPtr<IWICBitmapFrameDecode> imageFrame;
     RETURN_NULL_IF_FAILED(imageDecoder->GetFrame(index, &imageFrame));
     ComPtr<IWICMetadataQueryReader> imageMetadataReader;
-    status = imageFrame->GetMetadataQueryReader(&imageMetadataReader);
-    NSLog(@"FrameStatus-[%0x]\n", status);
+    RETURN_NULL_IF_FAILED(imageFrame->GetMetadataQueryReader(&imageMetadataReader));
 
-    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
     PROPVARIANT propertyValue;
     PropVariantInit(&propertyValue);
 
-    //JPEG Properties - Common
+    // JPEG Properties - Common
+
+    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
 
     // DPIHeight and DPIWidth are saved in differnent places for different image formats, and these locations only represent
     // DPI if {ushort=1} is 1, otherwise they are other units.
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyDPIWidth];
+        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart]
+            forKey:(id)kCGImagePropertyDPIWidth];
         PropVariantClear(&propertyValue);
     }
 
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyDPIHeight];
+        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart]
+            forKey:(id)kCGImagePropertyDPIHeight];
         PropVariantClear(&propertyValue);
     }
 
@@ -586,12 +584,17 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
 
-    //JPEG Properties - Format-specific
+    // JPEG Properties - Format-specific
     PropVariantClear(&propertyValue);
     NSMutableDictionary *jfifProperties = [[NSMutableDictionary alloc] init];
-    // Apple parses this as an array, expect 0x0101 here, which we read as 257. This represents version 1.01.
+
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=0}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [jfifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyJFIFVersion];
+        // NSArray doesn't print properly but this is how iOS does it
+        NSMutableArray* jfifVersionArray = [NSMutableArray array];
+        [jfifVersionArray addObject:[NSNumber numberWithInt:(propertyValue.uiVal >> 8) & 0xF]];
+        [jfifVersionArray addObject:[NSNumber numberWithInt:(propertyValue.uiVal >> 4) & 0xF]];
+        [jfifVersionArray addObject:[NSNumber numberWithInt:propertyValue.uiVal & 0xF]];
+        [jfifProperties setObject:jfifVersionArray forKey:(id)kCGImagePropertyJFIFVersion];
         PropVariantClear(&propertyValue);
     }
 
@@ -615,7 +618,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         [properties setObject:jfifProperties forKey:(id)kCGImagePropertyJFIFDictionary];
     }
 
-    //GPS Properties - JPEG
+    // GPS Properties - JPEG
     NSMutableDictionary *gpsProperties = [[NSMutableDictionary alloc] init];
     PropVariantClear(&propertyValue);
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=6}", &propertyValue)) && propertyValue.vt == VT_UI8) {
@@ -649,9 +652,9 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
     }
 
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=2}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI8)) {
-        double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
-        double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
-        double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        const double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        const double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        const double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
         [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] forKey:(id)kCGImagePropertyGPSLatitude];
         PropVariantClear(&propertyValue);
     }
@@ -662,9 +665,9 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
     }
 
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=4}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
-        double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
-        double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        const double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        const double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        const double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
         [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] forKey:(id)kCGImagePropertyGPSLongitude];
         PropVariantClear(&propertyValue);
     }
@@ -704,11 +707,11 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
     }
     
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI1)) {
-        //[gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyGPSVersion];
+        // [gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyGPSVersion];
         PropVariantClear(&propertyValue);
     }
     
-    //GPS Properties - TIFF - This is a copy of TIFF properties for JPEG but with different paths.
+    // GPS Properties - TIFF - This is a copy of TIFF properties for JPEG but with different paths.
     PropVariantClear(&propertyValue);
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=6}", &propertyValue)) && propertyValue.vt == VT_UI8) {
         [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSAltitude];
@@ -795,7 +798,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
     }
 
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI1)) {
-        //[gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyGPSVersion];
+        // [gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyGPSVersion];
         PropVariantClear(&propertyValue);
     }
     
@@ -804,7 +807,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         [properties setObject:gpsProperties forKey:(id)kCGImagePropertyGPSDictionary];
     }
 
-    //Exif Properties - JPEG
+    // Exif Properties - JPEG
     NSMutableDictionary *exifProperties = [[NSMutableDictionary alloc] init];
     PropVariantClear(&propertyValue);
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=40962}", &propertyValue)) && propertyValue.vt == VT_UI2) {
@@ -909,8 +912,8 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
 
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37510}", &propertyValue)) && propertyValue.vt == VT_LPWSTR) {
         [exifProperties setObject:[[NSString alloc] initWithBytes:propertyValue.pwszVal 
-                                                           length:wcslen(propertyValue.pwszVal)*2
-                                                         encoding:NSUTF16StringEncoding] forKey:(id)kCGImagePropertyExifUserComment];
+                                                           length:wcslen(propertyValue.pwszVal)*sizeof(wchar_t)
+                                                         encoding:NSUnicodeStringEncoding] forKey:(id)kCGImagePropertyExifUserComment];
         PropVariantClear(&propertyValue);
     }
 
@@ -924,7 +927,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
 
-    //Exif Properties - TIFF - This is a copy of Exif properties for JPEG but with different paths.
+    // Exif Properties - TIFF - This is a copy of Exif properties for JPEG but with different paths.
     PropVariantClear(&propertyValue);
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=33434}", &propertyValue)) && propertyValue.vt == VT_UI8) {
         [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifExposureTime];
@@ -1018,8 +1021,8 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
 
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37510}", &propertyValue)) && propertyValue.vt == VT_LPWSTR) {
         [exifProperties setObject:[[NSString alloc] initWithBytes:propertyValue.pwszVal 
-                                                           length:wcslen(propertyValue.pwszVal)*2
-                                                         encoding:NSUTF16StringEncoding] forKey:(id)kCGImagePropertyExifUserComment];
+                                                           length:wcslen(propertyValue.pwszVal)*sizeof(wchar_t)
+                                                         encoding:NSUnicodeStringEncoding] forKey:(id)kCGImagePropertyExifUserComment];
         PropVariantClear(&propertyValue);
     }
 
@@ -1038,7 +1041,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         [properties setObject:exifProperties forKey:(id)kCGImagePropertyExifDictionary];
     }
 
-    //GIF Properties - Common
+    // GIF Properties - Common
     NSMutableDictionary *gifProperties = [[NSMutableDictionary alloc] init];
     PropVariantClear(&propertyValue);
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/imgdesc/Width", &propertyValue)) && propertyValue.vt == VT_UI2) {
@@ -1056,7 +1059,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
     
-    //GIF Properties - Format-specific
+    // GIF Properties - Format-specific
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/grctlext/Delay", &propertyValue)) && propertyValue.vt == VT_UI2) {
         [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyGIFDelayTime];
         PropVariantClear(&propertyValue);
@@ -1067,7 +1070,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
 
-    //TIFF Properties - Common
+    // TIFF Properties - Common
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
         [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyDPIHeight];
         PropVariantClear(&propertyValue);
@@ -1199,7 +1202,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         [properties setObject:tiffProperties forKey:(id)kCGImagePropertyTIFFDictionary];
     }
 
-    //PNG Properties - Common
+    // PNG Properties - Common
     NSMutableDictionary *pngProperties = [[NSMutableDictionary alloc] init];
     PropVariantClear(&propertyValue);
     
@@ -1239,7 +1242,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
         PropVariantClear(&propertyValue);
     }
 
-    //PNG Properties - Format-specific
+    // PNG Properties - Format-specific
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/gAMA/ImageGamma", &propertyValue)) && propertyValue.vt == VT_UI4) {
         [pngProperties setObject:[NSNumber numberWithInt:propertyValue.ulVal] forKey:(id)kCGImagePropertyPNGGamma];
         PropVariantClear(&propertyValue);
@@ -1251,7 +1254,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
     }
 
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/chrominance/TableEntry", &propertyValue)) && propertyValue.vt == (VT_UI1 | VT_VECTOR)) {
-        //[pngProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyPNGChromaticities];
+        // [pngProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyPNGChromaticities];
         PropVariantClear(&propertyValue);
     }
 

@@ -31,8 +31,8 @@ const CFStringRef kUTTypeGIF = static_cast<const CFStringRef>(@"com.compuserve.g
 const CFStringRef kUTTypePNG = static_cast<const CFStringRef>(@"public.png");
 const CFStringRef kUTTypeBMP = static_cast<const CFStringRef>(@"com.microsoft.bmp");
 
-const int minutesPerDegree = 60;
-const int secondsPerMinute = 60;
+const unsigned int minutesPerDegree = 60;
+const unsigned int secondsPerMinute = 60;
 
 enum imageTypes { typeJPEG,
                   typeTIFF,
@@ -86,9 +86,9 @@ enum destinationTypes { toData,
             return NULL;
         }
 
-        if (url) {
+        if (url && [(NSURL*)url path]) { // Make sure that the url path actually resolves to something to avoid causing an exception
             NSString* urlNSString = [[(NSURL*)url path] substringFromIndex:1];
-            NSData* urlAsData = [urlNSString dataUsingEncoding:NSUTF16StringEncoding];
+            NSData* urlAsData = [urlNSString dataUsingEncoding:NSUnicodeStringEncoding];
             std::wstring wideUrl((wchar_t*)[urlAsData bytes], [urlAsData length]/sizeof(wchar_t));
             RETURN_NULL_IF_FAILED(_idStream->InitializeFromFilename(wideUrl.c_str(), GENERIC_WRITE));
 
@@ -128,7 +128,7 @@ void setHighLowPartsUnsigned(ULARGE_INTEGER* valueLarge, double valueDouble) {
     }
 
     // Check to see if the value has a decimal component. If not, just divide by 1.
-    if (valueDouble == (int)valueDouble) {
+    if (valueDouble == (unsigned int)valueDouble) {
         (*valueLarge).LowPart = (unsigned int)valueDouble;
         (*valueLarge).HighPart = 1;
     } else {
@@ -154,9 +154,10 @@ void writePropertyToFrame(PROPVARIANT* propertyToWrite, LPCWSTR path, IWICMetada
     HRESULT status = propertyWriter->SetMetadataByName(path, propertyToWrite);
     if (!SUCCEEDED(status)) {
         NSString* pathNSString = [[NSString alloc] initWithBytes:path
-                                                          length:wcslen(path)*2
-                                                        encoding:NSUTF16StringEncoding];
+                                                          length:wcslen(path)*sizeof(wchar_t)
+                                                        encoding:NSUnicodeStringEncoding];
         NSTraceInfo(TAG, @"Set %@ failed with status=%x\n", pathNSString, status);
+        [pathNSString release];
     }
 }
 
@@ -188,9 +189,11 @@ void setVariantFromDictionary(CFDictionaryRef dictionary,
             setHighLowPartsSigned(&propertyToWrite.hVal, doubleOut);
         } else if (propertyType == VT_LPSTR) {
             propertyToWrite.pszVal = (char*)[(NSString*)CFDictionaryGetValue(dictionary, key) UTF8String];
+            PropVariantInit(&propertyToWrite);
         } else if (propertyType == VT_LPWSTR) {
             NSString* wideStringBuffer = (NSString*)CFDictionaryGetValue(dictionary, key);
-            propertyToWrite.pwszVal = (wchar_t*)[wideStringBuffer cStringUsingEncoding:NSUTF16StringEncoding];
+            propertyToWrite.pwszVal = (wchar_t*)[wideStringBuffer cStringUsingEncoding:NSUnicodeStringEncoding];
+            PropVariantInit(&propertyToWrite);
         } else if (propertyType == VT_BLOB) {
             NSData* blobData = (NSData*)CFDictionaryGetValue(dictionary, key);
             propertyToWrite.blob.cbSize = [blobData length];
@@ -323,6 +326,7 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             propertyToWrite.cauh.cElems = 3;
             propertyToWrite.cauh.pElems = gpsValues;
             writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=2}", propertyWriter);
+            propertyToWrite.cauh.pElems = NULL;
         }
 
         setVariantFromDictionary(gpsDictionary,
@@ -348,6 +352,7 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             propertyToWrite.cauh.cElems = 3;
             propertyToWrite.cauh.pElems = gpsValues;
             writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=4}", propertyWriter);
+            propertyToWrite.cauh.pElems = NULL;
         }
 
         setVariantFromDictionary(gpsDictionary,
@@ -384,6 +389,7 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
                 propertyToWrite.cauh.cElems = 3;
                 propertyToWrite.cauh.pElems = gpsValues;
                 writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=7}", propertyWriter);
+                propertyToWrite.cauh.pElems = NULL;
             }
         }
 
@@ -408,6 +414,7 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             for (int index = 0; index < propertyToWrite.cauh.cElems; index++) {
                 propertyToWrite.caub.pElems[index] = versionArray[index];
             }
+            propertyToWrite.caub.pElems = NULL;
         }
     }
 
@@ -708,6 +715,7 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             propertyToWrite.cauh.cElems = 3;
             propertyToWrite.cauh.pElems = gpsValues;
             writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=2}", propertyWriter);
+            propertyToWrite.cauh.pElems = NULL;
         }
 
         setVariantFromDictionary(gpsDictionary,
@@ -733,6 +741,7 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             propertyToWrite.cauh.cElems = 3;
             propertyToWrite.cauh.pElems = gpsValues;
             writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=4}", propertyWriter);
+            propertyToWrite.cauh.pElems = NULL;
         }
 
         setVariantFromDictionary(gpsDictionary,
@@ -769,6 +778,7 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
                 propertyToWrite.cauh.cElems = 3;
                 propertyToWrite.cauh.pElems = gpsValues;
                 writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=7}", propertyWriter);
+                propertyToWrite.cauh.pElems = NULL;
             }
         }
 
@@ -794,6 +804,7 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
                 propertyToWrite.caub.pElems[index] = versionArray[index];
             }
             writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=0}", propertyWriter);
+            propertyToWrite.caub.pElems = NULL;
         }
     }
 
@@ -1036,24 +1047,6 @@ void writePNGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRef
     // properly, but external metadata readers don't seem to pick up on the information and the location of this metadata is
     // not well specified. This behavior is not replicated here.
 
-    // The following 3 properties are listed in CGImageSource as common PNG properties but writing to these
-    // does not seem to write data that reads back as anything. The paths seem wrong.
-    PropVariantInit(&propertyToWrite);
-    propertyToWrite.vt = VT_UI2;
-    propertyToWrite.uiVal = imageWidth;
-    writePropertyToFrame(&propertyToWrite, L"/ifd/{ushort=256}", propertyWriter);
-
-    PropVariantInit(&propertyToWrite);
-    propertyToWrite.vt = VT_UI2;
-    propertyToWrite.uiVal = imageHeight;
-    writePropertyToFrame(&propertyToWrite, L"/ifd/{ushort=257}", propertyWriter);
-
-    setVariantFromDictionary(properties,
-                             kCGImagePropertyOrientation,
-                             VT_UI2,
-                             L"/app1/ifd/{ushort=274}",
-                             propertyWriter);
-
     setVariantFromDictionary(properties,
                              kCGImagePropertyProfileName,
                              VT_LPSTR,
@@ -1087,25 +1080,6 @@ void writePNGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRef
             UNIMPLEMENTED_WITH_MSG("PNG Chromaticities are not supported right now.");
             // Metadata name is L"/chrominance/TableEntry", not writing at the moment
         }
-
-        // These properties also do not seem like actual PNG properties
-        setVariantFromDictionary(pngDictionary,
-                                 kCGImagePropertyPNGCopyright,
-                                 VT_LPSTR,
-                                 L"/ifd/{ushort=33432}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(pngDictionary,
-                                 kCGImagePropertyPNGDescription,
-                                 VT_LPSTR,
-                                 L"/ifd/{ushort=270}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(pngDictionary,
-                                 kCGImagePropertyPNGSoftware,
-                                 VT_LPSTR,
-                                 L"/ifd/{ushort=305}",
-                                 propertyWriter);
     }
 }
 
@@ -1152,7 +1126,7 @@ CGImageDestinationRef CGImageDestinationCreateWithURL(CFURLRef url, CFStringRef 
         part of the PNG specification to image metadata, which is not reproduced.
 */
 void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CFDictionaryRef properties) {
-    if (!idst) {
+    if (!idst || !image) {
         return;
     }
 
@@ -1221,29 +1195,6 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         return;
     }
 
-    // Set the pixel format based on file format
-    WICPixelFormatGUID formatGUID;
-    switch (imageDestination.type) {
-        case typeJPEG:
-            formatGUID = GUID_WICPixelFormat24bppBGR;
-            break;
-        case typeTIFF:
-            formatGUID = GUID_WICPixelFormat32bppRGBA;
-            break;
-        case typeGIF:
-            formatGUID = GUID_WICPixelFormat8bppIndexed;
-            break;
-        case typePNG:
-            formatGUID = GUID_WICPixelFormat32bppRGBA;
-            break;
-        case typeBMP:
-            formatGUID = GUID_WICPixelFormat32bppRGBA;
-            break;
-        default:
-            NSTraceInfo(TAG, @"Unknown type encountered\n");
-            return;
-    }
-
     // Setting up writing properties to individual image frame, bitmaps cannot have metadata
     ComPtr<IWICMetadataQueryWriter> imageFrameMetadataWriter;
     if (imageDestination.type != typeBMP) {
@@ -1254,18 +1205,33 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         }
     }
 
-    PROPVARIANT propertyToWrite;
     IWICMetadataQueryWriter* propertyWriter = imageFrameMetadataWriter.Get();
 
-    // Image metadata for JPEG images
-    if (imageDestination.type == typeJPEG) {
-        writeJPEGProperties(propertyWriter, properties, imageWidth, imageHeight);
-    } else if (imageDestination.type == typeGIF) { // Image metadata for GIF images
-        writeGIFProperties(propertyWriter, properties, imageWidth, imageHeight);
-    } else if (imageDestination.type == typeTIFF) { // Image metadata for TIFF images
-        writeTIFFProperties(propertyWriter, properties, imageWidth, imageHeight);
-    } else if (imageDestination.type == typePNG) {
-        writePNGProperties(propertyWriter, properties, imageWidth, imageHeight);
+    // Set the pixel format based on file format and write necessary metadata
+    WICPixelFormatGUID formatGUID;
+    switch (imageDestination.type) {
+        case typeJPEG:
+            formatGUID = GUID_WICPixelFormat24bppBGR;
+            writeJPEGProperties(propertyWriter, properties, imageWidth, imageHeight);
+            break;
+        case typeTIFF:
+            formatGUID = GUID_WICPixelFormat32bppRGBA;
+            writeTIFFProperties(propertyWriter, properties, imageWidth, imageHeight);
+            break;
+        case typeGIF:
+            formatGUID = GUID_WICPixelFormat8bppIndexed;
+            writeGIFProperties(propertyWriter, properties, imageWidth, imageHeight);
+            break;
+        case typePNG:
+            formatGUID = GUID_WICPixelFormat32bppRGBA;
+            writePNGProperties(propertyWriter, properties, imageWidth, imageHeight);
+            break;
+        case typeBMP:
+            formatGUID = GUID_WICPixelFormat32bppRGBA;
+            break;
+        default:
+            NSTraceInfo(TAG, @"Unknown type encountered\n");
+            return;
     }
 
     status = imageBitmapFrame->SetPixelFormat(&formatGUID);
@@ -1289,6 +1255,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
                                                   imageHeight * imageWidth * 4,
                                                   (unsigned char*)[imageByteData bytes],
                                                   &inputImage);
+    [imageByteData release];
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"CreateBitmapFromMemory failed with status=%x\n", status);
         return;
@@ -1325,6 +1292,10 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         Not all formats are supported. Also, the option for kCGImageDestinationBackgroundColor is currently not supported.
 */
 void CGImageDestinationAddImageFromSource(CGImageDestinationRef idst, CGImageSourceRef isrc, size_t index, CFDictionaryRef properties) {
+    if (!idst || !isrc) {
+        return;
+    }
+    
     // Pull image reference from the image source using CGImageSource API, then calls AddImage
     CGImageRef imageRef = CGImageSourceCreateImageAtIndex(isrc, index, properties);
     CGImageDestinationAddImage(idst, imageRef, properties);
