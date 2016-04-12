@@ -117,7 +117,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 */
 - (CGImageSourceStatus)getJPEGStatusAtIndex:(size_t)index {
     unsigned int imageLength = [self.data length];
-    if (imageLength < 7) {
+    if (imageLength < 7 || index) {
         return kCGImageStatusUnknownType;
     }
 
@@ -294,7 +294,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 */
 - (CGImageSourceStatus)getBMPStatusAtIndex:(size_t)index {
     unsigned int imageLength = [self.data length];
-    if (imageLength < 8) {
+    if (imageLength < 8 || index) {
         return kCGImageStatusUnknownType;
     }
 
@@ -328,7 +328,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 */
 - (CGImageSourceStatus)getPNGStatusAtIndex:(size_t)index {
     unsigned int imageLength = [self.data length];
-    if (imageLength < 14) {
+    if (imageLength < 14 || index) {
         return kCGImageStatusUnknownType;
     }   
      
@@ -842,10 +842,6 @@ CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t 
 
     ImageSource* imageSrc = (ImageSource*)isrc;
     if (!imageSrc.data) {
-        return kCGImageStatusUnknownType;
-    }
-
-    if (index > (CGImageSourceGetCount(isrc) - 1)) {
         return kCGImageStatusUnknownType;
     }
 
