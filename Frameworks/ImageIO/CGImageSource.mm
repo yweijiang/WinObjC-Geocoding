@@ -112,6 +112,824 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 }
 @end
 
+CFDictionaryRef readJPEGProperties(IWICMetadataQueryReader* imageMetadataReader) {
+    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
+    PROPVARIANT propertyValue;
+    PropVariantInit(&propertyValue);
+
+    // JPEG Properties - Common
+    // DPIHeight and DPIWidth are saved in different places for different image formats, and these locations only represent
+    // DPI if {ushort=1} is 1, otherwise they are other units.
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart]
+                       forKey:(id)kCGImagePropertyDPIWidth];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart]
+                       forKey:(id)kCGImagePropertyDPIHeight];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=256}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelWidth];
+    }
+    
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=257}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelHeight];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=258}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyDepth];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyOrientation];
+    }
+
+    // JPEG Properties - Format-specific
+    NSMutableDictionary *jfifProperties = [[NSMutableDictionary alloc] init];
+    PropVariantClear(&propertyValue);
+
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=0}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        // NSArray doesn't print properly but this is how iOS does it
+        NSMutableArray* jfifVersionArray = [NSMutableArray array];
+        [jfifVersionArray addObject:[NSNumber numberWithInt:(propertyValue.uiVal >> 8) & 0xF]];
+        [jfifVersionArray addObject:[NSNumber numberWithInt:(propertyValue.uiVal >> 4) & 0xF]];
+        [jfifVersionArray addObject:[NSNumber numberWithInt:propertyValue.uiVal & 0xF]];
+        [jfifProperties setObject:jfifVersionArray forKey:(id)kCGImagePropertyJFIFVersion];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=2}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [jfifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyJFIFXDensity];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=3}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [jfifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyJFIFYDensity];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=1}", &propertyValue)) && propertyValue.vt == VT_UI1) {
+        [jfifProperties setObject:[NSNumber numberWithInt:propertyValue.bVal] forKey:(id)kCGImagePropertyJFIFDensityUnit];
+    }
+
+    // Add the JFIF dictionary to the properties if there are any JFIF properties
+    if ([[jfifProperties allKeys] count] != 0) {
+        [properties setObject:jfifProperties forKey:(id)kCGImagePropertyJFIFDictionary];
+    }
+
+    // GPS Properties - JPEG
+    NSMutableDictionary *gpsProperties = [[NSMutableDictionary alloc] init];
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=6}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSAltitude];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=5}", &propertyValue)) && propertyValue.vt == VT_UI1) {
+        [gpsProperties setObject:[NSNumber numberWithInt:propertyValue.bVal] forKey:(id)kCGImagePropertyGPSAltitudeRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=29}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSDateStamp];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=11}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSDOP];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=17}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSImgDirection];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=16}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSImgDirectionRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=2}", &propertyValue)) && 
+        propertyValue.vt == (VT_VECTOR | VT_UI8)) {
+        const double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        const double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        const double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] 
+                          forKey:(id)kCGImagePropertyGPSLatitude];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=1}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSLatitudeRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=4}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        const double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        const double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        const double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] 
+                          forKey:(id)kCGImagePropertyGPSLongitude];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=3}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSLongitudeRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=13}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSSpeed];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=12}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSSpeedRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=7}", &propertyValue)) && 
+        propertyValue.vt == (VT_VECTOR | VT_UI8)) {
+        double timeStampHours = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        double timeStampMinutes = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        double timeStampSeconds = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        [gpsProperties setObject:[NSString stringWithFormat:@"%.2d:%.2d:%.2f", (int)timeStampHours, (int)timeStampMinutes, timeStampSeconds]
+                          forKey:(id)kCGImagePropertyGPSTimeStamp];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=15}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSTrack];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=14}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSTrackRef];
+    }
+    
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && 
+        propertyValue.vt == (VT_VECTOR | VT_UI1)) {
+        // [gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] 
+        //                   forKey:(id)kCGImagePropertyGPSVersion];
+    }
+
+    // Add the GPS dictionary to the properties if there are any GPS properties
+    if ([[gpsProperties allKeys] count] != 0) {
+        [properties setObject:gpsProperties forKey:(id)kCGImagePropertyGPSDictionary];
+    }
+
+    // Exif Properties - JPEG
+    NSMutableDictionary *exifProperties = [[NSMutableDictionary alloc] init];
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=40962}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifPixelXDimension];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=40963}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifPixelYDimension];
+    }
+    
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=33434}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifExposureTime];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37378}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifApertureValue];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37379}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifBrightnessValue];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=36868}", &propertyValue)) && 
+        propertyValue.vt == VT_LPSTR) {
+        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifDateTimeDigitized];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=36867}", &propertyValue)) && 
+        propertyValue.vt == VT_LPSTR) {
+        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifDateTimeOriginal];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=41988}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifDigitalZoomRatio];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=41986}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifExposureMode];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=34850}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifExposureProgram];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37385}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifFlash];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=33437}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifFNumber];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37386}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifFocalLength];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=34867}", &propertyValue)) && propertyValue.vt == VT_UI4) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.ulVal] forKey:(id)kCGImagePropertyExifISOSpeedRatings];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=42035}", &propertyValue)) && 
+        propertyValue.vt == VT_LPSTR) {
+        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifLensMake];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=42036}", &propertyValue)) && 
+        propertyValue.vt == VT_LPSTR) {
+        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifLensModel];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37500}", &propertyValue)) && 
+        propertyValue.vt == VT_BLOB) {
+        [exifProperties setObject:[NSData dataWithBytesNoCopy:propertyValue.blob.pBlobData 
+                                                       length:propertyValue.blob.cbSize 
+                                                 freeWhenDone:YES] 
+                           forKey:(id)kCGImagePropertyExifMakerNote];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37383}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifMeteringMode];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=41990}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifSceneCaptureType];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37377}", &propertyValue)) && propertyValue.vt == VT_I8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.hVal.LowPart/propertyValue.hVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifShutterSpeedValue];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37510}", &propertyValue)) && propertyValue.vt == VT_LPWSTR) {
+        [exifProperties setObject:[[NSString alloc] initWithBytes:propertyValue.pwszVal 
+                                                           length:wcslen(propertyValue.pwszVal)*sizeof(wchar_t)
+                                                         encoding:NSUnicodeStringEncoding] 
+                           forKey:(id)kCGImagePropertyExifUserComment];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=36864}", &propertyValue)) && propertyValue.vt == VT_BLOB) {
+        [exifProperties setObject:[NSData dataWithBytesNoCopy:propertyValue.blob.pBlobData length:propertyValue.blob.cbSize freeWhenDone:YES] 
+                           forKey:(id)kCGImagePropertyExifVersion];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=41987}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifWhiteBalance];
+    }
+    
+    // Add the Exif dictionary to the properties if there are any Exif properties
+    if ([[exifProperties allKeys] count] != 0) {
+        [properties setObject:exifProperties forKey:(id)kCGImagePropertyExifDictionary];
+    }
+
+    return (CFDictionaryRef)properties;
+}
+
+CFDictionaryRef readTIFFProperties(IWICMetadataQueryReader* imageMetadataReader) {
+    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
+    PROPVARIANT propertyValue;
+    PropVariantInit(&propertyValue);
+
+    // TIFF Properties - Common
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                       forKey:(id)kCGImagePropertyDPIHeight];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                       forKey:(id)kCGImagePropertyDPIWidth];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=256}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelWidth];
+    }
+    
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=257}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelHeight];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=258}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyDepth];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyOrientation];
+    }
+
+    //TIFF Properties - Format-specific
+    NSMutableDictionary *tiffProperties = [[NSMutableDictionary alloc] init];
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=259}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFCompression];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=262}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFPhotometricInterpretation];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=270}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFImageDescription];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=271}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFMake];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=272}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFModel];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFOrientation];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [tiffProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyTIFFXResolution];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [tiffProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyTIFFYResolution];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=296}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFResolutionUnit];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=305}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFSoftware];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=306}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFDateTime];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=315}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFArtist];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=33432}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFCopyright];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=41987}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFWhitePoint];
+    }
+
+    // The following properties are duplicates of the previous TIFF properties, but for /app1/ifd/, which is not a TIFF directory
+    // This information gets read for JPEG files on iOS, and do in fact get added to a TIFF dictionary, even for a JPEG
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFOrientation];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [tiffProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyTIFFXResolution];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [tiffProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyTIFFYResolution];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=296}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFResolutionUnit];
+    }
+
+    // Add the TIFF dictionary to the properties if there are any TIFF properties
+    if ([[tiffProperties allKeys] count] != 0) {
+        [properties setObject:tiffProperties forKey:(id)kCGImagePropertyTIFFDictionary];
+    }
+
+    // GPS Properties - TIFF - This is a copy of TIFF properties for JPEG but with different paths.
+    NSMutableDictionary *gpsProperties = [[NSMutableDictionary alloc] init];
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=6}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSAltitude];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=5}", &propertyValue)) && propertyValue.vt == VT_UI1) {
+        [gpsProperties setObject:[NSNumber numberWithInt:propertyValue.bVal] forKey:(id)kCGImagePropertyGPSAltitudeRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=29}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSDateStamp];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=11}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSDOP];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=17}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSImgDirection];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=16}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSImgDirectionRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=2}", &propertyValue)) && 
+        propertyValue.vt == (VT_VECTOR | VT_UI8)) {
+        double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] 
+                          forKey:(id)kCGImagePropertyGPSLatitude];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=1}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSLatitudeRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=4}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] 
+                          forKey:(id)kCGImagePropertyGPSLongitude];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=3}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSLongitudeRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=13}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSSpeed];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=12}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSSpeedRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=7}", &propertyValue)) && 
+        propertyValue.vt == (VT_VECTOR | VT_UI8)) {
+        double timeStampHours = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
+        double timeStampMinutes = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
+        double timeStampSeconds = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
+        [gpsProperties setObject:[NSString stringWithFormat:@"%.2d:%.2d:%.2f", (int)timeStampHours, (int)timeStampMinutes, timeStampSeconds] 
+                          forKey:(id)kCGImagePropertyGPSTimeStamp];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=15}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyGPSTrack];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=14}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSTrackRef];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && 
+        propertyValue.vt == (VT_VECTOR | VT_UI1)) {
+        // [gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] 
+        //                   forKey:(id)kCGImagePropertyGPSVersion];
+    }
+    
+    // Add the GPS dictionary to the properties if there are any GPS properties
+    if ([[gpsProperties allKeys] count] != 0) {
+        [properties setObject:gpsProperties forKey:(id)kCGImagePropertyGPSDictionary];
+    }
+
+    // Exif Properties - TIFF - This is a copy of Exif properties for JPEG but with different paths.
+    NSMutableDictionary *exifProperties = [[NSMutableDictionary alloc] init];
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=33434}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifExposureTime];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37378}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifApertureValue];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37379}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifBrightnessValue];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=36868}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifDateTimeDigitized];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=36867}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifDateTimeOriginal];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=41988}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifDigitalZoomRatio];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=41986}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifExposureMode];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=34850}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifExposureProgram];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37385}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifFlash];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=33437}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifFNumber];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37386}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifFocalLength];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=34867}", &propertyValue)) && propertyValue.vt == VT_UI4) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.ulVal] forKey:(id)kCGImagePropertyExifISOSpeedRatings];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=42035}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifLensMake];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=42036}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifLensModel];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37500}", &propertyValue)) && propertyValue.vt == VT_BLOB) {
+        [exifProperties setObject:[NSData dataWithBytesNoCopy:propertyValue.blob.pBlobData length:propertyValue.blob.cbSize freeWhenDone:YES] 
+                           forKey:(id)kCGImagePropertyExifMakerNote];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37383}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifMeteringMode];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=41990}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifSceneCaptureType];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37377}", &propertyValue)) && propertyValue.vt == VT_I8) {
+        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.hVal.LowPart/propertyValue.hVal.HighPart] 
+                           forKey:(id)kCGImagePropertyExifShutterSpeedValue];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37510}", &propertyValue)) && propertyValue.vt == VT_LPWSTR) {
+        [exifProperties setObject:[[NSString alloc] initWithBytes:propertyValue.pwszVal 
+                                                           length:wcslen(propertyValue.pwszVal)*sizeof(wchar_t)
+                                                         encoding:NSUnicodeStringEncoding] 
+                           forKey:(id)kCGImagePropertyExifUserComment];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=36864}", &propertyValue)) && propertyValue.vt == VT_BLOB) {
+        [exifProperties setObject:[NSData dataWithBytesNoCopy:propertyValue.blob.pBlobData 
+                                                       length:propertyValue.blob.cbSize 
+                                                 freeWhenDone:YES]
+                           forKey:(id)kCGImagePropertyExifVersion];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=41987}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifWhiteBalance];
+    }
+
+    // Add the Exif dictionary to the properties if there are any Exif properties
+    if ([[exifProperties allKeys] count] != 0) {
+        [properties setObject:exifProperties forKey:(id)kCGImagePropertyExifDictionary];
+    }
+
+    return (CFDictionaryRef)properties;
+}
+
+CFDictionaryRef readGIFProperties(IWICMetadataQueryReader* imageMetadataReader) {
+    // GIF Properties - Common
+    NSMutableDictionary *gifProperties = [[NSMutableDictionary alloc] init];
+    PROPVARIANT propertyValue;
+    PropVariantInit(&propertyValue);
+
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/imgdesc/Width", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelWidth];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/imgdesc/Height", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelHeight];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/grctlext/TransparencyFlag", &propertyValue)) && propertyValue.vt == VT_BOOL) {
+        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.boolVal] forKey:(id)kCGImagePropertyHasAlpha];
+    }
+    
+    // GIF Properties - Format-specific
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/grctlext/Delay", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyGIFDelayTime];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/logscrdesc/GlobalColorTableFlag", &propertyValue)) && 
+        propertyValue.vt == VT_UI2) {
+        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyGIFHasGlobalColorMap];
+    }
+
+    return (CFDictionaryRef)gifProperties;
+}
+
+CFDictionaryRef readPNGProperties(IWICMetadataQueryReader* imageMetadataReader) {
+    // PNG Properties - Common
+    NSMutableDictionary *pngProperties = [[NSMutableDictionary alloc] init];
+    PROPVARIANT propertyValue;
+    PropVariantInit(&propertyValue);
+        
+    // These properties are not found in the normal PNG property locations and don't seem to be actual PNG properties
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [pngProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyDPIHeight];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
+        [pngProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
+                          forKey:(id)kCGImagePropertyDPIWidth];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=256}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelWidth];
+    }
+    
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=257}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelHeight];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=258}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyDepth];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
+        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyOrientation];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/iCCP/ProfileName", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [pngProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyProfileName];
+    }
+
+    // PNG Properties - Format-specific
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/gAMA/ImageGamma", &propertyValue)) && propertyValue.vt == VT_UI4) {
+        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.ulVal] forKey:(id)kCGImagePropertyPNGGamma];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/sRGB/RenderingIntent", &propertyValue)) && propertyValue.vt == VT_UI1) {
+        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.bVal] forKey:(id)kCGImagePropertyPNGsRGBIntent];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/chrominance/TableEntry", &propertyValue)) && 
+        propertyValue.vt == (VT_UI1 | VT_VECTOR)) {
+        // [pngProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] 
+        //                   forKey:(id)kCGImagePropertyPNGChromaticities];
+    }
+
+    // These properties also do not seem like actual PNG properties
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=33432}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [pngProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyPNGCopyright];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=270}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [pngProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyPNGDescription];
+    }
+
+    PropVariantClear(&propertyValue);
+    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=305}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
+        [pngProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyPNGSoftware];
+    }
+
+    return (CFDictionaryRef)pngProperties;
+}
+
 /**
  @Status Caveat
  @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO. 
@@ -490,7 +1308,7 @@ size_t CGImageSourceGetCount(CGImageSourceRef isrc) {
 
 /**
  @Status Caveat
- @Notes Current release supports prioritized image source container properties only  
+ @Notes Very Limited source container properties supported currently  
 */
 CFDictionaryRef CGImageSourceCopyProperties(CGImageSourceRef isrc, CFDictionaryRef options) {
     RETURN_NULL_IF(!isrc);
@@ -498,20 +1316,14 @@ CFDictionaryRef CGImageSourceCopyProperties(CGImageSourceRef isrc, CFDictionaryR
     RETURN_NULL_IF(!imageData);
 
     NSMutableDictionary *properties = [[NSMutableDictionary alloc] init]; 
-    int fileSize = 0;
-    CFStringRef imageFormat = CGImageSourceGetType(isrc);
-    if (imageFormat) {
-        fileSize = [imageData length];
-    }
-
-    [properties setObject:[NSNumber numberWithInt:fileSize] forKey:(id)kCGImagePropertyFileSize];
+    [properties setObject:[NSNumber numberWithInt:[imageData length]] forKey:(id)kCGImagePropertyFileSize];
     NSLog(@"Dictionary - [%@]", (NSDictionary*)properties);
     return (CFDictionaryRef)properties;
 }
 
 /**
  @Status Caveat
- @Notes Current release supports a subset of image, EXIF, GPS, JFIF, PNG, TIFF & GIF properties  
+ @Notes Very Limited image frame properties supported currently  
 */
 CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t index, CFDictionaryRef options) {
     RETURN_NULL_IF(!isrc);
@@ -543,744 +1355,18 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t
     ComPtr<IWICMetadataQueryReader> imageMetadataReader;
     RETURN_NULL_IF_FAILED(imageFrame->GetMetadataQueryReader(&imageMetadataReader));
 
-    PROPVARIANT propertyValue;
-    PropVariantInit(&propertyValue);
-
-    // JPEG Properties - Common
-
-    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
-
-    // DPIHeight and DPIWidth are saved in differnent places for different image formats, and these locations only represent
-    // DPI if {ushort=1} is 1, otherwise they are other units.
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart]
-            forKey:(id)kCGImagePropertyDPIWidth];
-        PropVariantClear(&propertyValue);
+    CFStringRef imageFormat = CGImageSourceGetType(isrc);
+    if (imageFormat == kUTTypeJPEG) {
+        return readJPEGProperties(imageMetadataReader.Get());
+    } else if (imageFormat == kUTTypeTIFF) {
+        return readTIFFProperties(imageMetadataReader.Get());
+    } else if (imageFormat == kUTTypeGIF) {
+        return readGIFProperties(imageMetadataReader.Get());
+    } else if (imageFormat == kUTTypePNG) {
+        return readPNGProperties(imageMetadataReader.Get());
+    } else {
+        return nullptr;
     }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart]
-            forKey:(id)kCGImagePropertyDPIHeight];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=256}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelWidth];
-        PropVariantClear(&propertyValue);
-    }
-    
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=257}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelHeight];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=258}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyDepth];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyOrientation];
-        PropVariantClear(&propertyValue);
-    }
-
-    // JPEG Properties - Format-specific
-    PropVariantClear(&propertyValue);
-    NSMutableDictionary *jfifProperties = [[NSMutableDictionary alloc] init];
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=0}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        // NSArray doesn't print properly but this is how iOS does it
-        NSMutableArray* jfifVersionArray = [NSMutableArray array];
-        [jfifVersionArray addObject:[NSNumber numberWithInt:(propertyValue.uiVal >> 8) & 0xF]];
-        [jfifVersionArray addObject:[NSNumber numberWithInt:(propertyValue.uiVal >> 4) & 0xF]];
-        [jfifVersionArray addObject:[NSNumber numberWithInt:propertyValue.uiVal & 0xF]];
-        [jfifProperties setObject:jfifVersionArray forKey:(id)kCGImagePropertyJFIFVersion];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=2}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [jfifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyJFIFXDensity];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=3}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [jfifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyJFIFYDensity];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app0/{ushort=1}", &propertyValue)) && propertyValue.vt == VT_UI1) {
-        [jfifProperties setObject:[NSNumber numberWithInt:propertyValue.bVal] forKey:(id)kCGImagePropertyJFIFDensityUnit];
-        PropVariantClear(&propertyValue);
-    }
-
-    // Add the JFIF dictionary to the properties if there are any JFIF properties
-    if ([[jfifProperties allKeys] count] != 0) {
-        [properties setObject:jfifProperties forKey:(id)kCGImagePropertyJFIFDictionary];
-    }
-
-    // GPS Properties - JPEG
-    NSMutableDictionary *gpsProperties = [[NSMutableDictionary alloc] init];
-    PropVariantClear(&propertyValue);
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=6}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSAltitude];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=5}", &propertyValue)) && propertyValue.vt == VT_UI1) {
-        [gpsProperties setObject:[NSNumber numberWithInt:propertyValue.bVal] forKey:(id)kCGImagePropertyGPSAltitudeRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=29}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSDateStamp];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=11}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSDOP];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=17}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSImgDirection];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=16}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSImgDirectionRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=2}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI8)) {
-        const double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
-        const double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
-        const double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] forKey:(id)kCGImagePropertyGPSLatitude];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=1}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSLatitudeRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=4}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        const double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
-        const double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
-        const double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] forKey:(id)kCGImagePropertyGPSLongitude];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=3}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSLongitudeRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=13}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSSpeed];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=12}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSSpeedRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    PropVariantClear(&propertyValue);
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=7}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI8)) {
-        double timeStampHours = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
-        double timeStampMinutes = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
-        double timeStampSeconds = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSString stringWithFormat:@"%.2d:%.2d:%.2f", (int)timeStampHours, (int)timeStampMinutes, timeStampSeconds] forKey:(id)kCGImagePropertyGPSTimeStamp];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=15}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSTrack];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=14}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSTrackRef];
-        PropVariantClear(&propertyValue);
-    }
-    
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI1)) {
-        // [gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyGPSVersion];
-        PropVariantClear(&propertyValue);
-    }
-    
-    // GPS Properties - TIFF - This is a copy of TIFF properties for JPEG but with different paths.
-    PropVariantClear(&propertyValue);
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=6}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSAltitude];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=5}", &propertyValue)) && propertyValue.vt == VT_UI1) {
-        [gpsProperties setObject:[NSNumber numberWithInt:propertyValue.bVal] forKey:(id)kCGImagePropertyGPSAltitudeRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=29}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSDateStamp];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=11}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSDOP];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=17}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSImgDirection];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=16}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSImgDirectionRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=2}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI8)) {
-        double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
-        double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
-        double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] forKey:(id)kCGImagePropertyGPSLatitude];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=1}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSLatitudeRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=4}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
-        double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
-        double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] forKey:(id)kCGImagePropertyGPSLongitude];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=3}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSLongitudeRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=13}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSSpeed];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=12}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSSpeedRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=7}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI8)) {
-        double timeStampHours = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
-        double timeStampMinutes = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
-        double timeStampSeconds = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSString stringWithFormat:@"%.2d:%.2d:%.2f", (int)timeStampHours, (int)timeStampMinutes, timeStampSeconds] forKey:(id)kCGImagePropertyGPSTimeStamp];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=15}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [gpsProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyGPSTrack];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=14}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [gpsProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyGPSTrackRef];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/gps/{ushort=0}", &propertyValue)) && propertyValue.vt == (VT_VECTOR | VT_UI1)) {
-        // [gpsProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyGPSVersion];
-        PropVariantClear(&propertyValue);
-    }
-    
-    // Add the GPS dictionary to the properties if there are any GPS properties
-    if ([[gpsProperties allKeys] count] != 0) {
-        [properties setObject:gpsProperties forKey:(id)kCGImagePropertyGPSDictionary];
-    }
-
-    // Exif Properties - JPEG
-    NSMutableDictionary *exifProperties = [[NSMutableDictionary alloc] init];
-    PropVariantClear(&propertyValue);
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=40962}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifPixelXDimension];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=40963}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifPixelYDimension];
-        PropVariantClear(&propertyValue);
-    }
-    
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=33434}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifExposureTime];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37378}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifApertureValue];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37379}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifBrightnessValue];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=36868}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifDateTimeDigitized];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=36867}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifDateTimeOriginal];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=41988}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifDigitalZoomRatio];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=41986}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifExposureMode];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=34850}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifExposureProgram];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37385}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifFlash];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=33437}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifFNumber];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37386}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifFocalLength];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=34867}", &propertyValue)) && propertyValue.vt == VT_UI4) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.ulVal] forKey:(id)kCGImagePropertyExifISOSpeedRatings];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=42035}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifLensMake];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=42036}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifLensModel];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37500}", &propertyValue)) && propertyValue.vt == VT_BLOB) {
-        [exifProperties setObject:[NSData dataWithBytesNoCopy:propertyValue.blob.pBlobData length:propertyValue.blob.cbSize freeWhenDone:YES] forKey:(id)kCGImagePropertyExifMakerNote];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37383}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifMeteringMode];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=41990}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifSceneCaptureType];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37377}", &propertyValue)) && propertyValue.vt == VT_I8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.hVal.LowPart/propertyValue.hVal.HighPart] forKey:(id)kCGImagePropertyExifShutterSpeedValue];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=37510}", &propertyValue)) && propertyValue.vt == VT_LPWSTR) {
-        [exifProperties setObject:[[NSString alloc] initWithBytes:propertyValue.pwszVal 
-                                                           length:wcslen(propertyValue.pwszVal)*sizeof(wchar_t)
-                                                         encoding:NSUnicodeStringEncoding] forKey:(id)kCGImagePropertyExifUserComment];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=36864}", &propertyValue)) && propertyValue.vt == VT_BLOB) {
-        [exifProperties setObject:[NSData dataWithBytesNoCopy:propertyValue.blob.pBlobData length:propertyValue.blob.cbSize freeWhenDone:YES] forKey:(id)kCGImagePropertyExifVersion];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/exif/{ushort=41987}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifWhiteBalance];
-        PropVariantClear(&propertyValue);
-    }
-
-    // Exif Properties - TIFF - This is a copy of Exif properties for JPEG but with different paths.
-    PropVariantClear(&propertyValue);
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=33434}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifExposureTime];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37378}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifApertureValue];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37379}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifBrightnessValue];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=36868}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifDateTimeDigitized];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=36867}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifDateTimeOriginal];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=41988}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifDigitalZoomRatio];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=41986}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifExposureMode];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=34850}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifExposureProgram];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37385}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifFlash];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=33437}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifFNumber];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37386}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyExifFocalLength];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=34867}", &propertyValue)) && propertyValue.vt == VT_UI4) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.ulVal] forKey:(id)kCGImagePropertyExifISOSpeedRatings];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=42035}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifLensMake];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=42036}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [exifProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyExifLensModel];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37500}", &propertyValue)) && propertyValue.vt == VT_BLOB) {
-        [exifProperties setObject:[NSData dataWithBytesNoCopy:propertyValue.blob.pBlobData length:propertyValue.blob.cbSize freeWhenDone:YES] forKey:(id)kCGImagePropertyExifMakerNote];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37383}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifMeteringMode];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=41990}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifSceneCaptureType];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37377}", &propertyValue)) && propertyValue.vt == VT_I8) {
-        [exifProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.hVal.LowPart/propertyValue.hVal.HighPart] forKey:(id)kCGImagePropertyExifShutterSpeedValue];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=37510}", &propertyValue)) && propertyValue.vt == VT_LPWSTR) {
-        [exifProperties setObject:[[NSString alloc] initWithBytes:propertyValue.pwszVal 
-                                                           length:wcslen(propertyValue.pwszVal)*sizeof(wchar_t)
-                                                         encoding:NSUnicodeStringEncoding] forKey:(id)kCGImagePropertyExifUserComment];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=36864}", &propertyValue)) && propertyValue.vt == VT_BLOB) {
-        [exifProperties setObject:[NSData dataWithBytesNoCopy:propertyValue.blob.pBlobData length:propertyValue.blob.cbSize freeWhenDone:YES] forKey:(id)kCGImagePropertyExifVersion];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/exif/{ushort=41987}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [exifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyExifWhiteBalance];
-        PropVariantClear(&propertyValue);
-    }
-
-    // Add the Exif dictionary to the properties if there are any Exif properties
-    if ([[exifProperties allKeys] count] != 0) {
-        [properties setObject:exifProperties forKey:(id)kCGImagePropertyExifDictionary];
-    }
-
-    // GIF Properties - Common
-    NSMutableDictionary *gifProperties = [[NSMutableDictionary alloc] init];
-    PropVariantClear(&propertyValue);
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/imgdesc/Width", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelWidth];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/imgdesc/Height", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelHeight];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/grctlext/TransparencyFlag", &propertyValue)) && propertyValue.vt == VT_BOOL) {
-        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.boolVal] forKey:(id)kCGImagePropertyHasAlpha];
-        PropVariantClear(&propertyValue);
-    }
-    
-    // GIF Properties - Format-specific
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/grctlext/Delay", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyGIFDelayTime];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/logscrdesc/GlobalColorTableFlag", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyGIFHasGlobalColorMap];
-        PropVariantClear(&propertyValue);
-    }
-
-    // TIFF Properties - Common
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyDPIHeight];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [properties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyDPIWidth];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=256}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelWidth];
-        PropVariantClear(&propertyValue);
-    }
-    
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=257}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelHeight];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=258}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyDepth];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyOrientation];
-        PropVariantClear(&propertyValue);
-    }
-
-    //TIFF Properties - Format-specific
-    NSMutableDictionary *tiffProperties = [[NSMutableDictionary alloc] init];
-    PropVariantClear(&propertyValue);
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=259}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFCompression];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=262}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFPhotometricInterpretation];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=270}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFImageDescription];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=271}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFMake];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=272}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFModel];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFOrientation];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [tiffProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyTIFFXResolution];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [tiffProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyTIFFYResolution];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=296}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFResolutionUnit];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=305}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFSoftware];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=306}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFDateTime];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=315}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFArtist];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=33432}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [tiffProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyTIFFCopyright];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=41987}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFWhitePoint];
-        PropVariantClear(&propertyValue);
-    }
-
-    // The following properties are duplicates of the previous TIFF properties, but for /app1/ifd/, which is not a TIFF directory
-    // This information gets read for JPEG files on iOS, and do in fact get added to a TIFF dictionary, even for a JPEG
-    PropVariantClear(&propertyValue);
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFOrientation];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [tiffProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyTIFFXResolution];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [tiffProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyTIFFYResolution];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=296}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [tiffProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyTIFFResolutionUnit];
-        PropVariantClear(&propertyValue);
-    }
-
-    // Add the TIFF dictionary to the properties if there are any TIFF properties
-    if ([[tiffProperties allKeys] count] != 0) {
-        [properties setObject:tiffProperties forKey:(id)kCGImagePropertyTIFFDictionary];
-    }
-
-    // PNG Properties - Common
-    NSMutableDictionary *pngProperties = [[NSMutableDictionary alloc] init];
-    PropVariantClear(&propertyValue);
-    
-    // These properties are not found in the normal PNG property locations and don't seem to be actual PNG properties
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [pngProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyDPIHeight];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=283}", &propertyValue)) && propertyValue.vt == VT_UI8) {
-        [pngProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] forKey:(id)kCGImagePropertyDPIWidth];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=256}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelWidth];
-        PropVariantClear(&propertyValue);
-    }
-    
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=257}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelHeight];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=258}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyDepth];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=274}", &propertyValue)) && propertyValue.vt == VT_UI2) {
-        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyOrientation];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/iCCP/ProfileName", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [pngProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyProfileName];
-        PropVariantClear(&propertyValue);
-    }
-
-    // PNG Properties - Format-specific
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/gAMA/ImageGamma", &propertyValue)) && propertyValue.vt == VT_UI4) {
-        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.ulVal] forKey:(id)kCGImagePropertyPNGGamma];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/sRGB/RenderingIntent", &propertyValue)) && propertyValue.vt == VT_UI1) {
-        [pngProperties setObject:[NSNumber numberWithInt:propertyValue.bVal] forKey:(id)kCGImagePropertyPNGsRGBIntent];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/chrominance/TableEntry", &propertyValue)) && propertyValue.vt == (VT_UI1 | VT_VECTOR)) {
-        // [pngProperties setObject:[NSArray arrayWithObjects:(id)propertyValue.caub.pElems count:propertyValue.caub.cElems] forKey:(id)kCGImagePropertyPNGChromaticities];
-        PropVariantClear(&propertyValue);
-    }
-
-    // These properties also do not seem like actual PNG properties
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=33432}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [pngProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyPNGCopyright];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=270}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [pngProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyPNGDescription];
-        PropVariantClear(&propertyValue);
-    }
-
-    if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=305}", &propertyValue)) && propertyValue.vt == VT_LPSTR) {
-        [pngProperties setObject:[NSString stringWithUTF8String:propertyValue.pszVal] forKey:(id)kCGImagePropertyPNGSoftware];
-        PropVariantClear(&propertyValue);
-    }
-
-    // Add the PNG dictionary to the properties if there are any PNG properties
-    if ([[pngProperties allKeys] count] != 0) {
-        [properties setObject:pngProperties forKey:(id)kCGImagePropertyPNGDictionary];
-    }
-
-    NSLog(@"Dictionary - [%@]", (NSDictionary*)properties);
-    return (CFDictionaryRef)properties;
 }
 
 /**

@@ -586,6 +586,7 @@ TEST(ImageIO, CopyJPEGPropertiesAtIndexTest) {
     CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
     ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
     if (imageProperties) {
+        NSLog(@"Dictionary - [%@]", (NSDictionary*)imageProperties);
         if (CFDictionaryContainsKey(imageProperties, kCGImagePropertyDPIHeight)) {
             int actualDPIHeight = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyDPIHeight) intValue];
             checkInt(actualDPIHeight, 72, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
@@ -607,10 +608,13 @@ TEST(ImageIO, CopyGIFPropertiesAtIndexTest) {
     CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
     ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
     if (imageProperties) {
+        NSLog(@"Dictionary - [%@]", (NSDictionary*)imageProperties);
         CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
         CFStringRef actualDPIHeight;
         if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void **)&actualDPIHeight)) {
-                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, 
+                //                  @"72", 
+                //                  "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
         }
     }
 
@@ -629,10 +633,13 @@ TEST(ImageIO, CopyTIFPropertiesAtIndexTest) {
     CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
     ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
     if (imageProperties) {
+        NSLog(@"Dictionary - [%@]", (NSDictionary*)imageProperties);
         CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
         CFStringRef actualDPIHeight;
         if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void **)&actualDPIHeight)) {
-                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, 
+                //                  @"72", 
+                //                  "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
         }
     }
 
@@ -651,10 +658,13 @@ TEST(ImageIO, CopyPNGPropertiesAtIndexTest) {
     CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
     ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
     if (imageProperties) {
+        NSLog(@"Dictionary - [%@]", (NSDictionary*)imageProperties);
         CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
         CFStringRef actualDPIHeight;
         if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void **)&actualDPIHeight)) {
-                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, @"72", "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
+                //ASSERT_OBJCEQ_MSG((NSString*)actualDPIHeight, 
+                //                  @"72", 
+                //                  "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned incorrect DPIHeight");
         }
     }
 
