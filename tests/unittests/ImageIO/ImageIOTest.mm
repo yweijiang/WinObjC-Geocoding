@@ -1447,6 +1447,8 @@ TEST(ImageIO, DestinationImageOptionsTest) {
     CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, (CFDictionaryRef)options);
     ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
     if (imageProperties) {
+        NSLog(@"%@", (__bridge NSDictionary*)imageProperties);
+
         CFStringRef expectedDPIHeight = static_cast<const CFStringRef>(@"72");
         CFStringRef actualDPIHeight;
         if (CFDictionaryGetValueIfPresent(imageProperties, kCGImagePropertyDPIHeight, (const void**)&actualDPIHeight)) {

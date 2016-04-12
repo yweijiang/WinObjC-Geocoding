@@ -31,8 +31,8 @@ const CFStringRef kUTTypeGIF = static_cast<const CFStringRef>(@"com.compuserve.g
 const CFStringRef kUTTypePNG = static_cast<const CFStringRef>(@"public.png");
 const CFStringRef kUTTypeBMP = static_cast<const CFStringRef>(@"com.microsoft.bmp");
 
-const unsigned int minutesPerDegree = 60;
-const unsigned int secondsPerMinute = 60;
+const unsigned int c_minutesPerDegree = 60;
+const unsigned int c_secondsPerMinute = 60;
 
 enum imageTypes { typeJPEG,
                   typeTIFF,
@@ -312,8 +312,8 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             PropVariantInit(&propertyToWrite);
             propertyToWrite.vt = VT_VECTOR | VT_UI8;
             double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
-            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*minutesPerDegree;
-            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*secondsPerMinute;
+            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
+            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
                 
             ULARGE_INTEGER gpsValues[3];
             gpsValues[0].LowPart = (int)gpsDegrees;
@@ -338,8 +338,8 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             PropVariantInit(&propertyToWrite);
             propertyToWrite.vt = VT_VECTOR | VT_UI8;
             double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) doubleValue];
-            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*minutesPerDegree;
-            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*secondsPerMinute;
+            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
+            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
                                 
             ULARGE_INTEGER gpsValues[3];
             gpsValues[0].LowPart = (int)gpsDegrees;
@@ -701,8 +701,8 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             PropVariantInit(&propertyToWrite);
             propertyToWrite.vt = VT_VECTOR | VT_UI8;
             double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
-            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*minutesPerDegree;
-            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*secondsPerMinute;
+            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
+            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
                 
             ULARGE_INTEGER gpsValues[3];
             gpsValues[0].LowPart = (int)gpsDegrees;
@@ -727,8 +727,8 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             PropVariantInit(&propertyToWrite);
             propertyToWrite.vt = VT_VECTOR | VT_UI8;
             double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) doubleValue];
-            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*minutesPerDegree;
-            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*secondsPerMinute;
+            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
+            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
                 
             ULARGE_INTEGER gpsValues[3];
             gpsValues[0].LowPart = (int)gpsDegrees;

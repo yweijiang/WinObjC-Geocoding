@@ -49,6 +49,9 @@ const CFStringRef kUTTypePNG = static_cast<const CFStringRef>(@"public.png");
 const CFStringRef kUTTypeBMP = static_cast<const CFStringRef>(@"com.microsoft.bmp");
 const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ico");
 
+const unsigned int c_minutesPerDegree = 60;
+const unsigned int c_secondsPerDegree = 3600;
+
 @implementation ImageSource
 - (instancetype)initWithData:(CFDataRef)data {
     if (self = [super init]) {
@@ -113,9 +116,9 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 @end
 
 CFDictionaryRef readJPEGProperties(IWICMetadataQueryReader* imageMetadataReader) {
-    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
     PROPVARIANT propertyValue;
     PropVariantInit(&propertyValue);
+    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
 
     // JPEG Properties - Common
     // DPIHeight and DPIWidth are saved in different places for different image formats, and these locations only represent
@@ -225,8 +228,8 @@ CFDictionaryRef readJPEGProperties(IWICMetadataQueryReader* imageMetadataReader)
         const double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
         const double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
         const double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] 
-                          forKey:(id)kCGImagePropertyGPSLatitude];
+        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + 
+            minutesPart/c_minutesPerDegree + secondsPart/(c_secondsPerDegree)] forKey:(id)kCGImagePropertyGPSLatitude];
     }
 
     PropVariantClear(&propertyValue);
@@ -239,8 +242,8 @@ CFDictionaryRef readJPEGProperties(IWICMetadataQueryReader* imageMetadataReader)
         const double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
         const double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
         const double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] 
-                          forKey:(id)kCGImagePropertyGPSLongitude];
+        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + 
+            minutesPart/c_minutesPerDegree + secondsPart/(c_secondsPerDegree)] forKey:(id)kCGImagePropertyGPSLongitude];
     }
 
     PropVariantClear(&propertyValue);
@@ -437,9 +440,9 @@ CFDictionaryRef readJPEGProperties(IWICMetadataQueryReader* imageMetadataReader)
 }
 
 CFDictionaryRef readTIFFProperties(IWICMetadataQueryReader* imageMetadataReader) {
-    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
     PROPVARIANT propertyValue;
     PropVariantInit(&propertyValue);
+    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
 
     // TIFF Properties - Common
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
@@ -473,7 +476,7 @@ CFDictionaryRef readTIFFProperties(IWICMetadataQueryReader* imageMetadataReader)
         [properties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyOrientation];
     }
 
-    //TIFF Properties - Format-specific
+    // TIFF Properties - Format-specific
     NSMutableDictionary *tiffProperties = [[NSMutableDictionary alloc] init];
     PropVariantClear(&propertyValue);
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/ifd/{ushort=259}", &propertyValue)) && propertyValue.vt == VT_UI2) {
@@ -618,8 +621,8 @@ CFDictionaryRef readTIFFProperties(IWICMetadataQueryReader* imageMetadataReader)
         double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
         double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
         double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] 
-                          forKey:(id)kCGImagePropertyGPSLatitude];
+        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + 
+            minutesPart/c_minutesPerDegree + secondsPart/(c_secondsPerDegree)] forKey:(id)kCGImagePropertyGPSLatitude];
     }
 
     PropVariantClear(&propertyValue);
@@ -632,8 +635,8 @@ CFDictionaryRef readTIFFProperties(IWICMetadataQueryReader* imageMetadataReader)
         double degreesPart = (double)propertyValue.cauh.pElems[0].LowPart/propertyValue.cauh.pElems[0].HighPart;
         double minutesPart = (double)propertyValue.cauh.pElems[1].LowPart/propertyValue.cauh.pElems[1].HighPart;
         double secondsPart = (double)propertyValue.cauh.pElems[2].LowPart/propertyValue.cauh.pElems[2].HighPart;
-        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + minutesPart/60 + secondsPart/3600] 
-                          forKey:(id)kCGImagePropertyGPSLongitude];
+        [gpsProperties setObject:[NSNumber numberWithDouble:degreesPart + 
+            minutesPart/c_minutesPerDegree + secondsPart/(c_secondsPerDegree)] forKey:(id)kCGImagePropertyGPSLongitude];
     }
 
     PropVariantClear(&propertyValue);
@@ -817,9 +820,9 @@ CFDictionaryRef readTIFFProperties(IWICMetadataQueryReader* imageMetadataReader)
 
 CFDictionaryRef readGIFProperties(IWICMetadataQueryReader* imageMetadataReader) {
     // GIF Properties - Common
-    NSMutableDictionary *gifProperties = [[NSMutableDictionary alloc] init];
     PROPVARIANT propertyValue;
     PropVariantInit(&propertyValue);
+    NSMutableDictionary *gifProperties = [[NSMutableDictionary alloc] init];
 
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/imgdesc/Width", &propertyValue)) && propertyValue.vt == VT_UI2) {
         [gifProperties setObject:[NSNumber numberWithInt:propertyValue.uiVal] forKey:(id)kCGImagePropertyPixelWidth];
@@ -852,10 +855,10 @@ CFDictionaryRef readGIFProperties(IWICMetadataQueryReader* imageMetadataReader) 
 
 CFDictionaryRef readPNGProperties(IWICMetadataQueryReader* imageMetadataReader) {
     // PNG Properties - Common
-    NSMutableDictionary *pngProperties = [[NSMutableDictionary alloc] init];
     PROPVARIANT propertyValue;
     PropVariantInit(&propertyValue);
-        
+    NSMutableDictionary *pngProperties = [[NSMutableDictionary alloc] init];
+
     // These properties are not found in the normal PNG property locations and don't seem to be actual PNG properties
     if (SUCCEEDED(imageMetadataReader->GetMetadataByName(L"/app1/ifd/{ushort=282}", &propertyValue)) && propertyValue.vt == VT_UI8) {
         [pngProperties setObject:[NSNumber numberWithDouble:(double)propertyValue.uhVal.LowPart/propertyValue.uhVal.HighPart] 
@@ -1308,7 +1311,7 @@ size_t CGImageSourceGetCount(CGImageSourceRef isrc) {
 
 /**
  @Status Caveat
- @Notes Very Limited source container properties supported currently  
+ @Notes A limited subset of source container properties are supported currently  
 */
 CFDictionaryRef CGImageSourceCopyProperties(CGImageSourceRef isrc, CFDictionaryRef options) {
     RETURN_NULL_IF(!isrc);
@@ -1323,7 +1326,7 @@ CFDictionaryRef CGImageSourceCopyProperties(CGImageSourceRef isrc, CFDictionaryR
 
 /**
  @Status Caveat
- @Notes Very Limited image frame properties supported currently  
+ @Notes A limited subset of frame properties are supported currently  
 */
 CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef isrc, size_t index, CFDictionaryRef options) {
     RETURN_NULL_IF(!isrc);
