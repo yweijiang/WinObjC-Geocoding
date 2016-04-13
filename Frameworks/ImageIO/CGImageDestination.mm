@@ -203,6 +203,8 @@ void setVariantFromDictionary(CFDictionaryRef dictionary,
         }
 
         writePropertyToFrame(&propertyToWrite, path, propertyWriter);
+        // We are using PropVariantInit instead of PropVariantClear because we are not allocating memory for the properties with pointers.
+        // Because of this, PropVariantClear would try to free pointers that it does not own, resulting in an exception.
     }
 }
 
@@ -215,6 +217,8 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
     propertyToWrite.uiVal = 8; // We are always using 8 bits per channel per pixel right now
     writePropertyToFrame(&propertyToWrite, L"/app1/ifd/{ushort=258}", propertyWriter);
 
+    // For these properties, PropVariantInit nulls the fields for the propertyToWrite, which is the behavior we want when we pass it
+    // a pointer to a stack-allocated data structure. PropVariantClear is not used because we don't want it to try to free these objects.
     PropVariantInit(&propertyToWrite);
     propertyToWrite.vt = VT_UI2;
     propertyToWrite.uiVal = imageWidth;
@@ -325,7 +329,6 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             propertyToWrite.cauh.cElems = 3;
             propertyToWrite.cauh.pElems = gpsValues;
             writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=2}", propertyWriter);
-            propertyToWrite.cauh.pElems = NULL;
         }
 
         setVariantFromDictionary(gpsDictionary,
@@ -351,7 +354,6 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             propertyToWrite.cauh.cElems = 3;
             propertyToWrite.cauh.pElems = gpsValues;
             writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=4}", propertyWriter);
-            propertyToWrite.cauh.pElems = NULL;
         }
 
         setVariantFromDictionary(gpsDictionary,
@@ -388,7 +390,6 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
                 propertyToWrite.cauh.cElems = 3;
                 propertyToWrite.cauh.pElems = gpsValues;
                 writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=7}", propertyWriter);
-                propertyToWrite.cauh.pElems = NULL;
             }
         }
 
@@ -408,12 +409,17 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             PropVariantInit(&propertyToWrite);
             propertyToWrite.vt = VT_VECTOR | VT_UI1;
             NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSVersion);
-            const char* versionArray = [imageGPSVersion UTF8String];
-            propertyToWrite.caub.cElems = 4;
-            for (int index = 0; index < propertyToWrite.cauh.cElems; index++) {
-                propertyToWrite.caub.pElems[index] = versionArray[index];
+            NSArray* splitGPSVersion = [imageGPSVersion componentsSeparatedByString:@"."];
+            if ([splitGPSVersion count] == 4) { // GPS version should be 4 shorts
+                UCHAR gpsVersion[4];
+                for (int index = 0; index < 4; index++) {
+                    gpsVersion[index] = (unsigned char)[[splitGPSVersion objectAtIndex:index] intValue];
+                }
+
+                propertyToWrite.caub.cElems = 4;
+                propertyToWrite.caub.pElems = gpsVersion;
+                writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=0}", propertyWriter);
             }
-            propertyToWrite.caub.pElems = NULL;
         }
     }
 
@@ -714,7 +720,6 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             propertyToWrite.cauh.cElems = 3;
             propertyToWrite.cauh.pElems = gpsValues;
             writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=2}", propertyWriter);
-            propertyToWrite.cauh.pElems = NULL;
         }
 
         setVariantFromDictionary(gpsDictionary,
@@ -740,7 +745,6 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             propertyToWrite.cauh.cElems = 3;
             propertyToWrite.cauh.pElems = gpsValues;
             writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=4}", propertyWriter);
-            propertyToWrite.cauh.pElems = NULL;
         }
 
         setVariantFromDictionary(gpsDictionary,
@@ -777,7 +781,6 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
                 propertyToWrite.cauh.cElems = 3;
                 propertyToWrite.cauh.pElems = gpsValues;
                 writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=7}", propertyWriter);
-                propertyToWrite.cauh.pElems = NULL;
             }
         }
 
@@ -797,13 +800,17 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
             PropVariantInit(&propertyToWrite);
             propertyToWrite.vt = VT_VECTOR | VT_UI1;
             NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSVersion);
-            const char* versionArray = [imageGPSVersion UTF8String];
-            propertyToWrite.caub.cElems = 4;
-            for (int index = 0; index < propertyToWrite.cauh.cElems; index++) {
-                propertyToWrite.caub.pElems[index] = versionArray[index];
+            NSArray* splitGPSVersion = [imageGPSVersion componentsSeparatedByString:@"."];
+            if ([splitGPSVersion count] == 4) { // GPS version should be 4 shorts
+                UCHAR gpsVersion[4];
+                for (int index = 0; index < 4; index++) {
+                    gpsVersion[index] = (unsigned char)[[splitGPSVersion objectAtIndex:index] shortValue];
+                }
+
+                propertyToWrite.caub.cElems = 4;
+                propertyToWrite.caub.pElems = gpsVersion;
+                writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=0}", propertyWriter);
             }
-            writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=0}", propertyWriter);
-            propertyToWrite.caub.pElems = NULL;
         }
     }
 
@@ -1355,7 +1362,7 @@ void CGImageDestinationSetProperties(CGImageDestinationRef idst, CFDictionaryRef
         PROPVARIANT propertyToWrite;
 
         PropVariantInit(&propertyToWrite);
-        propertyToWrite.vt = VT_UI1 | VT_VECTOR;
+        propertyToWrite.vt = VT_VECTOR | VT_UI1;
         propertyToWrite.caub.cElems = 11;
         propertyToWrite.caub.pElems = (unsigned char*)[@"NETSCAPE2.0" UTF8String];
         writePropertyToFrame(&propertyToWrite, L"/appext/Application", imageMetadataQueryWriter.Get());

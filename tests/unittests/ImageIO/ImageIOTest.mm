@@ -647,7 +647,8 @@ TEST(ImageIO, CopyTIFPropertiesAtIndexTest) {
 }
 
 TEST(ImageIO, CopyPNGPropertiesAtIndexTest) {
-    const wchar_t* imageFile = L"seafloor_256x256.png";
+    // const wchar_t* imageFile = L"seafloor_256x256.png";
+    const wchar_t* imageFile = L"Prospect_3024x4032.jpg";
     NSData* imageData = getDataFromImageFile(imageFile);
     ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
     NSDictionary* options = @{@"kCGImageSourceTypeIdentifierHint":@"kUTTypePNG",
@@ -1416,6 +1417,7 @@ TEST(ImageIO, DestinationImageOptionsTest) {
         (id)kCGImagePropertyGPSImgDirection:[NSNumber numberWithFloat:2.4],
         (id)kCGImagePropertyGPSImgDirectionRef:@"test",
         (id)kCGImagePropertyGPSTimeStamp:@"04:30:51.71",
+        (id)kCGImagePropertyGPSVersion:@"2.2.0.0",
     };
 
     // This actually works correctly here, where this user comment would give bad characters on iOS.
