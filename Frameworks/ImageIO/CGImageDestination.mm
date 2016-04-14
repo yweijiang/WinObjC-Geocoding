@@ -189,7 +189,6 @@ void setVariantFromDictionary(CFDictionaryRef dictionary,
             setHighLowPartsSigned(&propertyToWrite.hVal, doubleOut);
         } else if (propertyType == VT_LPSTR) {
             propertyToWrite.pszVal = (char*)[(NSString*)CFDictionaryGetValue(dictionary, key) UTF8String];
-            PropVariantInit(&propertyToWrite);
         } else if (propertyType == VT_LPWSTR) {
             NSString* wideStringBuffer = (NSString*)CFDictionaryGetValue(dictionary, key);
             propertyToWrite.pwszVal = (wchar_t*)[wideStringBuffer cStringUsingEncoding:NSUnicodeStringEncoding];
@@ -206,6 +205,328 @@ void setVariantFromDictionary(CFDictionaryRef dictionary,
         // We are using PropVariantInit instead of PropVariantClear because we are not allocating memory for the properties with pointers.
         // Because of this, PropVariantClear would try to free pointers that it does not own, resulting in an exception.
     }
+}
+
+void writeGPSProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRef properties, LPCWSTR prefix) {
+    CFDictionaryRef gpsDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGPSDictionary);
+    std::wstring gpsPath;
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=6}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSAltitude,
+                             VT_UI8,
+                             gpsPath.c_str(),
+                             propertyWriter);
+    
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=5}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSAltitudeRef,
+                             VT_UI1,
+                             gpsPath.c_str(),
+                             propertyWriter);
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=29}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSDateStamp,
+                             VT_LPSTR,
+                             gpsPath.c_str(),
+                             propertyWriter);
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=11}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSDOP,
+                             VT_UI8,
+                             gpsPath.c_str(),
+                             propertyWriter);
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=17}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSImgDirection,
+                             VT_UI8,
+                             gpsPath.c_str(),
+                             propertyWriter);
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=16}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSImgDirectionRef,
+                             VT_LPSTR,
+                             gpsPath.c_str(),
+                             propertyWriter);
+    
+    // Manually writing VT_VECTOR properties because they are all parsed their own way
+    PROPVARIANT propertyToWrite;
+    if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLatitude)) {
+        PropVariantInit(&propertyToWrite);
+        propertyToWrite.vt = VT_VECTOR | VT_UI8;
+        double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
+        double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
+        double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
+                
+        ULARGE_INTEGER gpsValues[3];
+        gpsValues[0].LowPart = (int)gpsDegrees;
+        gpsValues[0].HighPart = 1;
+        gpsValues[1].LowPart = (int)gpsMinutes;
+        gpsValues[1].HighPart = 1;
+        setHighLowPartsUnsigned(&gpsValues[2], gpsSeconds);
+
+        propertyToWrite.cauh.cElems = 3;
+        propertyToWrite.cauh.pElems = gpsValues;
+        gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=2}";
+        writePropertyToFrame(&propertyToWrite, gpsPath.c_str(), propertyWriter);
+    }
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=1}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSLatitudeRef,
+                             VT_LPSTR,
+                             gpsPath.c_str(),
+                             propertyWriter);
+
+    if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLongitude)) {
+        PropVariantInit(&propertyToWrite);
+        propertyToWrite.vt = VT_VECTOR | VT_UI8;
+        double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) doubleValue];
+        double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
+        double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
+                                
+        ULARGE_INTEGER gpsValues[3];
+        gpsValues[0].LowPart = (int)gpsDegrees;
+        gpsValues[0].HighPart = 1;
+        gpsValues[1].LowPart = (int)gpsMinutes;
+        gpsValues[1].HighPart = 1;
+        setHighLowPartsUnsigned(&gpsValues[2], gpsSeconds);
+
+        propertyToWrite.cauh.cElems = 3;
+        propertyToWrite.cauh.pElems = gpsValues;
+        gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=4}";
+        writePropertyToFrame(&propertyToWrite, gpsPath.c_str(), propertyWriter);
+    }
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=3}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSLongitudeRef,
+                             VT_LPSTR,
+                             gpsPath.c_str(),
+                             propertyWriter);
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=13}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSSpeed,
+                             VT_UI8,
+                             gpsPath.c_str(),
+                             propertyWriter);
+    
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=12}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSSpeedRef,
+                             VT_LPSTR,
+                             gpsPath.c_str(),
+                             propertyWriter);
+
+    if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSTimeStamp)) {
+        PropVariantInit(&propertyToWrite);
+        propertyToWrite.vt = VT_VECTOR | VT_UI8;
+        NSString* imageGPSTimeStamp = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTimeStamp);
+        NSArray* splitTimeStamp = [imageGPSTimeStamp componentsSeparatedByString:@":"];
+        if ([splitTimeStamp count] == 3) { // Expect 3 elements for hours, minutes, seconds, otherwise do nothing
+            ULARGE_INTEGER gpsValues[3];
+            gpsValues[0].LowPart = (int)[[splitTimeStamp objectAtIndex:0] intValue];
+            gpsValues[0].HighPart = 1;
+            gpsValues[1].LowPart = (int)[[splitTimeStamp objectAtIndex:1] intValue];
+            gpsValues[1].HighPart = 1;
+            setHighLowPartsUnsigned(&gpsValues[2], [[splitTimeStamp objectAtIndex:2] doubleValue]);
+
+            propertyToWrite.cauh.cElems = 3;
+            propertyToWrite.cauh.pElems = gpsValues;
+            gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=7}";
+            writePropertyToFrame(&propertyToWrite, gpsPath.c_str(), propertyWriter);
+        }
+    }
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=15}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSTrack,
+                             VT_UI8,
+                             gpsPath.c_str(),
+                             propertyWriter);
+
+    gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=14}";
+    setVariantFromDictionary(gpsDictionary,
+                             kCGImagePropertyGPSTrackRef,
+                             VT_LPSTR,
+                             gpsPath.c_str(),
+                             propertyWriter);
+
+    if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSVersion)) {
+        PropVariantInit(&propertyToWrite);
+        propertyToWrite.vt = VT_VECTOR | VT_UI1;
+        NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSVersion);
+        NSArray* splitGPSVersion = [imageGPSVersion componentsSeparatedByString:@"."];
+        if ([splitGPSVersion count] == 4) { // GPS version should be 4 shorts
+            UCHAR gpsVersion[4];
+            for (int index = 0; index < 4; index++) {
+                gpsVersion[index] = (unsigned char)[[splitGPSVersion objectAtIndex:index] intValue];
+            }
+
+            propertyToWrite.caub.cElems = 4;
+            propertyToWrite.caub.pElems = gpsVersion;
+            gpsPath = std::wstring(prefix) + L"/ifd/gps/{ushort=0}";
+            writePropertyToFrame(&propertyToWrite, gpsPath.c_str(), propertyWriter);
+        }
+    }
+}
+
+void writeExifProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRef properties, LPCWSTR prefix) {
+    CFDictionaryRef exifDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyExifDictionary);
+    std::wstring exifPath;
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=33434}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifExposureTime,
+                             VT_UI8,
+                             exifPath.c_str(),
+                             propertyWriter);
+    
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=37378}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifApertureValue,
+                             VT_UI8,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=37379}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifBrightnessValue,
+                             VT_UI8,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=36868}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifDateTimeDigitized,
+                             VT_LPSTR,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=36867}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifDateTimeOriginal,
+                             VT_LPSTR,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=41988}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifDigitalZoomRatio,
+                             VT_UI8,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=41986}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifExposureMode,
+                             VT_UI2,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=34850}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifExposureProgram,
+                             VT_UI2,
+                             exifPath.c_str(),
+                             propertyWriter);
+    
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=37385}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifFlash,
+                             VT_UI2,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=33437}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifFNumber,
+                             VT_UI8,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=37386}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifFocalLength,
+                             VT_UI8,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=34867}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifISOSpeedRatings,
+                             VT_UI4,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=42035}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifLensMake,
+                             VT_LPSTR,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=42036}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifLensModel,
+                             VT_LPSTR,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=37500}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifMakerNote,
+                             VT_BLOB,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=37383}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifMeteringMode,
+                             VT_UI2,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=41990}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifSceneCaptureType,
+                             VT_UI2,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=37377}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifShutterSpeedValue,
+                             VT_I8,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    // Apple does not seem to handle non-ASCII characters correctly for user comments. This is not replicated here.
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=37510}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifUserComment,
+                             VT_LPWSTR,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=36864}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifVersion,
+                             VT_BLOB,
+                             exifPath.c_str(),
+                             propertyWriter);
+
+    exifPath = std::wstring(prefix) + L"/ifd/exif/{ushort=41987}";
+    setVariantFromDictionary(exifDictionary,
+                             kCGImagePropertyExifWhiteBalance,
+                             VT_UI2,
+                             exifPath.c_str(),
+                             propertyWriter);
 }
 
 void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRef properties, int imageWidth, int imageHeight) {
@@ -270,157 +591,9 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
                              VT_UI2,
                              L"/app1/ifd/{ushort=274}",
                              propertyWriter);
-            
-    // GPS information, must be found in GPS Dictionary
+
     if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGPSDictionary)) {
-        CFDictionaryRef gpsDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGPSDictionary);
-        
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSAltitude,
-                                 VT_UI8,
-                                 L"/app1/ifd/gps/{ushort=6}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSAltitudeRef,
-                                 VT_UI1,
-                                 L"/app1/ifd/gps/{ushort=5}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSDateStamp,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/gps/{ushort=29}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSDOP,
-                                 VT_UI8,
-                                 L"/app1/ifd/gps/{ushort=11}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSImgDirection,
-                                 VT_UI8,
-                                 L"/app1/ifd/gps/{ushort=17}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSImgDirectionRef,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/gps/{ushort=16}",
-                                 propertyWriter);
-            
-        // Manually writing VT_VECTOR properties because they are all parsed their own way
-        if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLatitude)) {
-            PropVariantInit(&propertyToWrite);
-            propertyToWrite.vt = VT_VECTOR | VT_UI8;
-            double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
-            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
-            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
-                
-            ULARGE_INTEGER gpsValues[3];
-            gpsValues[0].LowPart = (int)gpsDegrees;
-            gpsValues[0].HighPart = 1;
-            gpsValues[1].LowPart = (int)gpsMinutes;
-            gpsValues[1].HighPart = 1;
-            setHighLowPartsUnsigned(&gpsValues[2], gpsSeconds);
-
-            propertyToWrite.cauh.cElems = 3;
-            propertyToWrite.cauh.pElems = gpsValues;
-            writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=2}", propertyWriter);
-        }
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSLatitudeRef,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/gps/{ushort=1}",
-                                 propertyWriter);
-
-        if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLongitude)) {
-            PropVariantInit(&propertyToWrite);
-            propertyToWrite.vt = VT_VECTOR | VT_UI8;
-            double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) doubleValue];
-            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
-            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
-                                
-            ULARGE_INTEGER gpsValues[3];
-            gpsValues[0].LowPart = (int)gpsDegrees;
-            gpsValues[0].HighPart = 1;
-            gpsValues[1].LowPart = (int)gpsMinutes;
-            gpsValues[1].HighPart = 1;
-            setHighLowPartsUnsigned(&gpsValues[2], gpsSeconds);
-
-            propertyToWrite.cauh.cElems = 3;
-            propertyToWrite.cauh.pElems = gpsValues;
-            writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=4}", propertyWriter);
-        }
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSLongitudeRef,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/gps/{ushort=3}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSSpeed,
-                                 VT_UI8,
-                                 L"/app1/ifd/gps/{ushort=13}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSSpeedRef,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/gps/{ushort=12}",
-                                 propertyWriter);
-
-        if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSTimeStamp)) {
-            PropVariantInit(&propertyToWrite);
-            propertyToWrite.vt = VT_VECTOR | VT_UI8;
-            NSString* imageGPSTimeStamp = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTimeStamp);
-            NSArray* splitTimeStamp = [imageGPSTimeStamp componentsSeparatedByString:@":"];
-            if ([splitTimeStamp count] == 3) { // Expect 3 elements for hours, minutes, seconds, otherwise do nothing
-                ULARGE_INTEGER gpsValues[3];
-                gpsValues[0].LowPart = (int)[[splitTimeStamp objectAtIndex:0] intValue];
-                gpsValues[0].HighPart = 1;
-                gpsValues[1].LowPart = (int)[[splitTimeStamp objectAtIndex:1] intValue];
-                gpsValues[1].HighPart = 1;
-                setHighLowPartsUnsigned(&gpsValues[2], [[splitTimeStamp objectAtIndex:2] doubleValue]);
-
-                propertyToWrite.cauh.cElems = 3;
-                propertyToWrite.cauh.pElems = gpsValues;
-                writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=7}", propertyWriter);
-            }
-        }
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSTrack,
-                                 VT_UI8,
-                                 L"/app1/ifd/gps/{ushort=15}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSTrackRef,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/gps/{ushort=14}",
-                                 propertyWriter);
-
-        if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSVersion)) {
-            PropVariantInit(&propertyToWrite);
-            propertyToWrite.vt = VT_VECTOR | VT_UI1;
-            NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSVersion);
-            NSArray* splitGPSVersion = [imageGPSVersion componentsSeparatedByString:@"."];
-            if ([splitGPSVersion count] == 4) { // GPS version should be 4 shorts
-                UCHAR gpsVersion[4];
-                for (int index = 0; index < 4; index++) {
-                    gpsVersion[index] = (unsigned char)[[splitGPSVersion objectAtIndex:index] intValue];
-                }
-
-                propertyToWrite.caub.cElems = 4;
-                propertyToWrite.caub.pElems = gpsVersion;
-                writePropertyToFrame(&propertyToWrite, L"/app1/ifd/gps/{ushort=0}", propertyWriter);
-            }
-        }
+        writeGPSProperties(propertyWriter, properties, L"/app1");
     }
 
     // The Exif image width and height are part of the Exif dictionary which shouldn't be written if no Exif properties
@@ -440,132 +613,7 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
 
     // Exif information, must be found in Exif Dictionary
     if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyExifDictionary)) {
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifExposureTime,
-                                 VT_UI8,
-                                 L"/app1/ifd/exif/{ushort=33434}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifApertureValue,
-                                 VT_UI8,
-                                 L"/app1/ifd/exif/{ushort=37378}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifBrightnessValue,
-                                 VT_UI8,
-                                 L"/app1/ifd/exif/{ushort=37379}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifDateTimeDigitized,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/exif/{ushort=36868}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifDateTimeOriginal,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/exif/{ushort=36867}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifDigitalZoomRatio,
-                                 VT_UI8,
-                                 L"/app1/ifd/exif/{ushort=41988}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifExposureMode,
-                                 VT_UI2,
-                                 L"/app1/ifd/exif/{ushort=41986}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifExposureProgram,
-                                 VT_UI2,
-                                 L"/app1/ifd/exif/{ushort=34850}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifFlash,
-                                 VT_UI2,
-                                 L"/app1/ifd/exif/{ushort=37385}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifFNumber,
-                                 VT_UI8,
-                                 L"/app1/ifd/exif/{ushort=33437}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifFocalLength,
-                                 VT_UI8,
-                                 L"/app1/ifd/exif/{ushort=37386}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifISOSpeedRatings,
-                                 VT_UI4,
-                                 L"/app1/ifd/exif/{ushort=34867}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifLensMake,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/exif/{ushort=42035}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifLensModel,
-                                 VT_LPSTR,
-                                 L"/app1/ifd/exif/{ushort=42036}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifMakerNote,
-                                 VT_BLOB,
-                                 L"/app1/ifd/exif/{ushort=37500}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifMeteringMode,
-                                 VT_UI2,
-                                 L"/app1/ifd/exif/{ushort=37383}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifSceneCaptureType,
-                                 VT_UI2,
-                                 L"/app1/ifd/exif/{ushort=41990}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifShutterSpeedValue,
-                                 VT_I8,
-                                 L"/app1/ifd/exif/{ushort=37377}",
-                                 propertyWriter);
-
-        // Apple does not seem to handle non-ASCII characters correctly for user comments. This is not replicated here.
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifUserComment,
-                                 VT_LPWSTR,
-                                 L"/app1/ifd/exif/{ushort=37510}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifVersion,
-                                 VT_BLOB,
-                                 L"/app1/ifd/exif/{ushort=36864}",
-                                 propertyWriter);
-            
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifWhiteBalance,
-                                 VT_UI2,
-                                 L"/app1/ifd/exif/{ushort=41987}",
-                                 propertyWriter);
+        writeExifProperties(propertyWriter, properties, L"/app1");
     }
 }
 
@@ -663,155 +711,8 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
                              L"/ifd/{ushort=274}",
                              propertyWriter);
 
-    // GPS information, must be found in GPS Dictionary
     if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGPSDictionary)) {
-        CFDictionaryRef gpsDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGPSDictionary);
-        
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSAltitude,
-                                 VT_UI8,
-                                 L"/ifd/gps/{ushort=6}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSAltitudeRef,
-                                 VT_UI1,
-                                 L"/app1/ifd/gps/{ushort=5}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSDateStamp,
-                                 VT_LPSTR,
-                                 L"/ifd/gps/{ushort=29}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSDOP,
-                                 VT_UI8,
-                                 L"/ifd/gps/{ushort=11}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSImgDirection,
-                                 VT_UI8,
-                                 L"/ifd/gps/{ushort=17}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSImgDirectionRef,
-                                 VT_LPSTR,
-                                 L"/ifd/gps/{ushort=16}",
-                                 propertyWriter);
-
-        if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLatitude)) {
-            PropVariantInit(&propertyToWrite);
-            propertyToWrite.vt = VT_VECTOR | VT_UI8;
-            double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLatitude) doubleValue];
-            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
-            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
-                
-            ULARGE_INTEGER gpsValues[3];
-            gpsValues[0].LowPart = (int)gpsDegrees;
-            gpsValues[0].HighPart = 1;
-            gpsValues[1].LowPart = (int)gpsMinutes;
-            gpsValues[1].HighPart = 1;
-            setHighLowPartsUnsigned(&gpsValues[2], gpsSeconds);
-
-            propertyToWrite.cauh.cElems = 3;
-            propertyToWrite.cauh.pElems = gpsValues;
-            writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=2}", propertyWriter);
-        }
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSLatitudeRef,
-                                 VT_LPSTR,
-                                 L"/ifd/gps/{ushort=1}",
-                                 propertyWriter);
-
-        if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSLongitude)) {
-            PropVariantInit(&propertyToWrite);
-            propertyToWrite.vt = VT_VECTOR | VT_UI8;
-            double gpsDegrees = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSLongitude) doubleValue];
-            double gpsMinutes = (gpsDegrees - (int)gpsDegrees)*c_minutesPerDegree;
-            double gpsSeconds = (gpsMinutes - (int)gpsMinutes)*c_secondsPerMinute;
-                
-            ULARGE_INTEGER gpsValues[3];
-            gpsValues[0].LowPart = (int)gpsDegrees;
-            gpsValues[0].HighPart = 1;
-            gpsValues[1].LowPart = (int)gpsMinutes;
-            gpsValues[1].HighPart = 1;
-            setHighLowPartsUnsigned(&gpsValues[2], gpsSeconds);
-
-            propertyToWrite.cauh.cElems = 3;
-            propertyToWrite.cauh.pElems = gpsValues;
-            writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=4}", propertyWriter);
-        }
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSLongitudeRef,
-                                 VT_LPSTR,
-                                 L"/ifd/gps/{ushort=3}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSSpeed,
-                                 VT_UI8,
-                                 L"/ifd/gps/{ushort=13}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSSpeedRef,
-                                 VT_LPSTR,
-                                 L"/ifd/gps/{ushort=12}",
-                                 propertyWriter);
-
-        if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSTimeStamp)) {
-            PropVariantInit(&propertyToWrite);
-            propertyToWrite.vt = VT_VECTOR | VT_UI8;
-            NSString* imageGPSTimeStamp = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSTimeStamp);
-            NSArray* splitTimeStamp = [imageGPSTimeStamp componentsSeparatedByString:@":"];
-            if ([splitTimeStamp count] == 3) { // Expect 3 elements for hours, minutes, seconds, otherwise do nothing
-                ULARGE_INTEGER gpsValues[3];
-                gpsValues[0].LowPart = (int)[[splitTimeStamp objectAtIndex:0] intValue];
-                gpsValues[0].HighPart = 1;
-                gpsValues[1].LowPart = (int)[[splitTimeStamp objectAtIndex:1] intValue];
-                gpsValues[1].HighPart = 1;
-                setHighLowPartsUnsigned(&gpsValues[2], [[splitTimeStamp objectAtIndex:2] doubleValue]);
-
-                propertyToWrite.cauh.cElems = 3;
-                propertyToWrite.cauh.pElems = gpsValues;
-                writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=7}", propertyWriter);
-            }
-        }
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSTrack,
-                                 VT_UI8,
-                                 L"/ifd/gps/{ushort=15}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(gpsDictionary,
-                                 kCGImagePropertyGPSTrackRef,
-                                 VT_LPSTR,
-                                 L"/ifd/gps/{ushort=14}",
-                                 propertyWriter);
-
-        if (CFDictionaryContainsKey(gpsDictionary, kCGImagePropertyGPSVersion)) {
-            PropVariantInit(&propertyToWrite);
-            propertyToWrite.vt = VT_VECTOR | VT_UI1;
-            NSString* imageGPSVersion = (NSString*)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSVersion);
-            NSArray* splitGPSVersion = [imageGPSVersion componentsSeparatedByString:@"."];
-            if ([splitGPSVersion count] == 4) { // GPS version should be 4 shorts
-                UCHAR gpsVersion[4];
-                for (int index = 0; index < 4; index++) {
-                    gpsVersion[index] = (unsigned char)[[splitGPSVersion objectAtIndex:index] shortValue];
-                }
-
-                propertyToWrite.caub.cElems = 4;
-                propertyToWrite.caub.pElems = gpsVersion;
-                writePropertyToFrame(&propertyToWrite, L"/ifd/gps/{ushort=0}", propertyWriter);
-            }
-        }
+        writeGPSProperties(propertyWriter, properties, L"");
     }
 
     // Exif information, must be found in Exif Dictionary
@@ -829,131 +730,7 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
         propertyToWrite.uiVal = imageHeight;
         writePropertyToFrame(&propertyToWrite, L"/ifd/exif/{ushort=40963}", propertyWriter);
 
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifExposureTime,
-                                 VT_UI8,
-                                 L"/ifd/exif/{ushort=33434}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifApertureValue,
-                                 VT_UI8,
-                                 L"/ifd/exif/{ushort=37378}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifBrightnessValue,
-                                 VT_UI8,
-                                 L"/ifd/exif/{ushort=37379}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifDateTimeDigitized,
-                                 VT_LPSTR,
-                                 L"/ifd/exif/{ushort=36868}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifDateTimeOriginal,
-                                 VT_LPSTR,
-                                 L"/ifd/exif/{ushort=36867}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifDigitalZoomRatio,
-                                 VT_UI8,
-                                 L"/ifd/exif/{ushort=41988}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifExposureMode,
-                                 VT_UI2,
-                                 L"/ifd/exif/{ushort=41986}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifExposureProgram,
-                                 VT_UI2,
-                                 L"/ifd/exif/{ushort=34850}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifFlash,
-                                 VT_UI2,
-                                 L"/ifd/exif/{ushort=37385}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifFNumber,
-                                 VT_UI8,
-                                 L"/ifd/exif/{ushort=33437}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifFocalLength,
-                                 VT_UI8,
-                                 L"/ifd/exif/{ushort=37386}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifISOSpeedRatings,
-                                 VT_UI4,
-                                 L"/ifd/exif/{ushort=34867}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifLensMake,
-                                 VT_LPSTR,
-                                 L"/ifd/exif/{ushort=42035}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifLensModel,
-                                 VT_LPSTR,
-                                 L"/ifd/exif/{ushort=42036}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifMakerNote,
-                                 VT_BLOB,
-                                 L"/ifd/exif/{ushort=37500}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifMeteringMode,
-                                 VT_UI2,
-                                 L"/ifd/exif/{ushort=37383}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifSceneCaptureType,
-                                 VT_UI2,
-                                 L"/ifd/exif/{ushort=41990}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifShutterSpeedValue,
-                                 VT_I8,
-                                 L"/ifd/exif/{ushort=37377}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifUserComment,
-                                 VT_LPWSTR,
-                                 L"/ifd/exif/{ushort=37510}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifVersion,
-                                 VT_BLOB,
-                                 L"/ifd/exif/{ushort=36864}",
-                                 propertyWriter);
-
-        setVariantFromDictionary(exifDictionary,
-                                 kCGImagePropertyExifWhiteBalance,
-                                 VT_UI2,
-                                 L"/ifd/exif/{ushort=41987}",
-                                 propertyWriter);
+        writeExifProperties(propertyWriter, properties, L"");
     }
 
     if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyTIFFDictionary)) {
@@ -1160,6 +937,8 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     }
 
     // JPEG lossy compression property
+    // Note that while the scale goes from 0.0 to 1.0 on both Windows and iOS, WIC treats 0.0 as a much worse
+    // quality than iOS. In iOS, 0.0 looks relatively similar, while in Windows the image is heavily warped.
     if (properties && CFDictionaryContainsKey(properties, kCGImageDestinationLossyCompressionQuality) &&
             imageDestination.type == typeJPEG) {
         PROPBAG2 option = { 0 };
@@ -1328,8 +1107,9 @@ CFTypeID CGImageDestinationGetTypeID() {
 }
 
 /**
- @Status Stub
- @Notes
+ @Status Caveat
+ @Notes Most image properties are actually handled as part of AddImage, and SetProperties should only handle properties
+        that are applied to all frames of an image. As such, currently only GIF loop count is set here.
 */
 void CGImageDestinationSetProperties(CGImageDestinationRef idst, CFDictionaryRef properties) {
     if (!idst) {
@@ -1376,8 +1156,7 @@ void CGImageDestinationSetProperties(CGImageDestinationRef idst, CFDictionaryRef
 
 /**
  @Status Caveat
- @Notes All data is not finalized until CFRelease is called on the idst object
-        because the idst object contains pointers for the stream and encoder.
+ @Notes Current release supports JPEG, BMP, PNG, GIF, & TIFF image formats only 
 */
 bool CGImageDestinationFinalize(CGImageDestinationRef idst) {
     if (!idst) {
