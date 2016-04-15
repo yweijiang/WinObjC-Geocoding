@@ -550,41 +550,28 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
     propertyToWrite.uiVal = imageHeight;
     writePropertyToFrame(&propertyToWrite, L"/app1/ifd/{ushort=257}", propertyWriter);
 
-    // Set Resolutions values to default 72 DPI for X and Y, then overwrite them if they are in Dictionary
-    PropVariantInit(&propertyToWrite);
-    propertyToWrite.vt = VT_UI8;
-    setHighLowPartsUnsigned(&propertyToWrite.uhVal, 72.0);
-    writePropertyToFrame(&propertyToWrite, L"/app1/ifd/{ushort=282}", propertyWriter);
+    // iOS only sets these if both are present
+    if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyDPIWidth)
+                   && CFDictionaryContainsKey(properties, kCGImagePropertyDPIHeight)) {
+        setVariantFromDictionary(properties,
+                                 kCGImagePropertyDPIWidth,
+                                 VT_UI8,
+                                 L"/app1/ifd/{ushort=282}",
+                                 propertyWriter);
 
-    PropVariantInit(&propertyToWrite);
-    propertyToWrite.vt = VT_UI8;
-    setHighLowPartsUnsigned(&propertyToWrite.uhVal, 72.0);
-    writePropertyToFrame(&propertyToWrite, L"/app1/ifd/{ushort=283}", propertyWriter);
-
-    // Resolution Unit: This is set even for JPEG, this should be a shared property between JPEG and TIFF
-    // in different locations but Apple only defines it as a TIFF property
-    PropVariantInit(&propertyToWrite);
-    propertyToWrite.vt = VT_UI2;
-    propertyToWrite.uiVal = 2; // 2 = inches, 3 = centimeters
-    writePropertyToFrame(&propertyToWrite, L"/app1/ifd/{ushort=296}", propertyWriter);
-
-    setVariantFromDictionary(properties,
-                             kCGImagePropertyDPIWidth,
-                             VT_UI8,
-                             L"/app1/ifd/{ushort=282}",
-                             propertyWriter);
-
-    setVariantFromDictionary(properties,
-                             kCGImagePropertyDPIHeight,
-                             VT_UI8,
-                             L"/app1/ifd/{ushort=283}",
-                             propertyWriter);
-
-    setVariantFromDictionary(properties,
-                             kCGImagePropertyTIFFResolutionUnit,
-                             VT_UI2,
-                             L"/app1/ifd/{ushort=296}",
-                             propertyWriter);
+        setVariantFromDictionary(properties,
+                                 kCGImagePropertyDPIHeight,
+                                 VT_UI8,
+                                 L"/app1/ifd/{ushort=283}",
+                                 propertyWriter);
+        
+        // Resolution Unit: This is used even for JPEG, this should be a shared property between JPEG and TIFF
+        // in different locations but Apple only defines it as a TIFF property
+        PropVariantInit(&propertyToWrite);
+        propertyToWrite.vt = VT_UI2;
+        propertyToWrite.uiVal = 2; // 2 = inches, 3 = centimeters
+        writePropertyToFrame(&propertyToWrite, L"/app1/ifd/{ushort=296}", propertyWriter);
+    }
 
     setVariantFromDictionary(properties,
                              kCGImagePropertyOrientation,
@@ -615,6 +602,35 @@ void writeJPEGProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
     if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyExifDictionary)) {
         writeExifProperties(propertyWriter, properties, L"/app1");
     }
+
+    // It is possible to pass in a TIFF dictionary for JPEG files, due to some of the IFD tags being specified as TIFF tags
+    if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyTIFFDictionary)) {
+        CFDictionaryRef tiffDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyTIFFDictionary);
+
+        // iOS uses this behavior to set Width and Height. Behavior for leaving these empty is not replicated.
+        if (CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFXResolution)
+            && CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFYResolution)) {
+            setVariantFromDictionary(tiffDictionary,
+                                     kCGImagePropertyTIFFXResolution,
+                                     VT_UI8,
+                                     L"/app1/ifd/{ushort=282}",
+                                     propertyWriter);
+
+            setVariantFromDictionary(tiffDictionary,
+                                     kCGImagePropertyTIFFYResolution,
+                                     VT_UI8,
+                                     L"/app1/ifd/{ushort=283}",
+                                     propertyWriter);
+
+            // Resolution Unit: This is used even for JPEG, this should be a shared property between JPEG and TIFF
+            // in different locations but Apple only defines it as a TIFF property
+            setVariantFromDictionary(tiffDictionary,
+                                     kCGImagePropertyTIFFResolutionUnit,
+                                     VT_UI2,
+                                     L"/app1/ifd/{ushort=296}",
+                                     propertyWriter);
+        }
+    }
 }
 
 void writeGIFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRef properties, int imageWidth, int imageHeight) {
@@ -630,18 +646,31 @@ void writeGIFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRef
     propertyToWrite.uiVal = imageHeight;
     writePropertyToFrame(&propertyToWrite, L"/imgdesc/Height", propertyWriter);
 
+    // Write 0 to delay time first, this gets overwritten if one is specified. This is needed to match iOS.
+    PropVariantInit(&propertyToWrite);
+    propertyToWrite.vt = VT_UI2;
+    propertyToWrite.uiVal = 0.0;
+    writePropertyToFrame(&propertyToWrite, L"/grctlext/Delay", propertyWriter);
+
     if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyGIFDictionary)) {
         CFDictionaryRef gifDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGIFDictionary);
             
-        setVariantFromDictionary(gifDictionary,
-                                 kCGImagePropertyGIFDelayTime,
-                                 VT_UI2,
-                                 L"/grctlext/Delay",
-                                 propertyWriter);
+        // Manually writing delay time because it is passed as number of seconds, written as number of 1/100ths of a second
+        if (CFDictionaryContainsKey(gifDictionary, kCGImagePropertyGIFDelayTime)) {
+            PropVariantInit(&propertyToWrite);
+            propertyToWrite.vt = VT_UI2;
+            float gifDelayTime = [(id)CFDictionaryGetValue(gifDictionary, kCGImagePropertyGIFDelayTime) floatValue];
+            propertyToWrite.uiVal = (unsigned short)(gifDelayTime * 100);
+            writePropertyToFrame(&propertyToWrite, L"/grctlext/Delay", propertyWriter);
+        }
     }
 }
 
-void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRef properties, int imageWidth, int imageHeight) {
+void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, 
+                         CFDictionaryRef properties,
+                         int imageWidth, 
+                         int imageHeight,
+                         IWICBitmapFrameEncode* imageFrame) {
     PROPVARIANT propertyToWrite;
 
     PropVariantInit(&propertyToWrite);
@@ -671,39 +700,23 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
     propertyToWrite.uiVal = 2; // RGB
     writePropertyToFrame(&propertyToWrite, L"/ifd/{ushort=262}", propertyWriter);
 
-    // Set Resolutions values to default 72 DPI for X and Y, then overwrite them if they are in Dictionary
-    PropVariantInit(&propertyToWrite);
-    propertyToWrite.vt = VT_UI8;
-    setHighLowPartsUnsigned(&propertyToWrite.uhVal, 72.0);
-    writePropertyToFrame(&propertyToWrite, L"/ifd/{ushort=282}", propertyWriter);
+    // TIFF on iOS uses this behavior to set Width and Height
+    // Width and Height for TIFF files must be set by SetResolution() in WIC over writing to the metadata fields
+    bool tiffResolutionFlag = false;
+    if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyDPIWidth)
+                   && CFDictionaryContainsKey(properties, kCGImagePropertyDPIHeight)) {
+        tiffResolutionFlag = true;
 
-    PropVariantInit(&propertyToWrite);
-    propertyToWrite.vt = VT_UI8;
-    setHighLowPartsUnsigned(&propertyToWrite.uhVal, 72.0);
-    writePropertyToFrame(&propertyToWrite, L"/ifd/{ushort=283}", propertyWriter);
+        double tiffDPIWidth = [(id)CFDictionaryGetValue(properties, kCGImagePropertyDPIWidth) doubleValue];
+        double tiffDPIHeight = [(id)CFDictionaryGetValue(properties, kCGImagePropertyDPIHeight) doubleValue];
 
-    PropVariantInit(&propertyToWrite);
-    propertyToWrite.vt = VT_UI2;
-    propertyToWrite.uiVal = 2; // 2 = inches, 3 = centimeters
-    writePropertyToFrame(&propertyToWrite, L"/ifd/{ushort=296}", propertyWriter);
+        imageFrame->SetResolution(tiffDPIWidth, tiffDPIHeight);
 
-    setVariantFromDictionary(properties,
-                             kCGImagePropertyDPIWidth,
-                             VT_UI8,
-                             L"/ifd/{ushort=282}",
-                             propertyWriter);
-
-    setVariantFromDictionary(properties,
-                             kCGImagePropertyDPIHeight,
-                             VT_UI8,
-                             L"/ifd/{ushort=283}",
-                             propertyWriter);
-
-    setVariantFromDictionary(properties,
-                             kCGImagePropertyTIFFResolutionUnit,
-                             VT_UI2,
-                             L"/ifd/{ushort=296}",
-                             propertyWriter);
+        PropVariantInit(&propertyToWrite);
+        propertyToWrite.vt = VT_UI2;
+        propertyToWrite.uiVal = 2; // 2 = inches, 3 = centimeters
+        writePropertyToFrame(&propertyToWrite, L"/ifd/{ushort=296}", propertyWriter);
+    }
 
     setVariantFromDictionary(properties,
                              kCGImagePropertyOrientation,
@@ -732,7 +745,7 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
 
         writeExifProperties(propertyWriter, properties, L"");
     }
-
+    
     if (properties && CFDictionaryContainsKey(properties, kCGImagePropertyTIFFDictionary)) {
         CFDictionaryRef tiffDictionary = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyTIFFDictionary);
             
@@ -772,23 +785,25 @@ void writeTIFFProperties(IWICMetadataQueryWriter* propertyWriter, CFDictionaryRe
                                  L"/ifd/{ushort=274}",
                                  propertyWriter);
 
-        setVariantFromDictionary(tiffDictionary,
-                                 kCGImagePropertyTIFFXResolution,
-                                 VT_UI8,
-                                 L"/ifd/{ushort=282}",
-                                 propertyWriter);
+        // TIFF on iOS uses this behavior to set Width and Height. Behavior for leaving these empty is not replicated.
+        if (!tiffResolutionFlag && CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFXResolution)
+                                && CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFYResolution)) {
+            double tiffDPIWidth = [(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFXResolution) doubleValue];
+            double tiffDPIHeight = [(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFYResolution) doubleValue];
 
-        setVariantFromDictionary(tiffDictionary,
-                                 kCGImagePropertyTIFFYResolution,
-                                 VT_UI8,
-                                 L"/ifd/{ushort=283}",
-                                 propertyWriter);
+            HRESULT status = imageFrame->SetResolution(tiffDPIWidth, tiffDPIHeight);
+            if (!SUCCEEDED(status)) {
+                NSTraceInfo(TAG, @"Set Frame Resolution failed with status=%x\n", status);
+                NSLog(@"Set Frame Resolution Failed!\n");
+            }
 
-        setVariantFromDictionary(tiffDictionary,
-                                 kCGImagePropertyTIFFResolutionUnit,
-                                 VT_UI2,
-                                 L"/ifd/{ushort=296}",
-                                 propertyWriter);
+            // Writing this in WIC does not seem to do anything, always 2 (unit of inches)
+            setVariantFromDictionary(tiffDictionary,
+                                     kCGImagePropertyTIFFResolutionUnit,
+                                     VT_UI2,
+                                     L"/ifd/{ushort=296}",
+                                     propertyWriter);
+        }
 
         setVariantFromDictionary(tiffDictionary,
                                  kCGImagePropertyTIFFSoftware,
@@ -907,6 +922,10 @@ CGImageDestinationRef CGImageDestinationCreateWithURL(CFURLRef url, CFStringRef 
         Not all formats are supported. Also, the option for kCGImageDestinationBackgroundColor is currently not supported.
         Not all image properties for all images are supported, and Apple writes many PNG properties that are not actually
         part of the PNG specification to image metadata, which is not reproduced.
+        DPIWidth/DPIHeight are aliased to TIFF XDensity/YDensity. Both of these are only written if both X/Y values are specified.
+        For JPEG, the TIFF XDensity/YDensity values take precedence if both are present. For TIFF, it's DPIWidth/DPIHeight.
+        Also, if left blank, WIC will automatically set these values for TIFF to 96 DPI. WIC will not allow actually leaving blanks.
+        Worth noting, iOS seems to ignore the TIFF dictionary entirely if a JFIF dictionary is present. This is not replicated.
 */
 void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CFDictionaryRef properties) {
     if (!idst || !image) {
@@ -973,11 +992,15 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
         return;
     }
 
-    // Using resolution of 72 dpi as standard for now, this seems to only affect metadata and not the image itself
-    status = imageBitmapFrame->SetResolution(72.0, 72.0);
-    if (!SUCCEEDED(status)) {
-        NSTraceInfo(TAG, @"Set Frame Resolution failed with status=%x\n", status);
-        return;
+    // TIFF on iOS will only set a resolution if both DPIWidth and DPIHeight are specified, with no default values
+    // This gets written as part of writing the frame metadata, so no else part here.
+    if (imageDestination.type != typeTIFF) {
+        // Using resolution of 72 dpi as standard for now, this seems to only affect metadata and not the image itself
+        status = imageBitmapFrame->SetResolution(72.0, 72.0);
+        if (!SUCCEEDED(status)) {
+            NSTraceInfo(TAG, @"Set Frame Resolution failed with status=%x\n", status);
+            return;
+        }
     }
 
     // Setting up writing properties to individual image frame, bitmaps cannot have metadata
@@ -993,6 +1016,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
     IWICMetadataQueryWriter* propertyWriter = imageFrameMetadataWriter.Get();
 
     // Set the pixel format based on file format and write necessary metadata
+    // The bitmap frame is passed in for TIFF because WIC needs to set the IFD resolution/DPI fields through SetResolution.
     WICPixelFormatGUID formatGUID;
     switch (imageDestination.type) {
         case typeJPEG:
@@ -1001,7 +1025,7 @@ void CGImageDestinationAddImage(CGImageDestinationRef idst, CGImageRef image, CF
             break;
         case typeTIFF:
             formatGUID = GUID_WICPixelFormat32bppRGBA;
-            writeTIFFProperties(propertyWriter, properties, imageWidth, imageHeight);
+            writeTIFFProperties(propertyWriter, properties, imageWidth, imageHeight, imageBitmapFrame.Get());
             break;
         case typeGIF:
             formatGUID = GUID_WICPixelFormat8bppIndexed;

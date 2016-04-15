@@ -1155,7 +1155,7 @@ TEST(ImageIO, DestinationOptionsTest) {
     CFURLRef imgUrl = getURLRefFromFilename(outFile);
 
     // Note that to verify quality is much lower with quality = 0.0, you have to open the image file.
-    // We do not have CGImageSource options to check for JPEG quality.
+    // There is no option for image quality stored with the file as that would not make sense.
     float quality = 0.0;
     NSNumber* encodeQuality = [NSNumber numberWithFloat:quality];
     NSDictionary* encodeOptions = @{@"kCGImageDestinationLossyCompressionQuality":encodeQuality};
@@ -1196,12 +1196,11 @@ TEST(ImageIO, DestinationOptionsTest) {
     const wchar_t* outFile2 = L"outphoto_loopcount.gif";
     imgUrl = getURLRefFromFilename(outFile2);
 
-    // Note that to actually verify that the GIF stops looping, you have to open the image in a program
-    // that respects the loop count property of GIFs. We are not reading the LoopCount property to verify this.
     int loopCount = 15;
-    NSNumber* gifLoops = [NSNumber numberWithInt:loopCount];
+    float delayTime = 0.5;
     NSDictionary *gifEncodeOptions = @{
-        (id)kCGImagePropertyGIFLoopCount:gifLoops,
+        (id)kCGImagePropertyGIFLoopCount:[NSNumber numberWithInt:loopCount],
+        (id)kCGImagePropertyGIFDelayTime:[NSNumber numberWithFloat:delayTime],
     };
 
     NSDictionary *encodeDictionary = @{
@@ -1210,9 +1209,9 @@ TEST(ImageIO, DestinationOptionsTest) {
 
     myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeGIF, 3, NULL);
     CGImageDestinationSetProperties(myImageDest, (CFDictionaryRef)encodeDictionary);
-    CGImageDestinationAddImage(myImageDest, imageRef, NULL);
-    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 0, NULL);
-    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 2, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, (CFDictionaryRef)encodeDictionary);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 0, (CFDictionaryRef)encodeDictionary);
+    CGImageDestinationAddImageFromSource(myImageDest, imageSource2, 2, (CFDictionaryRef)encodeDictionary);
     CGImageDestinationFinalize(myImageDest);
     CFRelease(imageSource);
     CFRelease(imageSource2);
@@ -1225,6 +1224,17 @@ TEST(ImageIO, DestinationOptionsTest) {
     ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
     frameCount = CGImageSourceGetCount(imageSource);
     checkInt(frameCount, 3, "FrameCount");
+
+    CFDictionaryRef imageProperties = CGImageSourceCopyProperties(imageSource, NULL);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyProperties returned nullptr");
+
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyGIFDictionary),
+        "FAILED: ImageIOTest::GIF dictionary not found");
+    CFDictionaryRef gifDictionary = (CFDictionaryRef)CFDictionaryGetValue(imageProperties, kCGImagePropertyGIFDictionary);
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(gifDictionary, kCGImagePropertyGIFLoopCount),
+        "FAILED: ImageIOTest::GIF dictionary does not contain Loop Count");
+    int actualLoopCount = [(id)CFDictionaryGetValue(gifDictionary, kCGImagePropertyGIFLoopCount) intValue];
+    checkInt(actualLoopCount, loopCount, "Loop Count");
 
     imageRefOut = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
     ASSERT_TRUE_MSG(imageRefOut != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
@@ -1259,7 +1269,99 @@ TEST(ImageIO, DestinationOptionsTest) {
     CFRelease(imageSource);
 }
 
-TEST(ImageIO, DestinationImageOptionsTest) {
+TEST(ImageIO, DestinationImageOptionsTIFFTest) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    CFRelease(imageSource);
+
+    const wchar_t* outFile = L"outphoto_options.tif";
+    CFURLRef imgUrl = getURLRefFromFilename(outFile);
+
+    NSDictionary *gpsOptions = @{
+        (id)kCGImagePropertyGPSLatitude:[NSNumber numberWithDouble:100.55],
+        (id)kCGImagePropertyGPSLongitude:[NSNumber numberWithDouble:200.0],
+        (id)kCGImagePropertyGPSLatitudeRef:@"N",
+        (id)kCGImagePropertyGPSLongitudeRef:@"W",
+        (id)kCGImagePropertyGPSAltitude:[NSNumber numberWithDouble:150.25],
+        (id)kCGImagePropertyGPSAltitudeRef:[NSNumber numberWithShort:1],
+        (id)kCGImagePropertyGPSImgDirection:[NSNumber numberWithFloat:2.4],
+        (id)kCGImagePropertyGPSImgDirectionRef:@"test",
+        (id)kCGImagePropertyGPSTimeStamp:@"04:30:51.71",
+        (id)kCGImagePropertyGPSVersion:@"2.2.0.0",
+    };
+
+    NSDictionary *exifOptions = @{
+        (id)kCGImagePropertyExifUserComment:@"Test2",
+        (id)kCGImagePropertyExifExposureTime:[NSNumber numberWithDouble:12.34],
+    };
+
+    NSDictionary *tiffOptions = @{
+        (id)kCGImagePropertyTIFFXResolution:[NSNumber numberWithDouble:100],
+        (id)kCGImagePropertyTIFFYResolution:[NSNumber numberWithDouble:120],
+        (id)kCGImagePropertyTIFFResolutionUnit:[NSNumber numberWithInt:1],
+    };
+
+    int orientation = 3;
+    NSNumber* encodeOrientation = [NSNumber numberWithInt:orientation];
+
+    NSDictionary *encodeOptions = @{
+        (id)kCGImagePropertyGPSDictionary:gpsOptions,
+        (id)kCGImagePropertyOrientation:encodeOrientation,
+        (id)kCGImagePropertyExifDictionary:exifOptions,
+        (id)kCGImagePropertyTIFFDictionary:tiffOptions,
+        (id)kCGImagePropertyDPIWidth:[NSNumber numberWithDouble:1000],
+        (id)kCGImagePropertyDPIHeight:[NSNumber numberWithDouble:200],
+    };
+
+    CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeTIFF, 1, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, (CFDictionaryRef)encodeOptions);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    imageData = getDataFromImageFile(outFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    
+    // Print the properties due to high number of properties written, only checking a few properties
+    NSLog(@"TIFF Dictionary - [%@]", (NSDictionary*)imageProperties);
+
+    // Note that this XResolution was actually passed in as 100. This field aliases with DPIWidth.
+    // As observed on iOS, for TIFF, DPIWidth takes precedence, while for JPEG, XResolution takes precedence.
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyTIFFDictionary),
+        "FAILED: ImageIOTest::TIFF dictionary not found");
+    CFDictionaryRef tiffDictionary = (CFDictionaryRef)CFDictionaryGetValue(imageProperties, kCGImagePropertyTIFFDictionary);
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(tiffDictionary, kCGImagePropertyTIFFXResolution),
+        "FAILED: ImageIOTest::TIFF dictionary does not contain XResolution");
+    double actualXDensity = [(id)CFDictionaryGetValue(tiffDictionary, kCGImagePropertyTIFFXResolution) doubleValue];
+    ASSERT_NEAR_MSG(actualXDensity, 1000.0, 0.01, "FAILED: ImageIOTest::XResolution mismatch");
+
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyExifDictionary),
+        "FAILED: ImageIOTest::Exif dictionary not found");
+    CFDictionaryRef exifDictionary = (CFDictionaryRef)CFDictionaryGetValue(imageProperties, kCGImagePropertyExifDictionary);
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(exifDictionary, kCGImagePropertyExifExposureTime),
+        "FAILED: ImageIOTest::Exif dictionary does not contain Exposure Time");
+    double actualAltitude = [(id)CFDictionaryGetValue(exifDictionary, kCGImagePropertyExifExposureTime) doubleValue];
+    ASSERT_NEAR_MSG(actualAltitude, 12.34, 0.01, "FAILED: ImageIOTest::Exposure Time mismatch");
+
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyPixelHeight),
+        "FAILED: ImageIOTest::Pixel Height not found");
+    int actualPixelHeight = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyPixelHeight) intValue];
+    checkInt(actualPixelHeight, 1024, "Height");
+
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyOrientation),
+        "FAILED: ImageIOTest::Orientation not found");
+    int actualOrientation = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyOrientation) intValue];
+    checkInt(actualOrientation, 3, "Orientation");
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, DestinationImageOptionsJPEGTest) {
     const wchar_t* imageFile = L"photo2_683x1024.ico";
     NSData* imageData = getDataFromImageFile(imageFile);
     CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
@@ -1287,6 +1389,12 @@ TEST(ImageIO, DestinationImageOptionsTest) {
         (id)kCGImagePropertyExifExposureTime:[NSNumber numberWithDouble:12.34],
     };
 
+    NSDictionary *tiffOptions = @{
+        (id)kCGImagePropertyTIFFXResolution:[NSNumber numberWithDouble:100],
+        (id)kCGImagePropertyTIFFYResolution:[NSNumber numberWithDouble:120],
+        (id)kCGImagePropertyTIFFResolutionUnit:[NSNumber numberWithInt:1],
+    };
+
     int orientation = 2;
     NSNumber* encodeOrientation = [NSNumber numberWithInt:orientation];
 
@@ -1294,7 +1402,9 @@ TEST(ImageIO, DestinationImageOptionsTest) {
         (id)kCGImagePropertyGPSDictionary:gpsOptions,
         (id)kCGImagePropertyOrientation:encodeOrientation,
         (id)kCGImagePropertyExifDictionary:exifOptions,
+        (id)kCGImagePropertyTIFFDictionary:tiffOptions,
         (id)kCGImagePropertyDPIWidth:[NSNumber numberWithDouble:1000],
+        (id)kCGImagePropertyDPIHeight:[NSNumber numberWithDouble:200],
     };
 
     CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeJPEG, 1, NULL);
@@ -1310,7 +1420,7 @@ TEST(ImageIO, DestinationImageOptionsTest) {
     ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
     
     // Print the properties due to high number of properties written, only checking a few properties
-    NSLog(@"Dictionary - [%@]", (NSDictionary*)imageProperties);
+    NSLog(@"JPEG Dictionary - [%@]", (NSDictionary*)imageProperties);
 
     ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyJFIFDictionary),
         "FAILED: ImageIOTest::JFIF dictionary not found");
@@ -1328,10 +1438,124 @@ TEST(ImageIO, DestinationImageOptionsTest) {
     double actualAltitude = [(id)CFDictionaryGetValue(gpsDictionary, kCGImagePropertyGPSAltitude) doubleValue];
     ASSERT_NEAR_MSG(actualAltitude, 150.25, 0.01, "FAILED: ImageIOTest::Altitude mismatch");
 
-    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyDPIWidth),
-        "FAILED: ImageIOTest::DPI Width not found");
-    double actualDPIWidth = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyDPIWidth) doubleValue];
-    ASSERT_NEAR_MSG(actualDPIWidth, 1000, 0.01, "FAILED: ImageIOTest::DPI Width mismatch");
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyPixelHeight),
+        "FAILED: ImageIOTest::Pixel Height not found");
+    int actualPixelHeight = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyPixelHeight) intValue];
+    checkInt(actualPixelHeight, 1024, "Height");
 
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyOrientation),
+        "FAILED: ImageIOTest::Orientation not found");
+    int actualOrientation = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyOrientation) intValue];
+    checkInt(actualOrientation, 2, "Orientation");
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, DestinationImageOptionsGIFTest) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    CFRelease(imageSource);
+
+    const wchar_t* outFile = L"outphoto_options.gif";
+    CFURLRef imgUrl = getURLRefFromFilename(outFile);
+    
+    NSDictionary *gifOptions = @{
+        (id)kCGImagePropertyGIFDelayTime:[NSNumber numberWithFloat:0.05],
+    };
+
+    int orientation = 2;
+    NSNumber* encodeOrientation = [NSNumber numberWithInt:orientation];
+
+    NSDictionary *encodeOptions = @{
+        (id)kCGImagePropertyOrientation:encodeOrientation,
+        (id)kCGImagePropertyGIFDictionary:gifOptions,
+        (id)kCGImagePropertyDPIWidth:[NSNumber numberWithDouble:1000],
+        (id)kCGImagePropertyDPIHeight:[NSNumber numberWithDouble:200],
+    };
+
+    CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypeGIF, 1, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, (CFDictionaryRef)encodeOptions);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    imageData = getDataFromImageFile(outFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    
+    // Print the properties due to high number of properties written, only checking a few properties
+    NSLog(@"GIF Dictionary - [%@]", (NSDictionary*)imageProperties);
+
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyGIFDictionary),
+        "FAILED: ImageIOTest::GIF dictionary not found");
+    CFDictionaryRef gifDictionary = (CFDictionaryRef)CFDictionaryGetValue(imageProperties, kCGImagePropertyGIFDictionary);
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(gifDictionary, kCGImagePropertyGIFUnclampedDelayTime),
+        "FAILED: ImageIOTest::GIF dictionary does not contain Unclamped Delay Time");
+    double actualUnclampedDelayTime = [(id)CFDictionaryGetValue(gifDictionary, kCGImagePropertyGIFUnclampedDelayTime) doubleValue];
+    ASSERT_NEAR_MSG(actualUnclampedDelayTime, 0.05, 0.01, "FAILED: ImageIOTest::Unclamped Delay Time mismatch");
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(gifDictionary, kCGImagePropertyGIFDelayTime),
+        "FAILED: ImageIOTest::GIF dictionary does not contain Delay Time");
+    double actualDelayTime = [(id)CFDictionaryGetValue(gifDictionary, kCGImagePropertyGIFDelayTime) doubleValue];
+    ASSERT_NEAR_MSG(actualDelayTime, 0.1, 0.01, "FAILED: ImageIOTest::Delay Time mismatch");
+
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyPixelHeight),
+        "FAILED: ImageIOTest::Pixel Height not found");
+    int actualPixelHeight = [(id)CFDictionaryGetValue(imageProperties, kCGImagePropertyPixelHeight) intValue];
+    checkInt(actualPixelHeight, 1024, "Height");
+
+    CFRelease(imageSource);
+}
+
+TEST(ImageIO, DestinationImageOptionsPNGTest) {
+    const wchar_t* imageFile = L"photo2_683x1024.ico";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+    CFRelease(imageSource);
+
+    const wchar_t* outFile = L"outphoto_options.png";
+    CFURLRef imgUrl = getURLRefFromFilename(outFile);
+    
+    NSDictionary *pngOtions = @{
+        (id)kCGImagePropertyPNGGamma:[NSNumber numberWithInt:45045],
+    };
+
+    int orientation = 2;
+    NSNumber* encodeOrientation = [NSNumber numberWithInt:orientation];
+
+    NSDictionary *encodeOptions = @{
+        (id)kCGImagePropertyOrientation:encodeOrientation,
+        (id)kCGImagePropertyPNGDictionary:pngOtions,
+        (id)kCGImagePropertyDPIWidth:[NSNumber numberWithDouble:1000],
+        (id)kCGImagePropertyDPIHeight:[NSNumber numberWithDouble:200],
+    };
+
+    CGImageDestinationRef myImageDest = CGImageDestinationCreateWithURL(imgUrl, kUTTypePNG, 1, NULL);
+    CGImageDestinationAddImage(myImageDest, imageRef, (CFDictionaryRef)encodeOptions);
+    CGImageDestinationFinalize(myImageDest);
+    CFRelease(myImageDest);
+
+    imageData = getDataFromImageFile(outFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", outFile);
+    imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+    CFDictionaryRef imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, NULL);
+    ASSERT_TRUE_MSG(imageProperties != nil, "FAILED: ImageIOTest::CGImageSourceCopyPropertiesAtIndex returned nullptr");
+    
+    // Print the properties due to high number of properties written, only checking a few properties
+    NSLog(@"PNG Dictionary - [%@]", (NSDictionary*)imageProperties);
+
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(imageProperties, kCGImagePropertyPNGDictionary),
+        "FAILED: ImageIOTest::PNG dictionary not found");
+    CFDictionaryRef pngDictionary = (CFDictionaryRef)CFDictionaryGetValue(imageProperties, kCGImagePropertyPNGDictionary);
+    ASSERT_TRUE_MSG(CFDictionaryContainsKey(pngDictionary, kCGImagePropertyPNGGamma),
+        "FAILED: ImageIOTest::PNG dictionary does not contain Gamma");
+    int actualGamma = [(id)CFDictionaryGetValue(pngDictionary, kCGImagePropertyPNGGamma) intValue];
+    checkInt(actualGamma, 45045, "Gamma");
+    
     CFRelease(imageSource);
 }
