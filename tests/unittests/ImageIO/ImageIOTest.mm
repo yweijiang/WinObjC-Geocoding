@@ -861,7 +861,7 @@ TEST(ImageIO, IncrementalJPEGImageWithByteChunks) {
         imageOffset += currentChunkSize;
         CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
         static int iterator = 0;
-        int currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 2);
+        int currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 0);
         if (previousStatus == 10) {
           printf("Status[%d] Length[%d]", currentStatus, iterator);
         } else if (currentStatus != previousStatus) {
