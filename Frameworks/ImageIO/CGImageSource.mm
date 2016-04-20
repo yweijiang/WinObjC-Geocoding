@@ -123,42 +123,31 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
         return kCGImageStatusUnknownType;
     }
 
-    static const uint8_t c_imageEndIdentifier1 = 0xFF;
-    static const uint8_t c_imageEndIdentifier2 = 0xD9;
-    static const uint8_t c_scanStartIdentifier1 = 0xFF;
-    static const uint8_t c_scanStartIdentifier2 = 0xDA;
-    static const size_t c_imageStartMarkerSize = 2;
-    static const size_t c_frameStartMarkerSize = 2;
-
-    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
+    const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
 
+    static const uint8_t c_imageEndIdentifier[2] = {0xFF, 0xD9};
+    static const uint8_t c_scanStartIdentifier[2] = {0xFF, 0xDA};
+
     // Check if the End Of Image marker is present in the data stream
-    if (imageData[imageLength - 2] == c_imageEndIdentifier1 && imageData[imageLength - 1] == c_imageEndIdentifier2) {
+    if (imageData[imageLength - 2] == c_imageEndIdentifier[0] && imageData[imageLength - 1] == c_imageEndIdentifier[1]) {
         return kCGImageStatusComplete;
     } 
 
     // Check if the Start Of Scan marker is present in the data stream
-    bool scanStartFound = false;
-    size_t offset = c_imageStartMarkerSize;
-    while (!scanStartFound) {
-        if (offset + c_frameStartMarkerSize + 1 >=  imageLength) {
-            return kCGImageStatusUnknownType;
-        }
+    for (size_t offset = 2, blockLength = 0; offset < imageLength - 3; offset += blockLength + 2) {
+        blockLength = (imageData[offset + 2] << 8) | imageData[offset + 3];
 
-        if ((imageData[offset] == c_scanStartIdentifier1) && (imageData[offset + 1] == c_scanStartIdentifier2)) {
-            scanStartFound = true;
+        if (imageData[offset] == c_scanStartIdentifier[0] && imageData[offset + 1] == c_scanStartIdentifier[1]) {
+            if (offset + blockLength + 2 > imageLength) {
+                return kCGImageStatusUnknownType;
+            } else {
+                return kCGImageStatusIncomplete;
+            }
         }
-
-        offset += ((imageData[offset + c_frameStartMarkerSize] << 8) | imageData[offset + c_frameStartMarkerSize + 1]) + 
-                  c_frameStartMarkerSize;
     }
 
-    if (offset > imageLength) {
-        return kCGImageStatusUnknownType;
-    } else {
-        return kCGImageStatusIncomplete;
-    }
+    return kCGImageStatusUnknownType;
 }
 
 /**
@@ -172,7 +161,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_tagSize = 12;
     static const size_t c_ifdOffsetSize = 4;
 
-    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
+    const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
     size_t offset = c_ifdOffsetIndex;
 
@@ -217,7 +206,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_extensionTypeSize = 2; 
     static const size_t c_imageDescriptorSize = 10;
 
-    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
+    const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
     size_t offset = c_headerSize + c_logicalDescriptorSize;
 
@@ -318,7 +307,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_fileSizeIndex = 2;
     static const size_t c_pixelOffsetIndex = 10;
 
-    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
+    const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
 
     // Check if incoming data stream size matches image file size 
@@ -366,7 +355,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_chunkTypeSize = 4;
     static const size_t c_CRCSize = 4;
      
-    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
+    const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
 
     // Check if the End of Image identifier is present in the data stream
@@ -418,7 +407,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_imageDataLengthSize = 4;
     static const size_t c_imagePixelOffsetSize = 4;
 
-    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
+    const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
     size_t offset = c_headerSize + c_pixelOffset;
 
