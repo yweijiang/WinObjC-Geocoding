@@ -490,10 +490,7 @@ TEST(ImageIO, IncrementalJPEGImageWithData) {
     size_t expectedImageIndex = 0;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
-
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                                          length:currentChunkSize 
                                                    freeWhenDone:NO];
@@ -523,10 +520,7 @@ TEST(ImageIO, IncrementalBMPImageWithData) {
     size_t expectedImageIndex = 0;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
-
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                                          length:currentChunkSize 
                                                    freeWhenDone:NO];
@@ -556,10 +550,7 @@ TEST(ImageIO, IncrementalPNGImageWithData) {
     size_t expectedImageIndex = 0;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
-
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                                          length:currentChunkSize 
                                                    freeWhenDone:NO];
@@ -592,10 +583,7 @@ TEST(ImageIO, IncrementalGIFImageWithData) {
     size_t expectedImageIndex = 0;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
-
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                                          length:currentChunkSize 
                                                    freeWhenDone:NO];
@@ -636,10 +624,7 @@ TEST(ImageIO, IncrementalTIFFImageWithData) {
     size_t expectedImageIndex = 0;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
-
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                                          length:currentChunkSize 
                                                    freeWhenDone:NO];
@@ -674,10 +659,7 @@ TEST(ImageIO, IncrementalICOImageWithData) {
     size_t expectedImageIndex = 0;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
-
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                                          length:currentChunkSize 
                                                    freeWhenDone:NO];
@@ -871,9 +853,7 @@ TEST(ImageIO, IncrementalJPEGImageWithByteChunks) {
     int previousStatus = 10;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                             length:currentChunkSize 
                                             freeWhenDone:NO];
@@ -881,7 +861,7 @@ TEST(ImageIO, IncrementalJPEGImageWithByteChunks) {
         imageOffset += currentChunkSize;
         CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
         static int iterator = 0;
-        int currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 0);
+        int currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 2);
         if (previousStatus == 10) {
           printf("Status[%d] Length[%d]", currentStatus, iterator);
         } else if (currentStatus != previousStatus) {
@@ -912,9 +892,7 @@ TEST(ImageIO, IncrementalBMPImageWithByteChunks) {
     int previousStatus = 10;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                             length:currentChunkSize 
                                             freeWhenDone:NO];
@@ -953,9 +931,7 @@ TEST(ImageIO, IncrementalPNGImageWithByteChunks) {
     int previousStatus = 10;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                             length:currentChunkSize 
                                             freeWhenDone:NO];
@@ -997,9 +973,7 @@ TEST(ImageIO, IncrementalGIFImageWithByteChunks) {
     int previousStatus = 10;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                             length:currentChunkSize 
                                             freeWhenDone:NO];
@@ -1049,9 +1023,7 @@ TEST(ImageIO, IncrementalTIFFImageWithByteChunks) {
     int previousStatus = 10;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                             length:currentChunkSize 
                                             freeWhenDone:NO];
@@ -1095,9 +1067,7 @@ TEST(ImageIO, IncrementalICOImageWithByteChunks) {
     int previousStatus = 10;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? 
-                                      imageChunkSize : 
-                                      imageLength - imageOffset;
+        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
                                             length:currentChunkSize 
                                             freeWhenDone:NO];

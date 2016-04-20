@@ -112,8 +112,10 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 }
 
 /**
- @Notes Helper function to get the status of JPEG images at the provided index.
-        Progressively encoded JPEG images are not supported by Apple APIs and the current implementation does not support it.
+ @Notes      Helper function to get the status of JPEG images at the provided index.
+             Progressively encoded JPEG images are not supported by Apple APIs and the current implementation does not support it.
+ @References https://en.wikipedia.org/wiki/JPEG
+             https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format                    
 */
 - (CGImageSourceStatus)getJPEGStatusAtIndex:(size_t)index {
     // Return if requesting for invalid frames
@@ -128,7 +130,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_imageStartMarkerSize = 2;
     static const size_t c_frameStartMarkerSize = 2;
 
-    uint8_t* imageData = (uint8_t*)[self.data bytes];
+    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
     NSUInteger imageLength = [self.data length];
 
     // Check if the End Of Image marker is present in the data stream
@@ -137,19 +139,19 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     } 
 
     // Check if the Start Of Scan marker is present in the data stream
-    bool scanStartPresent = false;
+    bool scanStartFound = false;
     size_t offset = c_imageStartMarkerSize;
-    while(!scanStartPresent) {
-        if (offset + c_frameStartMarkerSize + 1 <  imageLength) {
-            if ((imageData[offset] == c_scanStartIdentifier1) && (imageData[offset + 1] == c_scanStartIdentifier2)) {
-                scanStartPresent = true;
-            }
-
-            offset += ((imageData[offset + c_frameStartMarkerSize] << 8) | imageData[offset + c_frameStartMarkerSize + 1]) + 
-                      c_frameStartMarkerSize;
-        } else {
+    while (!scanStartFound) {
+        if (offset + c_frameStartMarkerSize + 1 >=  imageLength) {
             return kCGImageStatusUnknownType;
         }
+
+        if ((imageData[offset] == c_scanStartIdentifier1) && (imageData[offset + 1] == c_scanStartIdentifier2)) {
+            scanStartFound = true;
+        }
+
+        offset += ((imageData[offset + c_frameStartMarkerSize] << 8) | imageData[offset + c_frameStartMarkerSize + 1]) + 
+                  c_frameStartMarkerSize;
     }
 
     if (offset > imageLength) {
@@ -160,7 +162,9 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 }
 
 /**
- @Notes Helper function to get the status of TIFF images at the provided index
+ @Notes      Helper function to get the status of TIFF images at the provided index
+ @References http://www.fileformat.info/format/tiff/egff.htm
+             https://en.wikipedia.org/wiki/Tagged_Image_File_Format
 */
 - (CGImageSourceStatus)getTIFFStatusAtIndex:(size_t)index {
     static const size_t c_ifdOffsetIndex = 4;
@@ -168,26 +172,26 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_tagSize = 12;
     static const size_t c_ifdOffsetSize = 4;
 
-    uint8_t* imageData = (uint8_t*)[self.data bytes];
+    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
     NSUInteger imageLength = [self.data length];
     size_t offset = c_ifdOffsetIndex;
 
     // Check if any of the image frame data is present in the data stream 
     for (size_t currentFrameIndex = 0; currentFrameIndex <= index; currentFrameIndex++) {
-        // Initial access 
+        // Initial access into imageData would be within bounds. Minimum length of 95 is guaranteed through a check in the parent.
         offset = (imageData[offset]) |
                  (imageData[offset + 1] << 8) |
                  (imageData[offset + 2] << 16) | 
                  (imageData[offset + 3] << 24);
+        
+        if (offset + 1 >= imageLength) {
+            return kCGImageStatusUnknownType;
+        }
 
-        if (offset + 1 < imageLength) {                
-            size_t tagCount = (imageData[offset] | (imageData[offset + 1] << 8));
-            offset += c_tagCountSize + (c_tagSize * tagCount);
+        size_t tagCount = (imageData[offset] | (imageData[offset + 1] << 8));
+        offset += c_tagCountSize + (c_tagSize * tagCount);
 
-            if (offset + 3 >= imageLength) {
-                return kCGImageStatusUnknownType;
-            }
-        } else {
+        if (offset + 3 >= imageLength) {
             return kCGImageStatusUnknownType;
         }
     }
@@ -201,8 +205,10 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 }
 
 /**
- @Notes Helper function to get the status of GIF images at the provided index
-        Interlaced GIF images are not supported by Apple APIs and the current implementation does not support it.
+ @Notes      Helper function to get the status of GIF images at the provided index
+             Interlaced GIF images are not supported by Apple APIs and the current implementation does not support it.
+ @References https://www.w3.org/Graphics/GIF/spec-gif89a.txt
+             https://en.wikipedia.org/wiki/GIF
 */
 - (CGImageSourceStatus)getGIFStatusAtIndex:(size_t)index {
     static const size_t c_headerSize = 6;
@@ -211,7 +217,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_extensionTypeSize = 2; 
     static const size_t c_imageDescriptorSize = 10;
 
-    uint8_t* imageData = (uint8_t*)[self.data bytes];
+    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
     NSUInteger imageLength = [self.data length];
     size_t offset = c_headerSize + c_logicalDescriptorSize;
 
@@ -231,20 +237,21 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
         // Advance Start of Frame offset through various Extensions - Graphic Control, Plain Text, Application & Comment
         if (imageData[offset] == 0x21) {
             offset += c_extensionTypeSize;
-            if (offset < imageLength) {
-                // Iterate over all extension sub-blocks by checking the block length 
-                while (uint8_t blockLength = imageData[offset]) {
-                    offset += blockLength + 1;
-                    if (offset >= imageLength) {
-                        return kCGImageStatusUnknownType;
-                    }
-                }
 
-                offset++;
+            if (offset >= imageLength) {
+                return kCGImageStatusUnknownType;
+            } 
+
+            // Iterate over all extension sub-blocks by checking the block length. A block length of 0 marks the end of current extension 
+            while (imageData[offset] != 0) {
+                offset += imageData[offset] + 1;
                 if (offset >= imageLength) {
                     return kCGImageStatusUnknownType;
                 }
-            } else {
+            }
+
+            offset++;
+            if (offset >= imageLength) {
                 return kCGImageStatusUnknownType;
             }
         }
@@ -263,9 +270,9 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
                 // Advance Start of Frame offset to the Image Data section
                 offset++;
                 if (offset < imageLength) {
-                    // Advance Start of Frame offset through the Image Data blocks
-                    while (uint8_t blockLength = imageData[offset]) {
-                        offset += blockLength + 1;
+                    // Advance Start of Frame offset through the Image Data blocks. A block length of 0 marks the end of Image Data section 
+                    while (imageData[offset] != 0) {
+                        offset += imageData[offset] + 1;
                         if (offset >= imageLength) {
                             if (index == currentFrameIndex) {
                                 return kCGImageStatusIncomplete;
@@ -298,7 +305,9 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 }
 
 /**
- @Notes Helper function to get the status of BMP images at the provided index
+ @Notes      Helper function to get the status of BMP images at the provided index
+ @References https://en.wikipedia.org/wiki/BMP_file_format
+             http://www.fileformat.info/format/bmp/egff.htm
 */
 - (CGImageSourceStatus)getBMPStatusAtIndex:(size_t)index {
     // Return if requesting for invalid frames
@@ -309,7 +318,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_fileSizeIndex = 2;
     static const size_t c_pixelOffsetIndex = 10;
 
-    uint8_t* imageData = (uint8_t*)[self.data bytes];
+    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
     NSUInteger imageLength = [self.data length];
 
     // Check if incoming data stream size matches image file size 
@@ -338,8 +347,10 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 }
 
 /**
- @Notes Helper function to get the status of PNG images at the provided index
-        Interlaced PNG images are not supported by Apple APIs and the current implementation does not support it.
+ @Notes      Helper function to get the status of PNG images at the provided index
+             Interlaced PNG images are not supported by Apple APIs and the current implementation does not support it.
+ @References https://www.w3.org/TR/PNG/
+             https://en.wikipedia.org/wiki/Portable_Network_Graphics
 */
 - (CGImageSourceStatus)getPNGStatusAtIndex:(size_t)index {
     // Return if requesting for invalid frames
@@ -355,7 +366,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_chunkTypeSize = 4;
     static const size_t c_CRCSize = 4;
      
-    uint8_t* imageData = (uint8_t*)[self.data bytes];
+    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
     NSUInteger imageLength = [self.data length];
 
     // Check if the End of Image identifier is present in the data stream
@@ -397,7 +408,9 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 }
 
 /**
- @Notes Helper function to get the status of ICO images at the provided index
+ @Notes      Helper function to get the status of ICO images at the provided index
+ @References https://msdn.microsoft.com/en-us/library/ms997538.aspx 
+             https://en.wikipedia.org/wiki/ICO_(file_format)
 */
 - (CGImageSourceStatus)getICOStatusAtIndex:(size_t)index {
     static const size_t c_headerSize = 6;
@@ -405,7 +418,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_imageDataLengthSize = 4;
     static const size_t c_imagePixelOffsetSize = 4;
 
-    uint8_t* imageData = (uint8_t*)[self.data bytes];
+    uint8_t* imageData = static_cast<uint8_t*>(const_cast<void*>([self.data bytes]));
     NSUInteger imageLength = [self.data length];
     size_t offset = c_headerSize + c_pixelOffset;
 
@@ -415,9 +428,9 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
         } 
 
         uint32_t imageDataLength = imageData[offset] | 
-                                    (imageData[offset + 1] << 8) | 
-                                    (imageData[offset + 2] << 16) |
-                                    (imageData[offset + 3] << 24);
+                                   (imageData[offset + 1] << 8) | 
+                                   (imageData[offset + 2] << 16) |
+                                   (imageData[offset + 3] << 24);
 
         offset += c_imageDataLengthSize;
         if (offset + 3 >= imageLength) {
