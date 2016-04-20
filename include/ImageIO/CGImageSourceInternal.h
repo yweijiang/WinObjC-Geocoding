@@ -24,7 +24,7 @@
 @class NSData;
 
 @interface ImageSource : NSObject
-@property (atomic) NSData *data;
+@property (atomic) NSData* data;
 @property (atomic) bool isFinalIncrementalSet;
 - (instancetype)initWithData:(CFDataRef)data;
 - (instancetype)initWithURL:(CFURLRef)url;
