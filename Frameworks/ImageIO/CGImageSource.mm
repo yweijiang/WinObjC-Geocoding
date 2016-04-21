@@ -112,15 +112,15 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 }
 
 // Helper functions used for getting multi-byte values from image data.
-size_t get16bitValue(const uint8_t* data, size_t offset) {
+size_t get16BitValue(const uint8_t* data, size_t offset) {
     return data[offset] + (data[offset + 1] << 8);
 }
 
-size_t get32bitValue(const uint8_t* data, size_t offset) {
+size_t get32BitValue(const uint8_t* data, size_t offset) {
     return data[offset] + (data[offset + 1] << 8) + (data[offset + 2] << 16) + (data[offset + 3] << 24);
 }
 
-size_t get32bitValueBigEndian(const uint8_t* data, size_t offset) {
+size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     return data[offset - 1] + (data[offset - 2] << 8) + (data[offset - 3] << 16) + (data[offset - 4] << 24);
 }
 
@@ -193,13 +193,13 @@ size_t get32bitValueBigEndian(const uint8_t* data, size_t offset) {
             return kCGImageStatusUnknownType;
         }
 
-        offset = get32bitValue(imageData, offset);
+        offset = get32BitValue(imageData, offset);
 
         if (offset + 1 >= imageLength) {
             return kCGImageStatusUnknownType;
         }
 
-        size_t tagCount = get16bitValue(imageData, offset);
+        size_t tagCount = get16BitValue(imageData, offset);
 
         // Each tag is 12 bytes and each tag count size is 2 bytes
         offset += (tagCount * 12) + 2;
@@ -329,7 +329,7 @@ size_t get32bitValueBigEndian(const uint8_t* data, size_t offset) {
 
     // Check if incoming data stream size matches image file size 
     // Bound check in parent CGImageSourceGetStatusAtIndex function for a length of 96 
-    NSUInteger fileSize = (NSUInteger) get32bitValue(imageData, c_fileSizeIndex);
+    NSUInteger fileSize = (NSUInteger) get32BitValue(imageData, c_fileSizeIndex);
 
     if (imageLength == fileSize) {
         return kCGImageStatusComplete;
@@ -391,7 +391,7 @@ size_t get32bitValueBigEndian(const uint8_t* data, size_t offset) {
             return kCGImageStatusIncomplete;
         }
 
-        size_t chunkLength = get32bitValueBigEndian(imageData, offset);
+        size_t chunkLength = get32BitValueBigEndian(imageData, offset);
         offset += c_chunkTypeSize + chunkLength + c_CRCSize + c_lengthSize;
     }
 
@@ -423,14 +423,14 @@ size_t get32bitValueBigEndian(const uint8_t* data, size_t offset) {
             return kCGImageStatusUnknownType;
         } 
 
-        uint32_t imageDataLength = (uint32_t) get32bitValue(imageData, offset);
+        uint32_t imageDataLength = (uint32_t) get32BitValue(imageData, offset);
 
         offset += c_imageDataLengthSize;
         if (offset + 3 >= imageLength) {
             return kCGImageStatusUnknownType;
         } 
 
-        uint32_t imagePixelOffset = (uint32_t) get32bitValue(imageData, offset);
+        uint32_t imagePixelOffset = (uint32_t) get32BitValue(imageData, offset);
 
         // Check if any of the image data is present in the data stream
         if (imagePixelOffset >= imageLength) {
