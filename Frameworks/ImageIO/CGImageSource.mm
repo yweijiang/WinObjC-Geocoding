@@ -111,6 +111,19 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     return imageFormat;
 }
 
+// Helper functions used for getting multi-byte values from image data.
+size_t get16bitValue(const uint8_t* data, size_t offset) {
+    return data[offset] + (data[offset + 1] << 8);
+}
+
+size_t get32bitValue(const uint8_t* data, size_t offset) {
+    return data[offset] + (data[offset + 1] << 8) + (data[offset + 2] << 16) + (data[offset + 3] << 24);
+}
+
+size_t get32bitValueBigEndian(const uint8_t* data, size_t offset) {
+    return data[offset - 1] + (data[offset - 2] << 8) + (data[offset - 3] << 16) + (data[offset - 4] << 24);
+}
+
 /**
  @Notes      Helper function to get the status of JPEG images at the provided index.
              Progressively encoded JPEG images are not supported by Apple APIs and the current implementation does not support it.
@@ -128,6 +141,11 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 
     static const uint8_t c_imageEndIdentifier[2] = {0xFF, 0xD9};
     static const uint8_t c_scanStartIdentifier[2] = {0xFF, 0xDA};
+    static const int c_minDataStreamSize = 96;
+    
+    if (imageLength < c_minDataStreamSize) {
+        return kCGImageStatusReadingHeader;
+    }
 
     // Check if the End Of Image marker is present in the data stream
     if (imageData[imageLength - 2] == c_imageEndIdentifier[0] && imageData[imageLength - 1] == c_imageEndIdentifier[1]) {
@@ -156,37 +174,43 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
              https://en.wikipedia.org/wiki/Tagged_Image_File_Format
 */
 - (CGImageSourceStatus)getTIFFStatusAtIndex:(size_t)index {
-    static const size_t c_ifdOffsetIndex = 4;
-    static const size_t c_tagCountSize = 2;
-    static const size_t c_tagSize = 12;
     static const size_t c_ifdOffsetSize = 4;
+    static const int c_minDataStreamSize = 96;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
-    size_t offset = c_ifdOffsetIndex;
 
-    // Check if any of the image frame data is present in the data stream 
-    for (size_t currentFrameIndex = 0; currentFrameIndex <= index; currentFrameIndex++) {
-        // Initial access into imageData would be within bounds. Minimum length of 95 is guaranteed through a check in the parent.
-        offset = (imageData[offset]) |
-                 (imageData[offset + 1] << 8) |
-                 (imageData[offset + 2] << 16) | 
-                 (imageData[offset + 3] << 24);
-        
+    if (imageLength < c_minDataStreamSize) {
+        return kCGImageStatusReadingHeader;
+    }
+    
+    // Offset into the first Image File Directory (IFD) starts at byte offset 4
+    size_t offset = 4;
+
+    // Check if data for previous image frames are present 
+    for (size_t currentFrameIndex = 0; currentFrameIndex < index; currentFrameIndex++) {
+        if (offset + 3 >= imageLength) {
+            return kCGImageStatusUnknownType;
+        }
+
+        offset = get32bitValue(imageData, offset);
+
         if (offset + 1 >= imageLength) {
             return kCGImageStatusUnknownType;
         }
 
-        size_t tagCount = (imageData[offset] | (imageData[offset + 1] << 8));
-        offset += c_tagCountSize + (c_tagSize * tagCount);
+        size_t tagCount = get16bitValue(imageData, offset);
 
-        if (offset + 3 >= imageLength) {
-            return kCGImageStatusUnknownType;
-        }
+        // Each tag is 12 bytes and each tag count size is 2 bytes
+        offset += (tagCount * 12) + 2;
     }
 
     // Check if all image frame data is present in the data stream
-    return ((offset + c_ifdOffsetSize) < imageLength) ? kCGImageStatusComplete : kCGImageStatusIncomplete;
+    if ((offset + c_ifdOffsetSize) < imageLength) {
+        return kCGImageStatusComplete;
+    } else {
+        return kCGImageStatusIncomplete;
+    }
 }
 
 /**
@@ -203,14 +227,18 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_imageDescriptorSize = 10;
     static const uint8_t c_gifExtensionHeader = 0x21;
     static const uint8_t c_gifDescriptorHeader = 0x2C;
+    static const int c_minDataStreamSize = 96;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
     size_t offset = c_headerSize + c_logicalDescriptorSize;
+        
+    if (imageLength < c_minDataStreamSize) {
+        return kCGImageStatusReadingHeader;
+    }
 
     // Advance Start of Frame offset if global color table exists. Check for existence by reading MSB of packed byte 
-    bool globalColorTableExists = (imageData[c_packedFieldOffset] & 0x80);
-    if (globalColorTableExists) {
+    if (imageData[c_packedFieldOffset] & 0x80) {
         // Extract the last three bits from packed byte to get the Global Color Table Size representation and compute actual size
         offset += 3 << ((imageData[c_packedFieldOffset] & 0x7) + 1);
     }    
@@ -240,15 +268,15 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
             if (offset >= imageLength) {
                 return kCGImageStatusUnknownType;
             }
-        } else if (imageData[offset] == c_gifDescriptorHeader) { // Check for the start of an Image Descriptor
+        } else if (imageData[offset] == c_gifDescriptorHeader) {
+            // Check for the start of an Image Descriptor
             offset += c_imageDescriptorSize;
             if (offset >= imageLength) {
                 return (index == currentFrameIndex) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
             }
 
             // Advance Start of Frame offset if local color table exists. Check for existence by reading MSB of packed byte 
-            bool localColorTableExists = (imageData[offset - 1] & 0x80); 
-            if (localColorTableExists) {
+            if (imageData[offset - 1] & 0x80) {
                 // Extract the last three bits from packed byte to get the Local Color Table Size representation and compute actual size
                 offset += 3 << ((imageData[offset - 1] & 0x7) + 1);
             }
@@ -290,16 +318,18 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 
     static const size_t c_fileSizeIndex = 2;
     static const size_t c_pixelOffsetIndex = 10;
+    static const int c_minDataStreamSize = 96;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
 
+    if (imageLength < c_minDataStreamSize) {
+        return kCGImageStatusReadingHeader;
+    }
+
     // Check if incoming data stream size matches image file size 
     // Bound check in parent CGImageSourceGetStatusAtIndex function for a length of 96 
-    NSUInteger fileSize = imageData[c_fileSizeIndex] | 
-                          (imageData[c_fileSizeIndex + 1] << 8) | 
-                          (imageData[c_fileSizeIndex + 2] << 16) | 
-                          (imageData[c_fileSizeIndex + 3] << 24);
+    NSUInteger fileSize = (NSUInteger) get32bitValue(imageData, c_fileSizeIndex);
 
     if (imageLength == fileSize) {
         return kCGImageStatusComplete;
@@ -327,8 +357,6 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
         return kCGImageStatusUnknownType;
     }   
 
-    static const uint8_t c_imageEndIdentifier[] = {0x49, 0x45, 0x4E, 0x44};
-    static const uint8_t c_frameStartIdentifier[] = {0x49, 0x44, 0x41, 0x54};
     static const size_t c_imageEndIdentifierReverseIndex = 8;
     static const size_t c_headerSize = 8;
     static const size_t c_lengthSize = 4;
@@ -342,35 +370,29 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     size_t imageEndIndex = imageLength - c_imageEndIdentifierReverseIndex;
     bool imageLoadComplete = true;
 
-    for (size_t i = 0; i < ARRAYSIZE(c_imageEndIdentifier); i++, imageEndIndex++) {
-        if (imageData[imageEndIndex] != c_imageEndIdentifier[i]) {
-            imageLoadComplete = false;
-        }
-    }
+    size_t endIndex = imageLength - c_imageEndIdentifierReverseIndex;
 
-    if (imageLoadComplete) {
+    // Image End identifier is {0x49, 0x45, 0x4E, 0x44}
+    if (imageData[endIndex] == 0x49 &&
+        imageData[endIndex + 1] == 0x45 && 
+        imageData[endIndex + 2] == 0x4E && 
+        imageData[endIndex + 3] == 0x44) {
         return kCGImageStatusComplete;
     }
 
     // Check if the Start of Frame identifier is present in the data stream
-    size_t totalChunkSize = 0;
-    for (size_t offset = c_headerSize + c_lengthSize; offset + 3 < imageLength; offset += totalChunkSize) {
-        bool frameStartFound = true;
-        for (size_t i = 0; i < ARRAYSIZE(c_frameStartIdentifier); i++) {
-            if (imageData[offset + i] != c_frameStartIdentifier[i]) {
-                frameStartFound = false;
-            }
-        }
-
-        if (frameStartFound) {
+    size_t offset = c_headerSize + c_lengthSize;
+    while (offset + 3 < imageLength) {
+        // Image Start identifier is {0x49, 0x44, 0x41, 0x54}
+        if (imageData[offset] == 0x49 &&
+            imageData[offset + 1] == 0x44 && 
+            imageData[offset + 2] == 0x41 && 
+            imageData[offset + 3] == 0x54) {
             return kCGImageStatusIncomplete;
         }
 
-        size_t chunkLength = (imageData[offset - 1] | 
-                             (imageData[offset - 2] << 8) | 
-                             (imageData[offset - 3] << 16) |
-                             (imageData[offset - 4] << 24));
-        totalChunkSize = c_chunkTypeSize + chunkLength + c_CRCSize + c_lengthSize;
+        size_t chunkLength = get32bitValueBigEndian(imageData, offset);
+        offset += c_chunkTypeSize + chunkLength + c_CRCSize + c_lengthSize;
     }
 
     return kCGImageStatusUnknownType;
@@ -386,30 +408,29 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_pixelOffset = 8;
     static const size_t c_imageDataLengthSize = 4;
     static const size_t c_imagePixelOffsetSize = 4;
-
+    static const int c_minDataStreamSize = 96;
+    
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
     size_t offset = c_headerSize + c_pixelOffset;
+    
+    if (imageLength < c_minDataStreamSize) {
+        return kCGImageStatusReadingHeader;
+    }
 
     for (size_t currentFrameIndex = 0; currentFrameIndex <= index; currentFrameIndex++) {
         if (offset + 3 >= imageLength) {
             return kCGImageStatusUnknownType;
         } 
 
-        uint32_t imageDataLength = imageData[offset] | 
-                                   (imageData[offset + 1] << 8) | 
-                                   (imageData[offset + 2] << 16) |
-                                   (imageData[offset + 3] << 24);
+        uint32_t imageDataLength = (uint32_t) get32bitValue(imageData, offset);
 
         offset += c_imageDataLengthSize;
         if (offset + 3 >= imageLength) {
             return kCGImageStatusUnknownType;
         } 
 
-        uint32_t imagePixelOffset = imageData[offset] | 
-                                    (imageData[offset + 1] << 8) | 
-                                    (imageData[offset + 2] << 16) |
-                                    (imageData[offset + 3] << 24);
+        uint32_t imagePixelOffset = (uint32_t) get32bitValue(imageData, offset);
 
         // Check if any of the image data is present in the data stream
         if (imagePixelOffset >= imageLength) {
