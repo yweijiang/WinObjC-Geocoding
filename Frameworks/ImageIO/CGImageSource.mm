@@ -186,11 +186,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     }
 
     // Check if all image frame data is present in the data stream
-    if ((offset + c_ifdOffsetSize) < imageLength) {
-        return kCGImageStatusComplete;
-    } else {
-        return kCGImageStatusIncomplete;
-    }
+    return ((offset + c_ifdOffsetSize) < imageLength) ? kCGImageStatusComplete : kCGImageStatusIncomplete;
 }
 
 /**
@@ -205,6 +201,8 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
     static const size_t c_packedFieldOffset = 10;
     static const size_t c_extensionTypeSize = 2; 
     static const size_t c_imageDescriptorSize = 10;
+    static const uint8_t c_gifExtensionHeader = 0x21;
+    static const uint8_t c_gifDescriptorHeader = 0x2C;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
@@ -224,9 +222,8 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
         }
 
         // Advance Start of Frame offset through various Extensions - Graphic Control, Plain Text, Application & Comment
-        if (imageData[offset] == 0x21) {
+        if (imageData[offset] == c_gifExtensionHeader) {
             offset += c_extensionTypeSize;
-
             if (offset >= imageLength) {
                 return kCGImageStatusUnknownType;
             } 
@@ -243,52 +240,39 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
             if (offset >= imageLength) {
                 return kCGImageStatusUnknownType;
             }
-        }
-
-        // Check for the start of an Image Descriptor
-        if (imageData[offset] == 0x2C) {
+        } else if (imageData[offset] == c_gifDescriptorHeader) { // Check for the start of an Image Descriptor
             offset += c_imageDescriptorSize;
-            if (offset < imageLength) {
-                // Advance Start of Frame offset if local color table exists. Check for existence by reading MSB of packed byte 
-                bool localColorTableExists = (imageData[offset - 1] & 0x80); 
-                if (localColorTableExists) {
-                    // Extract the last three bits from packed byte to get the Local Color Table Size representation and compute actual size
-                    offset += 3 << ((imageData[offset - 1] & 0x7) + 1);
-                }
+            if (offset >= imageLength) {
+                return (index == currentFrameIndex) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+            }
 
-                // Advance Start of Frame offset to the Image Data section
-                offset++;
-                if (offset < imageLength) {
-                    // Advance Start of Frame offset through the Image Data blocks. A block length of 0 marks the end of Image Data section 
-                    while (imageData[offset] != 0) {
-                        offset += imageData[offset] + 1;
-                        if (offset >= imageLength) {
-                            if (index == currentFrameIndex) {
-                                return kCGImageStatusIncomplete;
-                            } else {
-                                return kCGImageStatusUnknownType;
-                            }
-                        }                
-                    }
+            // Advance Start of Frame offset if local color table exists. Check for existence by reading MSB of packed byte 
+            bool localColorTableExists = (imageData[offset - 1] & 0x80); 
+            if (localColorTableExists) {
+                // Extract the last three bits from packed byte to get the Local Color Table Size representation and compute actual size
+                offset += 3 << ((imageData[offset - 1] & 0x7) + 1);
+            }
 
-                    offset++;
-                    currentFrameIndex++;                      
-                } else {
-                    if (index == currentFrameIndex) {
-                        return kCGImageStatusIncomplete;
-                    } else {
-                        return kCGImageStatusUnknownType;
-                    }                    
-                }
-            } else {
-                if (index == currentFrameIndex) {
-                    return kCGImageStatusIncomplete;
-                } else {
-                    return kCGImageStatusUnknownType;
+            // Advance Start of Frame offset to the Image Data section
+            offset++;
+            if (offset >= imageLength) {
+                return (index == currentFrameIndex) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+            }
+
+            // Advance Start of Frame offset through the Image Data blocks. A block length of 0 marks the end of Image Data section 
+            while (imageData[offset] != 0) {
+                offset += imageData[offset] + 1;
+                if (offset >= imageLength) {
+                    return (index == currentFrameIndex) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
                 }                
-            } 
+            }
+
+            offset++;
+            currentFrameIndex++;                      
+        } else {
+            return kCGImageStatusUnknownType;
         }
-    }
+    } 
 
     return kCGImageStatusComplete;
 }
@@ -328,11 +312,7 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
                                (imageData[c_pixelOffsetIndex + 2] << 16) | 
                                (imageData[c_pixelOffsetIndex + 3] << 24);
 
-    if (pixelArrayOffset >= imageLength) {
-        return kCGImageStatusIncomplete;
-    } else {
-        return kCGImageStatusUnknownType;
-    }
+    return (pixelArrayOffset >= imageLength) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
 }
 
 /**

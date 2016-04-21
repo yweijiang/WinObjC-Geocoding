@@ -842,36 +842,51 @@ TEST(ImageIO, IncrementalJPEGImageWithByteChunks) {
     NSData* imageData = getDataFromImageFile(imageFile);
     ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
     NSUInteger imageLength = [imageData length];
-    NSUInteger imageChunkSize = 1;//100 * 1024;
+    NSUInteger imageChunkSize = 1;
     NSUInteger imageOffset = 0;
+
+    static const int containerStatus[] = {kCGImageStatusInvalidData, kCGImageStatusIncomplete, kCGImageStatusComplete};
+    static const int streamLength[] = {1, 96, 218940}; 
+    static const int frameStatus[] = {kCGImageStatusReadingHeader, kCGImageStatusUnknownType, kCGImageStatusIncomplete, 
+                                      kCGImageStatusComplete};
+    static const int streamLengthAtIndex[] = {1, 96, 3851, 218940}; 
+
+    size_t containerIndex = 0;
+    size_t frameIndex = 0;
+    static const int undefinedStatus = -10;
+    int previousContainerStatus = undefinedStatus;
+    int previousFrameStatus = undefinedStatus;
+
     CGImageSourceRef imageRef = CGImageSourceCreateIncremental(nil);
     ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
-    NSMutableData* incrementalImageData = [NSMutableData data];
-    static const int expectedImageStatus[] = {kCGImageStatusIncomplete, kCGImageStatusIncomplete, kCGImageStatusComplete};
-    static const int expectedImageStatusAtIndex[] = {kCGImageStatusIncomplete, kCGImageStatusIncomplete, kCGImageStatusComplete};
-    size_t expectedImageIndex = 0;
-    int previousStatus = 10;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
-        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
-                                            length:currentChunkSize 
-                                            freeWhenDone:NO];
-        [incrementalImageData appendData:currentImageChunk];
-        imageOffset += currentChunkSize;
-        CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
-        static int iterator = 0;
-        int currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 0);
-        if (previousStatus == 10) {
-          printf("Status[%d] Length[%d]", currentStatus, iterator);
-        } else if (currentStatus != previousStatus) {
-          printf("Status[%d] Length[%d]", currentStatus, iterator);
+        imageOffset += imageChunkSize;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
+                                                         length:imageOffset 
+                                                   freeWhenDone:NO];
+        CGImageSourceUpdateData(imageRef, (CFDataRef)currentImageChunk, imageLength == imageOffset);
+
+        int currentStatus = CGImageSourceGetStatus(imageRef);
+        if (previousContainerStatus == undefinedStatus) {
+            checkInt(currentStatus, containerStatus[containerIndex], "ImageStatus");
+            checkInt(imageOffset, streamLength[containerIndex++], "ImageStatusLength");
+        } else if (currentStatus != previousContainerStatus) {
+            checkInt(currentStatus, containerStatus[containerIndex], "ImageStatus");
+            checkInt(imageOffset, streamLength[containerIndex++], "ImageStatusLength");
         }
-        previousStatus = currentStatus;
-        iterator++;
-        CGImageSourceGetStatusAtIndex(imageRef, 0);
-        //checkInt(CGImageSourceGetStatus(imageRef), expectedImageStatus[expectedImageIndex], "ImageStatus");
-        //checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), expectedImageStatusAtIndex[expectedImageIndex++], "ImageStatusAtIndex");
+
+        previousContainerStatus = currentStatus;
+        currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 0);
+        if (previousFrameStatus == undefinedStatus) {
+            checkInt(currentStatus, frameStatus[frameIndex], "ImageStatusAtIndex");
+            checkInt(imageOffset, streamLengthAtIndex[frameIndex++], "ImageStatusAtIndexLength");
+        } else if (currentStatus != previousFrameStatus) {
+            checkInt(currentStatus, frameStatus[frameIndex], "ImageStatusAtIndex");
+            checkInt(imageOffset, streamLengthAtIndex[frameIndex++], "ImageStatusAtIndexLength");
+        }
+
+        previousFrameStatus = currentStatus;
     } while(imageOffset < imageLength);
     CFRelease(imageRef);
 }
@@ -881,36 +896,51 @@ TEST(ImageIO, IncrementalBMPImageWithByteChunks) {
     NSData* imageData = getDataFromImageFile(imageFile);
     ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
     NSUInteger imageLength = [imageData length];
-    NSUInteger imageChunkSize = 1;//15 * 1024;
+    NSUInteger imageChunkSize = 1;
     NSUInteger imageOffset = 0;
+
+    static const int containerStatus[] = {kCGImageStatusInvalidData, kCGImageStatusIncomplete, kCGImageStatusComplete};
+    static const int streamLength[] = {1, 96, 218940}; 
+    static const int frameStatus[] = {kCGImageStatusReadingHeader, kCGImageStatusUnknownType, kCGImageStatusIncomplete, 
+                                      kCGImageStatusComplete};
+    static const int streamLengthAtIndex[] = {1, 96, 3851, 218940}; 
+
+    size_t containerIndex = 0;
+    size_t frameIndex = 0;
+    static const int undefinedStatus = -10;
+    int previousContainerStatus = undefinedStatus;
+    int previousFrameStatus = undefinedStatus;
+
     CGImageSourceRef imageRef = CGImageSourceCreateIncremental(nil);
     ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
-    NSMutableData* incrementalImageData = [NSMutableData data];
-    static const int expectedImageStatus[] = {kCGImageStatusIncomplete, kCGImageStatusIncomplete, kCGImageStatusComplete};
-    static const int expectedImageStatusAtIndex[] = {kCGImageStatusUnknownType, kCGImageStatusUnknownType, kCGImageStatusComplete};
-    size_t expectedImageIndex = 0;
-    int previousStatus = 10;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
-        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
-                                            length:currentChunkSize 
-                                            freeWhenDone:NO];
-        [incrementalImageData appendData:currentImageChunk];
-        imageOffset += currentChunkSize;
-        CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
-        static int iterator = 0;
-        int currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 0);
-        if (previousStatus == 10) {
-          printf("Status[%d] Length[%d]", currentStatus, iterator);
-        } else if (currentStatus != previousStatus) {
-          printf("Status[%d] Length[%d]", currentStatus, iterator);
+        imageOffset += imageChunkSize;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
+                                                         length:imageOffset 
+                                                   freeWhenDone:NO];
+        CGImageSourceUpdateData(imageRef, (CFDataRef)currentImageChunk, imageLength == imageOffset);
+
+        int currentStatus = CGImageSourceGetStatus(imageRef);
+        if (previousContainerStatus == undefinedStatus) {
+            checkInt(currentStatus, containerStatus[containerIndex], "ImageStatus");
+            checkInt(imageOffset, streamLength[containerIndex++], "ImageStatusLength");
+        } else if (currentStatus != previousContainerStatus) {
+            checkInt(currentStatus, containerStatus[containerIndex], "ImageStatus");
+            checkInt(imageOffset, streamLength[containerIndex++], "ImageStatusLength");
         }
-        previousStatus = currentStatus;
-        iterator++;
-        CGImageSourceGetStatusAtIndex(imageRef, 0);
-        //checkInt(CGImageSourceGetStatus(imageRef), expectedImageStatus[expectedImageIndex], "ImageStatus");
-        //checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), expectedImageStatusAtIndex[expectedImageIndex++], "ImageStatusAtIndex");
+
+        previousContainerStatus = currentStatus;
+        currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 0);
+        if (previousFrameStatus == undefinedStatus) {
+            checkInt(currentStatus, frameStatus[frameIndex], "ImageStatusAtIndex");
+            checkInt(imageOffset, streamLengthAtIndex[frameIndex++], "ImageStatusAtIndexLength");
+        } else if (currentStatus != previousFrameStatus) {
+            checkInt(currentStatus, frameStatus[frameIndex], "ImageStatusAtIndex");
+            checkInt(imageOffset, streamLengthAtIndex[frameIndex++], "ImageStatusAtIndexLength");
+        }
+
+        previousFrameStatus = currentStatus;
     } while(imageOffset < imageLength);
     CFRelease(imageRef);
 }
@@ -931,25 +961,32 @@ TEST(ImageIO, IncrementalPNGImageWithByteChunks) {
     int previousStatus = 10;
 
     do {
-        NSUInteger currentChunkSize = (imageLength - imageOffset) > imageChunkSize ? imageChunkSize : imageLength - imageOffset;
-        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] + imageOffset 
-                                            length:currentChunkSize 
-                                            freeWhenDone:NO];
-        [incrementalImageData appendData:currentImageChunk];
-        imageOffset += currentChunkSize;
-        CGImageSourceUpdateData(imageRef, (CFDataRef)incrementalImageData, imageLength == imageOffset);
-        static int iterator = 0;
-        int currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 0);
-        if (previousStatus == 10) {
-          printf("Status[%d] Length[%d]", currentStatus, iterator);
-        } else if (currentStatus != previousStatus) {
-          printf("Status[%d] Length[%d]", currentStatus, iterator);
+        imageOffset += imageChunkSize;
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
+                                                         length:imageOffset 
+                                                   freeWhenDone:NO];
+        CGImageSourceUpdateData(imageRef, (CFDataRef)currentImageChunk, imageLength == imageOffset);
+
+        int currentStatus = CGImageSourceGetStatus(imageRef);
+        if (previousContainerStatus == undefinedStatus) {
+            checkInt(currentStatus, containerStatus[containerIndex], "ImageStatus");
+            checkInt(imageOffset, streamLength[containerIndex++], "ImageStatusLength");
+        } else if (currentStatus != previousContainerStatus) {
+            checkInt(currentStatus, containerStatus[containerIndex], "ImageStatus");
+            checkInt(imageOffset, streamLength[containerIndex++], "ImageStatusLength");
         }
-        previousStatus = currentStatus;
-        iterator++;
-        CGImageSourceGetStatusAtIndex(imageRef, 0);
-        //checkInt(CGImageSourceGetStatus(imageRef), expectedImageStatus[expectedImageIndex], "ImageStatus");
-        //checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), expectedImageStatusAtIndex[expectedImageIndex++], "ImageStatus");
+
+        previousContainerStatus = currentStatus;
+        currentStatus = CGImageSourceGetStatusAtIndex(imageRef, 0);
+        if (previousFrameStatus == undefinedStatus) {
+            checkInt(currentStatus, frameStatus[frameIndex], "ImageStatusAtIndex");
+            checkInt(imageOffset, streamLengthAtIndex[frameIndex++], "ImageStatusAtIndexLength");
+        } else if (currentStatus != previousFrameStatus) {
+            checkInt(currentStatus, frameStatus[frameIndex], "ImageStatusAtIndex");
+            checkInt(imageOffset, streamLengthAtIndex[frameIndex++], "ImageStatusAtIndexLength");
+        }
+
+        previousFrameStatus = currentStatus;
     } while(imageOffset < imageLength);
     CFRelease(imageRef);
 }
