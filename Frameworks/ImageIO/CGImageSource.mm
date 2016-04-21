@@ -112,15 +112,15 @@ const CFStringRef kUTTypeICO = static_cast<const CFStringRef>(@"com.microsoft.ic
 }
 
 // Helper functions used for getting multi-byte values from image data.
-size_t get16BitValue(const uint8_t* data, size_t offset) {
+uint16_t get16BitValue(const uint8_t* data, size_t offset) {
     return data[offset] + (data[offset + 1] << 8);
 }
 
-size_t get32BitValue(const uint8_t* data, size_t offset) {
+uint32_t get32BitValue(const uint8_t* data, size_t offset) {
     return data[offset] + (data[offset + 1] << 8) + (data[offset + 2] << 16) + (data[offset + 3] << 24);
 }
 
-size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
+uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     return data[offset - 1] + (data[offset - 2] << 8) + (data[offset - 3] << 16) + (data[offset - 4] << 24);
 }
 
@@ -141,7 +141,7 @@ size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     static const uint8_t c_imageEndIdentifier[2] = {0xFF, 0xD9};
     static const uint8_t c_scanStartIdentifier[2] = {0xFF, 0xDA};
-    static const int c_minDataStreamSize = 96;
+    static const size_t c_minDataStreamSize = 96;
     
     if (imageLength < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
@@ -175,7 +175,7 @@ size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 */
 - (CGImageSourceStatus)getTIFFStatusAtIndex:(size_t)index {
     static const size_t c_ifdOffsetSize = 4;
-    static const int c_minDataStreamSize = 96;
+    static const size_t c_minDataStreamSize = 96;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
@@ -185,16 +185,10 @@ size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     }
     
     // Offset into the first Image File Directory (IFD) starts at byte offset 4
-    size_t offset = 4;
+    size_t offset = get32BitValue(imageData, 4);
 
     // Check if data for previous image frames are present 
     for (size_t currentFrameIndex = 0; currentFrameIndex < index; currentFrameIndex++) {
-        if (offset + 3 >= imageLength) {
-            return kCGImageStatusUnknownType;
-        }
-
-        offset = get32BitValue(imageData, offset);
-
         if (offset + 1 >= imageLength) {
             return kCGImageStatusUnknownType;
         }
@@ -203,6 +197,12 @@ size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
         // Each tag is 12 bytes and each tag count size is 2 bytes
         offset += (tagCount * 12) + 2;
+
+        if (offset + 3 >= imageLength) {
+            return kCGImageStatusUnknownType;
+        }
+
+        offset = get32BitValue(imageData, offset);
     }
 
     // Check if all image frame data is present in the data stream
@@ -227,7 +227,7 @@ size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     static const size_t c_imageDescriptorSize = 10;
     static const uint8_t c_gifExtensionHeader = 0x21;
     static const uint8_t c_gifDescriptorHeader = 0x2C;
-    static const int c_minDataStreamSize = 96;
+    static const size_t c_minDataStreamSize = 96;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
@@ -318,7 +318,7 @@ size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     static const size_t c_fileSizeIndex = 2;
     static const size_t c_pixelOffsetIndex = 10;
-    static const int c_minDataStreamSize = 96;
+    static const size_t c_minDataStreamSize = 96;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
@@ -337,10 +337,7 @@ size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     // Check if partial image data is present in the data stream
     // Bound check in parent CGImageSourceGetStatusAtIndex function for a length of 96
-    uint8_t pixelArrayOffset = imageData[c_pixelOffsetIndex] | 
-                               (imageData[c_pixelOffsetIndex + 1] << 8) | 
-                               (imageData[c_pixelOffsetIndex + 2] << 16) | 
-                               (imageData[c_pixelOffsetIndex + 3] << 24);
+    uint8_t pixelArrayOffset = (uint8_t) get32BitValue(imageData, c_pixelOffsetIndex);
 
     return (pixelArrayOffset >= imageLength) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
 }
@@ -368,7 +365,6 @@ size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     // Check if the End of Image identifier is present in the data stream
     size_t imageEndIndex = imageLength - c_imageEndIdentifierReverseIndex;
-    bool imageLoadComplete = true;
 
     size_t endIndex = imageLength - c_imageEndIdentifierReverseIndex;
 
@@ -408,7 +404,7 @@ size_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     static const size_t c_pixelOffset = 8;
     static const size_t c_imageDataLengthSize = 4;
     static const size_t c_imagePixelOffsetSize = 4;
-    static const int c_minDataStreamSize = 96;
+    static const size_t c_minDataStreamSize = 96;
     
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
@@ -857,7 +853,7 @@ CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc) {
         return kCGImageStatusInvalidData;
     }
 
-    static const int c_minDataStreamSize = 96; 
+    static const size_t c_minDataStreamSize = 96; 
     ImageSource* imageSrc = (ImageSource*)isrc;
     if (!imageSrc.data || [imageSrc.data length] < c_minDataStreamSize) {
         return kCGImageStatusInvalidData;
@@ -885,7 +881,7 @@ CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t 
         return kCGImageStatusUnexpectedEOF;
     }
 
-    static const int c_minDataStreamSize = 96;
+    static const size_t c_minDataStreamSize = 96;
     if ([imageSrc.data length] < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
     }
