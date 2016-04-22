@@ -300,6 +300,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
         return kCGImageStatusIncomplete;
     } else {
         return kCGImageStatusComplete;
+    }
 }
 
 /**
