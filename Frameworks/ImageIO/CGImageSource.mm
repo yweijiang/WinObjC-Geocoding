@@ -218,6 +218,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
              Interlaced GIF images are not supported by Apple APIs and the current implementation does not support it.
  @References https://www.w3.org/Graphics/GIF/spec-gif89a.txt
              https://en.wikipedia.org/wiki/GIF
+             http://giflib.sourceforge.net/whatsinagif/bits_and_bytes.html
 */
 - (CGImageSourceStatus)getGIFStatusAtIndex:(size_t)index {
     static const size_t c_headerSize = 6;
@@ -241,38 +242,41 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     if (imageData[c_packedFieldOffset] & 0x80) {
         // Extract the last three bits from packed byte to get the Global Color Table Size representation and compute actual size
         offset += 3 << ((imageData[c_packedFieldOffset] & 0x7) + 1);
-    }    
+    }
 
+    // Return unknown if offset is somewhere past the end of the image data before any image frames are found
+    if (offset >= imageLength) {
+        return kCGImageStatusUnknownType;
+    }
+
+    // Count the number of frames we find by keeping track of the number of image descriptor blocks encountered.
+    // Exit loop when the number of frames encountered goes past the index we're looking for, or we go past the end of the image data.
     size_t currentFrameIndex = 0;
     while (currentFrameIndex <= index) {
-        if (offset >= imageLength) {
-            return kCGImageStatusUnknownType;
-        }
-
         // Advance Start of Frame offset through various Extensions - Graphic Control, Plain Text, Application & Comment
         if (imageData[offset] == c_gifExtensionHeader) {
             offset += c_extensionTypeSize;
             if (offset >= imageLength) {
-                return kCGImageStatusUnknownType;
+                break;
             } 
 
             // Iterate over all extension sub-blocks by checking the block length. A block length of 0 marks the end of current extension 
             while (imageData[offset] != 0) {
                 offset += imageData[offset] + 1;
                 if (offset >= imageLength) {
-                    return kCGImageStatusUnknownType;
+                    break;
                 }
             }
 
             offset++;
             if (offset >= imageLength) {
-                return kCGImageStatusUnknownType;
+                break;
             }
         } else if (imageData[offset] == c_gifDescriptorHeader) {
             // Check for the start of an Image Descriptor
             offset += c_imageDescriptorSize;
             if (offset >= imageLength) {
-                return (index == currentFrameIndex) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+                break;
             }
 
             // Advance Start of Frame offset if local color table exists. Check for existence by reading MSB of packed byte 
@@ -284,23 +288,38 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
             // Advance Start of Frame offset to the Image Data section
             offset++;
             if (offset >= imageLength) {
-                return (index == currentFrameIndex) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+                break;
             }
 
             // Advance Start of Frame offset through the Image Data blocks. A block length of 0 marks the end of Image Data section 
             while (imageData[offset] != 0) {
                 offset += imageData[offset] + 1;
                 if (offset >= imageLength) {
-                    return (index == currentFrameIndex) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+                    break;
                 }                
             }
 
+            // Increment the number of frames encountered
+            currentFrameIndex++;
             offset++;
-            currentFrameIndex++;                      
+            if (offset >= imageLength) {
+                break;
+            }
         } else {
+            // Neither of the valid block headers were encountered, this means we have an unknown type
             return kCGImageStatusUnknownType;
         }
-    } 
+    }
+
+    // If we have encountered less frames than the index, then loading the frame at the index is not started, so return Unknown Type
+    // If the end was reached during index, then return Incomplete, and if we have found all frames plus the index, return Complete
+    if (currentFrameIndex < index) {
+        return kCGImageStatusUnknownType;
+    }
+    
+    if (currentFrameIndex == index) {
+        return kCGImageStatusIncomplete;
+    }
 
     return kCGImageStatusComplete;
 }
