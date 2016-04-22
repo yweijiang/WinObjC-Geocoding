@@ -185,7 +185,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     }
     
     // Offset into the first Image File Directory (IFD) starts at byte offset 4
-    size_t offset = get32BitValue(imageData, 4);
+    uint32_t offset = get32BitValue(imageData, 4);
 
     // Check if data for previous image frames are present 
     for (size_t currentFrameIndex = 0; currentFrameIndex < index; currentFrameIndex++) {
@@ -193,7 +193,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
             return kCGImageStatusUnknownType;
         }
 
-        size_t tagCount = get16BitValue(imageData, offset);
+        uint16_t tagCount = get16BitValue(imageData, offset);
 
         // Each tag is 12 bytes and each tag count size is 2 bytes
         offset += (tagCount * 12) + 2;
@@ -232,96 +232,74 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
-    size_t offset = c_headerSize + c_logicalDescriptorSize;
         
     if (imageLength < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
     }
 
+    size_t offset = c_headerSize + c_logicalDescriptorSize;
+
     // Advance Start of Frame offset if global color table exists. Check for existence by reading MSB of packed byte 
     if (imageData[c_packedFieldOffset] & 0x80) {
         // Extract the last three bits from packed byte to get the Global Color Table Size representation and compute actual size
         offset += 3 << ((imageData[c_packedFieldOffset] & 0x7) + 1);
-    }
 
-    // Return unknown if offset is somewhere past the end of the image data before any image frames are found
-    if (offset >= imageLength) {
-        return kCGImageStatusUnknownType;
+        // Return unknown if offset is somewhere past the end of the image data before any image frames are found
+        if (offset >= imageLength) {
+            return kCGImageStatusUnknownType;
+        }
     }
 
     // Count the number of frames we find by keeping track of the number of image descriptor blocks encountered.
     // Exit loop when the number of frames encountered goes past the index we're looking for, or we go past the end of the image data.
-    size_t currentFrameIndex = 0;
-    while (currentFrameIndex <= index) {
+    size_t framesLoaded = 0;
+    while (framesLoaded <= index) {
+        bool extensionHeaderFound = imageData[offset] == c_gifExtensionHeader;
+        bool descriptorHeaderFound = imageData[offset] == c_gifDescriptorHeader;
+
         // Advance Start of Frame offset through various Extensions - Graphic Control, Plain Text, Application & Comment
-        if (imageData[offset] == c_gifExtensionHeader) {
+        if (extensionHeaderFound) {
             offset += c_extensionTypeSize;
-            if (offset >= imageLength) {
-                break;
-            } 
-
-            // Iterate over all extension sub-blocks by checking the block length. A block length of 0 marks the end of current extension 
-            while (imageData[offset] != 0) {
-                offset += imageData[offset] + 1;
-                if (offset >= imageLength) {
-                    break;
-                }
-            }
-
-            offset++;
-            if (offset >= imageLength) {
-                break;
-            }
-        } else if (imageData[offset] == c_gifDescriptorHeader) {
+        } else if (descriptorHeaderFound) {
             // Check for the start of an Image Descriptor
             offset += c_imageDescriptorSize;
-            if (offset >= imageLength) {
-                break;
-            }
 
             // Advance Start of Frame offset if local color table exists. Check for existence by reading MSB of packed byte 
-            if (imageData[offset - 1] & 0x80) {
+            if (offset < imageLength && imageData[offset - 1] & 0x80) {
                 // Extract the last three bits from packed byte to get the Local Color Table Size representation and compute actual size
                 offset += 3 << ((imageData[offset - 1] & 0x7) + 1);
             }
-
-            // Advance Start of Frame offset to the Image Data section
             offset++;
-            if (offset >= imageLength) {
-                break;
-            }
-
-            // Advance Start of Frame offset through the Image Data blocks. A block length of 0 marks the end of Image Data section 
-            while (imageData[offset] != 0) {
-                offset += imageData[offset] + 1;
-                if (offset >= imageLength) {
-                    break;
-                }                
-            }
-
-            // Increment the number of frames encountered
-            currentFrameIndex++;
-            offset++;
-            if (offset >= imageLength) {
-                break;
-            }
         } else {
             // Neither of the valid block headers were encountered, this means we have an unknown type
             return kCGImageStatusUnknownType;
+        }
+
+        // Iterate over all extension sub-blocks by checking the block length. A block length of 0 marks the end of current extension 
+        while (offset < imageLength && imageData[offset] != 0) {
+            offset += imageData[offset] + 1;
+        }
+
+        if (offset < imageLength && descriptorHeaderFound) {
+            // Increment the number of frames encountered if we see descriptor and fully advance through the image data block
+            framesLoaded++;
+        }
+
+        // Increment to start of next block, then check if we've gone past the ended of the loaded image
+        offset++;
+        if (offset >= imageLength) {
+            break;
         }
     }
 
     // If we have encountered less frames than the index, then loading the frame at the index is not started, so return Unknown Type
     // If the end was reached during index, then return Incomplete, and if we have found all frames plus the index, return Complete
-    if (currentFrameIndex < index) {
+    if (framesLoaded < index) {
         return kCGImageStatusUnknownType;
-    }
-    
-    if (currentFrameIndex == index) {
+    } else if (framesLoaded == index) {
         return kCGImageStatusIncomplete;
-    }
-
-    return kCGImageStatusComplete;
+    } else {
+        return kCGImageStatusComplete;
 }
 
 /**
@@ -356,7 +334,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     // Check if partial image data is present in the data stream
     // Bound check in parent CGImageSourceGetStatusAtIndex function for a length of 96
-    uint8_t pixelArrayOffset = (uint8_t) get32BitValue(imageData, c_pixelOffsetIndex);
+    uint32_t pixelArrayOffset = get32BitValue(imageData, c_pixelOffsetIndex);
 
     return (pixelArrayOffset >= imageLength) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
 }
@@ -406,7 +384,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
             return kCGImageStatusIncomplete;
         }
 
-        size_t chunkLength = get32BitValueBigEndian(imageData, offset);
+        uint32_t chunkLength = get32BitValueBigEndian(imageData, offset);
         offset += c_chunkTypeSize + chunkLength + c_CRCSize + c_lengthSize;
     }
 
@@ -438,14 +416,14 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
             return kCGImageStatusUnknownType;
         } 
 
-        uint32_t imageDataLength = (uint32_t) get32BitValue(imageData, offset);
+        uint32_t imageDataLength = get32BitValue(imageData, offset);
 
         offset += c_imageDataLengthSize;
         if (offset + 3 >= imageLength) {
             return kCGImageStatusUnknownType;
         } 
 
-        uint32_t imagePixelOffset = (uint32_t) get32BitValue(imageData, offset);
+        uint32_t imagePixelOffset = get32BitValue(imageData, offset);
 
         // Check if any of the image data is present in the data stream
         if (imagePixelOffset >= imageLength) {
