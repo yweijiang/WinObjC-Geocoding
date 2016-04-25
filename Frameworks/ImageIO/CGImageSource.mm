@@ -132,6 +132,9 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
              https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format                    
 */
 - (CGImageSourceStatus)getJPEGStatusAtIndex:(size_t)index {
+    static const uint8_t c_imageEndIdentifier[2] = {0xFF, 0xD9};
+    static const uint8_t c_scanStartIdentifier[2] = {0xFF, 0xDA};
+
     // Return if requesting for invalid frames
     if (index != 0) {
         return kCGImageStatusUnknownType;
@@ -139,9 +142,6 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
-
-    static const uint8_t c_imageEndIdentifier[2] = {0xFF, 0xD9};
-    static const uint8_t c_scanStartIdentifier[2] = {0xFF, 0xDA};
     
     if (imageLength < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
@@ -307,14 +307,13 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
              http://www.fileformat.info/format/bmp/egff.htm
 */
 - (CGImageSourceStatus)getBMPStatusAtIndex:(size_t)index {
+    static const size_t c_fileSizeIndex = 2;
+    static const size_t c_pixelOffsetIndex = 10;
+
     // Return if requesting for invalid frames
     if (index != 0) {
         return kCGImageStatusUnknownType;
     }
-
-    static const size_t c_fileSizeIndex = 2;
-    static const size_t c_pixelOffsetIndex = 10;
-    
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
@@ -325,9 +324,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     // Check if incoming data stream size matches image file size 
     // Bound check in parent CGImageSourceGetStatusAtIndex function for a length of 96 
-    NSUInteger fileSize = (NSUInteger) get32BitValue(imageData, c_fileSizeIndex);
-
-    if (imageLength == fileSize) {
+    if (imageLength == get32BitValue(imageData, c_fileSizeIndex)) {
         return kCGImageStatusComplete;
     }
 
@@ -344,11 +341,6 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
              https://en.wikipedia.org/wiki/Portable_Network_Graphics
 */
 - (CGImageSourceStatus)getPNGStatusAtIndex:(size_t)index {
-    // Return if requesting for invalid frames
-    if (index != 0) {
-        return kCGImageStatusUnknownType;
-    }
-
     static const size_t c_imageEndIdentifierReverseIndex = 8;
     static const size_t c_headerSize = 8;
     static const size_t c_lengthSize = 4;
@@ -356,6 +348,11 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     static const size_t c_CRCSize = 4;
     static const uint8_t c_imageEndIdentifier[] = {0x49, 0x45, 0x4E, 0x44};
     static const uint8_t c_frameStartIdentifier[] = {0x49, 0x44, 0x41, 0x54};
+    
+    // Return if requesting for invalid frames
+    if (index != 0) {
+        return kCGImageStatusUnknownType;
+    }
      
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
@@ -403,14 +400,19 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     static const size_t c_imageDataLengthSize = 4;
     static const size_t c_imagePixelOffsetSize = 4;
     
+    // Return if requesting for invalid frames
+    if (index != 0) {
+        return kCGImageStatusUnknownType;
+    }
+
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
-    size_t offset = c_headerSize + c_pixelOffset;
     
     if (imageLength < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
     }
-
+        
+    size_t offset = c_headerSize + c_pixelOffset;
     for (size_t currentFrameIndex = 0; currentFrameIndex <= index; currentFrameIndex++) {
         if (offset + 3 >= imageLength) {
             return kCGImageStatusUnknownType;
