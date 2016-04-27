@@ -25,6 +25,7 @@
 
 @interface ImageSource : NSObject
 @property (atomic) NSData* data;
+@property (atomic) bool nonIncrementalSource;
 @property (atomic) CGImageSourceStatus loadStatus;
 @property (atomic) int loadIndex;
 @property (atomic) bool isFinalIncrementalSet;

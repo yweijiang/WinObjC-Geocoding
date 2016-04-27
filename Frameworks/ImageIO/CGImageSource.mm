@@ -55,6 +55,7 @@ const size_t c_minDataStreamSize = 96;
 - (instancetype)initWithData:(CFDataRef)data {
     if (self = [super init]) {
         _data = (NSData*)data;
+        _nonIncrementalSource = true;
     }
 
     return self;
@@ -63,6 +64,7 @@ const size_t c_minDataStreamSize = 96;
 - (instancetype)initWithURL:(CFURLRef)url {
     if (self = [super init]) {
         _data = [NSData dataWithContentsOfURL:(NSURL*)url];
+        _nonIncrementalSource = true;
     }
 
     return self;
@@ -71,6 +73,7 @@ const size_t c_minDataStreamSize = 96;
 - (instancetype)initWithDataProvider:(CGDataProviderRef)provider {
     if (self = [super init]) {
         _data = (NSData*)CGDataProviderCopyData(provider);
+        _nonIncrementalSource = true;
     }
 
     return self;                               
@@ -273,7 +276,7 @@ bool tagDataFound(const uint8_t* imageData, NSUInteger imageLength, uint32_t off
 // The offset must be set to the start of the required frame's IFD header
 // Apple's implementation returns complete only when the last tag's data is completely loaded. 
 // Additionally, the Number of Tag Entries and TagList of the next frame's IFD must be present (if requested frame is not the last).   
-bool frameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
+bool TiffFrameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
     if (offset + 1 >= imageLength) {
         return false;
     }
@@ -313,7 +316,7 @@ bool frameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t of
 // TIFF helper function to identify incomplete frames
 // The offset must be set to the start of the required frame's IFD header
 // Apple's implementation returns incomplete only when the the frame's first tag data is completely loaded at the provided offset   
-bool frameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
+bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
     // Check if the first tag is present in the data stream
     return tagDataFound(imageData, imageLength, offset, 0);
 }
@@ -354,9 +357,9 @@ bool frameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t 
     }
 
     // Check if all image frame data is present in the data stream
-    if (frameComplete(imageData, imageLength, offset)) {
+    if (TiffFrameComplete(imageData, imageLength, offset)) {
         return kCGImageStatusComplete;
-    } else if (frameIncomplete(imageData, imageLength, offset)) {
+    } else if (TiffFrameIncomplete(imageData, imageLength, offset)) {
         return kCGImageStatusIncomplete;
     } else {
         return kCGImageStatusUnknownType;
@@ -405,6 +408,9 @@ bool frameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t 
     size_t framesLoaded = 0;
     size_t imageBlocks = 0;
 
+    // Flag to check if the previous frame was present in the data stream
+    bool frameProcessed = 0;
+
     // Flags for tracking the status of incremental loading
     bool extensionIncomplete = 0;
     bool descriptorIncomplete = 0;
@@ -413,7 +419,8 @@ bool frameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t 
     bool frameIncomplete = 0;
     bool frameComplete = 0;
 
-    while (framesLoaded <= index + 1) {
+    // Loop continues until the Image Descriptor of the next frame is found or if the trailer for the overall image is encountered
+    while (framesLoaded <= index) {
         bool extensionHeaderFound = (imageData[offset] == c_gifExtensionHeader);
         bool descriptorHeaderFound = (imageData[offset] == c_gifDescriptorHeader);
 
@@ -435,10 +442,16 @@ bool frameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t 
             }
         } else if (descriptorHeaderFound) {
             // Check for the start of an Image Descriptor
-            // Break when the Image Descriptor for redundant frames is found
+            // An image frame is to be marked complete only if the Image Descriptor of the next frame or the overall image trailer is found
+            // Check if the previous frame was present in the data stream and increment the number of frames loaded
+            if (frameProcessed) {
+                framesLoaded++;
+            }
+
+            // Continue to evaluate the loop condition when the needed frame is found
             if (framesLoaded == index + 1) {
                 frameComplete = 1;
-                break;
+                continue;
             }
 
             // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) bytes of Image Descriptor
@@ -496,17 +509,17 @@ bool frameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t 
             // Point offset to either the trailer byte or to the beginning of the next extension or frame 
             offset++;
             if (offset >= imageLength) {
-                frameIncomplete = 1;
+                framesLoaded == index ? frameIncomplete = 1 : imageHeaderUnknown = 1;
                 break;
             }
 
             // Reached end of the image data for current frame
             if (imageData[offset] == c_gifTrailer) {
                 frameComplete = 1;
-                break;
-            } else {
-                // Increment the number of frames encountered if we fully advance through the image data block
                 framesLoaded++;
+            } else {
+                // Marks the end of a processed frame
+                frameProcessed = 1;
             }
         } else {
             // Neither of the valid block headers were encountered, this means we have an unknown type
@@ -515,21 +528,27 @@ bool frameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t 
     }
 
     if (frameComplete) {
+        // Start of the Image Descriptor for the next frame or the Trailer for the overall image was found  
         return kCGImageStatusComplete;
     } else if (frameIncomplete) {
+        // Incomplete Image Data sub-blocks
         return kCGImageStatusIncomplete;
     } else if (imageDataIncomplete) {
-        return (framesLoaded == index && imageBlocks >= 3) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+        // Frame is incomplete only if atleast the third sub-block of Image Data is found
+        return (frameProcessed && framesLoaded == index && imageBlocks >= 3) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
     } else if (imageHeaderUnknown) {
+        // Incomplete Local Color Table or Frame not started
         return kCGImageStatusUnknownType;
     } else if (descriptorIncomplete) {
+        // Incomplete Image Descriptor
         if (index == 0) {
             return kCGImageStatusReadingHeader;
         } else {
-            return (framesLoaded == index) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+            return (frameProcessed && framesLoaded == index) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
         }        
     } else if (extensionIncomplete) {
-        return (framesLoaded == index + 1) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+        // Missing Block Terminator
+        return (frameProcessed && framesLoaded == index) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
     } else {
         return kCGImageStatusUnknownType;
     }
@@ -772,7 +791,7 @@ CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef isrc, size_t index, 
     RETURN_NULL_IF(!imageData);
 
     source.loadStatus = [source getStatusAtIndex:index];
-    source.loadIndex = index;
+    source.loadIndex = index + 1;
     RETURN_NULL_IF(source.loadStatus != kCGImageStatusIncomplete && source.loadStatus != kCGImageStatusComplete);
     RETURN_NULL_IF(index > (CGImageSourceGetCount(isrc) - 1));
 
@@ -1127,7 +1146,15 @@ CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc) {
     }
 
     ImageSource* imageSrc = (ImageSource*)isrc;
-    if (!imageSrc.data || [imageSrc.data length] < c_minDataStreamSize) {
+    if (!imageSrc.data) {
+        return kCGImageStatusInvalidData;
+    }
+
+    if (imageSrc.nonIncrementalSource) {
+        return kCGImageStatusComplete;
+    }
+
+    if ([imageSrc.data length] < c_minDataStreamSize) {
         return kCGImageStatusInvalidData;
     }
 
@@ -1153,12 +1180,20 @@ CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t 
         return kCGImageStatusUnexpectedEOF;
     }
 
+    if (imageSrc.nonIncrementalSource) {
+        if (index == imageSrc.loadIndex - 1 && index < CGImageSourceGetCount(isrc)) {
+            return kCGImageStatusComplete;
+        } else {
+            return kCGImageStatusUnknownType;
+        }
+    }
+
     if ([imageSrc.data length] < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
     }
 
     CFStringRef imageFormat = CGImageSourceGetType(isrc);
-    if (imageSrc.loadIndex == index) {
+    if (index == imageSrc.loadIndex - 1) {
         return imageSrc.loadStatus;
     } else {
         return kCGImageStatusUnknownType;

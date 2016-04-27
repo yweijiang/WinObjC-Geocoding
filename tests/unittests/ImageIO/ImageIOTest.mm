@@ -966,3 +966,110 @@ TEST(ImageIO, IncrementalICOImageWithFrameCheck) {
      
     CFRelease(imageRef);
 }
+
+// Negative Scenario with a TIFF incremental source
+TEST(ImageIO, IncrementalTIFFNegativeScenario) {
+    const wchar_t* imageFile = L"photo8_4layers_1024x683.tif";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+    NSUInteger imageLength = [imageData length];
+
+    // Minimum Stream Length at which CGImageSourceCreateImageAtIndex returns valid image references
+    static const int c_streamLengthForImage1 = 1151534;
+    static const int c_streamLengthForImage2 = 1960686;
+
+    // Frame1 status change sequence and corresponding stream lengths 
+    static const std::vector<int> c_frameStatus1 = {kCGImageStatusReadingHeader, kCGImageStatusReadingHeader, kCGImageStatusUnknownType, 
+                                                   kCGImageStatusUnknownType, kCGImageStatusUnknownType, kCGImageStatusUnknownType, 
+                                                   kCGImageStatusUnknownType};
+    static const std::vector<int> c_streamLengthForFrame1 = {1, 95, 96, 1151533, 1151534, 1960675, 1960676}; 
+
+    // Frame2 status change sequence and corresponding stream lengths 
+    static const std::vector<int> c_frameStatus2 = {kCGImageStatusReadingHeader, kCGImageStatusReadingHeader, kCGImageStatusUnknownType, 
+                                                   kCGImageStatusUnknownType, kCGImageStatusUnknownType, kCGImageStatusUnknownType, 
+                                                   kCGImageStatusUnknownType};
+    static const std::vector<int> c_streamLengthForFrame2 = {1, 95, 96, 1960685, 1960686, 3129155, 3129156}; 
+
+    // Frame3 status change sequence and corresponding stream lengths 
+    static const std::vector<int> c_frameStatus3 = {kCGImageStatusReadingHeader, kCGImageStatusReadingHeader, kCGImageStatusUnknownType, 
+                                                   kCGImageStatusUnknownType, kCGImageStatusUnknownType, kCGImageStatusUnknownType, 
+                                                   kCGImageStatusUnknownType};
+    static const std::vector<int> c_streamLengthForFrame3 = {1, 95, 96, 3129165, 3129166, 4184257, 4184258}; 
+
+    CGImageSourceRef imageRef = CGImageSourceCreateIncremental(nil);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
+
+    // Different indices fed to CGImageSourceCreateImageAtIndex and CGImageSourceGetStatusAtIndex
+    bool imageStart = 0;
+    for (int index = 0; index < c_streamLengthForFrame1.size(); index++) {
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
+                                                         length:c_streamLengthForFrame1[index] 
+                                                   freeWhenDone:NO];
+
+        CGImageSourceUpdateData(imageRef, (CFDataRef)currentImageChunk, imageLength == c_streamLengthForFrame1[index]);
+        CGImageRef incrementalImage = CGImageSourceCreateImageAtIndex(imageRef, 0, nullptr);
+
+        // Check minimum stream length for valid image references 
+        if (incrementalImage && !imageStart) {
+            checkInt(c_streamLengthForImage1, c_streamLengthForFrame1[index], "ValidImageLength");
+            imageStart = 1;
+        }
+        
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 3), c_frameStatus1[index], "FrameStatus");
+    }
+    
+    // Negative indices fed to CGImageSourceCreateImageAtIndex and CGImageSourceGetStatusAtIndex 
+    imageStart = 0;
+    for (int index = 0; index < c_streamLengthForFrame2.size(); index++) {
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
+                                                         length:c_streamLengthForFrame2[index] 
+                                                   freeWhenDone:NO];
+
+        CGImageSourceUpdateData(imageRef, (CFDataRef)currentImageChunk, imageLength == c_streamLengthForFrame2[index]);
+        CGImageRef incrementalImage = CGImageSourceCreateImageAtIndex(imageRef, -1, nullptr);
+
+        // Check minimum stream length for valid image references 
+        if (incrementalImage && !imageStart) {
+            checkInt(c_streamLengthForImage2, c_streamLengthForFrame2[index], "ValidImageLength");
+            imageStart = 1;
+        }
+        
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, -1), c_frameStatus2[index], "FrameStatus");
+    }
+
+    // Triggering CGImageSourceGetStatusAtIndex without an equivalent CGImageSourceCreateImageAtIndex
+    imageStart = 0;
+    for (int index = 0; index < c_streamLengthForFrame3.size(); index++) {
+        NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
+                                                         length:c_streamLengthForFrame3[index] 
+                                                   freeWhenDone:NO];
+
+        CGImageSourceUpdateData(imageRef, (CFDataRef)currentImageChunk, imageLength == c_streamLengthForFrame3[index]);
+        checkInt(CGImageSourceGetStatusAtIndex(imageRef, 2), c_frameStatus3[index], "FrameStatus");
+    }
+
+    CFRelease(imageRef);
+}
+
+// Using Incremental Load APIs with non-incremental sources 
+TEST(ImageIO, NonIncrementalJPEGSource) {
+    const wchar_t* imageFile = L"photo6_1024x670.jpg";
+    NSData* imageData = getDataFromImageFile(imageFile);
+    ASSERT_TRUE_MSG(imageData != nil, "FAILED: ImageIOTest::Could not find file: [%s]", imageFile);
+
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)imageData, nullptr);
+    ASSERT_TRUE_MSG(imageSource != nil, "FAILED: ImageIOTest::CGImageSourceCreateWithData returned nullptr");
+
+    checkInt(CGImageSourceGetStatus(imageSource), kCGImageStatusComplete, "ContainerStatus");
+    checkInt(CGImageSourceGetStatusAtIndex(imageSource, 0), kCGImageStatusUnknownType, "FrameStatus");
+
+    CGImageRef imageRef = CGImageSourceCreateImageAtIndex(imageSource, 0, nullptr);
+    ASSERT_TRUE_MSG(imageRef != nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex returned nullptr");
+    checkInt(CGImageSourceGetStatusAtIndex(imageSource, 0), kCGImageStatusComplete, "FrameStatusWithImage");
+
+    imageRef = CGImageSourceCreateImageAtIndex(imageSource, 1, nullptr);
+    ASSERT_TRUE_MSG(imageRef == nil, "FAILED: ImageIOTest::CGImageSourceCreateImageAtIndex should return nullptr");
+    checkInt(CGImageSourceGetStatusAtIndex(imageSource, 1), kCGImageStatusUnknownType, "FrameStatusWithInvalidImage");
+
+    CFRelease(imageSource);
+}
