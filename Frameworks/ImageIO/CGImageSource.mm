@@ -25,6 +25,7 @@
 #import <Starboard.h>
 #include <NSLogging.h>
 #include <vector>
+#include <map>
 
 #include "COMIncludes.h"
 #include "Wincodec.h"
@@ -168,14 +169,162 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     return kCGImageStatusUnknownType;
 }
 
+// TIFF helper function to get the size of a specific tag with provided data type and count
+uint32_t getTagSize(uint16_t tagDataType, uint32_t tagDataCount) {
+
+    // Data store that fetches the size of an incoming data type  
+    static const std::map<uint16_t, uint32_t> tagTypeSize = {
+        {1, 1}, // BYTE 8-bit unsigned integer
+        {2, 1}, // ASCII 8-bit, NULL-terminated string
+        {3, 2}, // SHORT 16-bit unsigned integer
+        {4, 4}, // LONG 32-bit unsigned integer
+        {5, 8}, // RATIONAL Two 32-bit unsigned integers
+        {6, 1}, // SBYTE 8-bit signed integer
+        {7, 1}, // UNDEFINE 8-bit byte
+        {8, 2}, // SSHORT 16-bit signed integer
+        {9, 4}, // SLONG 32-bit signed integer
+        {10, 8}, // SRATIONAL Two 32-bit signed integers
+        {11, 4}, // FLOAT 4-byte single-precision IEEE floating-point value
+        {12, 8}  // DOUBLE 8-byte double-precision IEEE floating-point value    
+    };
+
+    return (tagTypeSize.find(tagDataType)->second) * tagDataCount;
+}
+
+// TIFF helper function that checks if tag data at the specified position is present in the data stream
+// The offset must be set to the start of the required frame's IFD header
+// The position flag is to be set to 0 to check for the first tag (Incomplete) and set to 1 to check for the last tag (Complete)
+bool tagDataFound(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset, bool position) {
+    if (offset + 1 >= imageLength) {
+        return false;
+    }
+
+    uint16_t tagCount = get16BitValue(imageData, offset);
+
+    // Move the offset to point to the TagList (Array of Tags)
+    offset += 2;
+
+    uint16_t i;
+    uint32_t tagDataSize;
+    uint32_t lastTagDataOffset = 0;
+    uint32_t lastTagDataSize = 0;
+
+    // Iterate over all the tags until the first tag with data at an offset is loaded (if position is 0), or 
+    // the last tag with offset data is loaded (if position is 1).
+    for (i = 0; i < tagCount; i++) {
+        // Move offset past the Tag ID field
+        offset += 2;
+
+        if (offset + 1 >= imageLength) {
+            return false;
+        } 
+
+        uint16_t tagDataType = get16BitValue(imageData, offset);
+
+        // Move offset past the tag data type
+        offset += 2;
+        if (offset + 3 >= imageLength) {
+            return false;
+        } 
+
+        uint32_t tagDataCount = get32BitValue(imageData, offset); 
+
+        // Move offset past the tag data count
+        offset += 4;
+
+        // Compute the size of the current tag from data type and count
+        tagDataSize = getTagSize(tagDataType, tagDataCount);
+
+        // Check if the tag's data is too large for the NextIFDOffset field
+        if (tagDataSize > 4) {
+            if (offset + 3 >= imageLength) {
+                return false;
+            }
+
+            // Make a copy of the Tag Data Size and Tag Data Offset
+            lastTagDataOffset = get32BitValue(imageData, offset);
+            lastTagDataSize = tagDataSize;
+
+            // Exit the loop if the requested tag is the first one with fully loaded data
+            if (position == 0) {
+                offset = lastTagDataOffset;
+                tagDataSize = lastTagDataSize;
+                break;
+            }
+        } 
+
+        // Move the offset past the NextIFDOffset field
+         offset += 4;
+    }
+
+    if (position == 1 && lastTagDataOffset != 0) {
+        // The last tag with fully loaded data is present
+        return (lastTagDataOffset + lastTagDataSize) <= imageLength ? true : false;
+    } else if (position == 0 && i <= tagCount) {
+        // The first tag with fully loaded data is present
+        return (offset + tagDataSize) <= imageLength ? true : false;
+    } else {
+        // No tags with data at offsets are present. Tag data is self contained in the NextIFDOffset field
+        return true;
+    }
+}
+
+// TIFF helper function to identify if a frame is completely loaded
+// The offset must be set to the start of the required frame's IFD header
+// Apple's implementation returns complete only when the last tag's data is completely loaded. 
+// Additionally, the Number of Tag Entries and TagList of the next frame's IFD must be present (if requested frame is not the last).   
+bool frameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
+    if (offset + 1 >= imageLength) {
+        return false;
+    }
+
+    // Make a copy of the IFD start offset. If the requested frame is the last, would need to check presence of the final tag's data.   
+    uint32_t ifdOffset = offset;
+    uint16_t tagCount = get16BitValue(imageData, offset);
+
+    // Each tag count size is 2 bytes and each tag is 12 bytes
+    offset += 2 + (tagCount * 12);
+
+    if (offset + 3 >= imageLength) {
+        return false;
+    } 
+
+    // Get the next IFD's offset. Would be zero if the requested frame is the last.
+    uint32_t nextIfdOffset = get32BitValue(imageData, offset);
+
+    // Process offset only if the requested frame is not the last
+    if (nextIfdOffset != 0) {
+        offset = nextIfdOffset;
+    } else {
+        // Check if the last tag is present in the data stream
+        return tagDataFound(imageData, imageLength, ifdOffset, 1);
+    }
+
+    if (offset + 1 >= imageLength) {
+        return false;
+    }
+
+    // Move the offset past the next IFD's Tag Entry Count and TagList. This is needed to be consistent with Apple's implementation
+    tagCount = get16BitValue(imageData, offset);
+    offset += 2 + (tagCount * 12);
+    return offset <= imageLength ? true : false;
+}
+
+// TIFF helper function to identify incomplete frames
+// The offset must be set to the start of the required frame's IFD header
+// Apple's implementation returns incomplete only when the the frame's first tag data is completely loaded at the provided offset   
+bool frameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
+    // Check if the first tag is present in the data stream
+    return tagDataFound(imageData, imageLength, offset, 0);
+}
+
 /**
  @Notes      Helper function to get the status of TIFF images at the provided index
  @References http://www.fileformat.info/format/tiff/egff.htm
-             https://en.wikipedia.org/wiki/Tagged_Image_File_Format
+             https://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
+             http://www.awaresystems.be/imaging/tiff/faq.html
 */
 - (CGImageSourceStatus)getTIFFStatusAtIndex:(size_t)index {
-    static const size_t c_ifdOffsetSize = 4;
-
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
 
@@ -186,7 +335,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     // Offset into the first Image File Directory (IFD) starts at byte offset 4
     uint32_t offset = get32BitValue(imageData, 4);
 
-    // Check if data for previous image frames are present 
+    // Check if data for previous image frames is present 
     for (size_t currentFrameIndex = 0; currentFrameIndex < index; currentFrameIndex++) {
         if (offset + 1 >= imageLength) {
             return kCGImageStatusUnknownType;
@@ -205,10 +354,12 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     }
 
     // Check if all image frame data is present in the data stream
-    if ((offset + c_ifdOffsetSize) < imageLength) {
+    if (frameComplete(imageData, imageLength, offset)) {
         return kCGImageStatusComplete;
-    } else {
+    } else if (frameIncomplete(imageData, imageLength, offset)) {
         return kCGImageStatusIncomplete;
+    } else {
+        return kCGImageStatusUnknownType;
     }
 }
 
@@ -227,6 +378,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     static const size_t c_imageDescriptorSize = 10;
     static const uint8_t c_gifExtensionHeader = 0x21;
     static const uint8_t c_gifDescriptorHeader = 0x2C;
+    static const uint8_t c_gifTrailer = 0x3B;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
@@ -237,7 +389,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     size_t offset = c_headerSize + c_logicalDescriptorSize;
 
-    // Advance Start of Frame offset if global color table exists. Check for existence by reading MSB of packed byte 
+    // Advance offset if global color table exists. Check for existence by reading MSB of packed byte 
     if (imageData[c_packedFieldOffset] & 0x80) {
         // Extract the last three bits from packed byte to get the Global Color Table Size representation and compute actual size
         offset += 3 << ((imageData[c_packedFieldOffset] & 0x7) + 1);
@@ -249,55 +401,137 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     }
 
     // Count the number of frames we find by keeping track of the number of image descriptor blocks encountered.
-    // Exit loop when the number of frames encountered goes past the index we're looking for, or we go past the end of the image data.
+    // Exit loop when the Image Descriptor for a frame beyond the required one is found, or we go past the end of the image data.
     size_t framesLoaded = 0;
-    while (framesLoaded <= index) {
-        bool extensionHeaderFound = imageData[offset] == c_gifExtensionHeader;
-        bool descriptorHeaderFound = imageData[offset] == c_gifDescriptorHeader;
+    size_t imageBlocks = 0;
 
-        // Advance Start of Frame offset through various Extensions - Graphic Control, Plain Text, Application & Comment
+    // Flags for tracking the status of incremental loading
+    bool extensionIncomplete = 0;
+    bool descriptorIncomplete = 0;
+    bool imageHeaderUnknown = 0;
+    bool imageDataIncomplete = 0;
+    bool frameIncomplete = 0;
+    bool frameComplete = 0;
+
+    while (framesLoaded <= index + 1) {
+        bool extensionHeaderFound = (imageData[offset] == c_gifExtensionHeader);
+        bool descriptorHeaderFound = (imageData[offset] == c_gifDescriptorHeader);
+
+        // Advance Start of Frame offset through various Extensions (Graphic Control, Plain Text, Application & Comment)
         if (extensionHeaderFound) {
+            //Advance offset past the extension labels
             offset += c_extensionTypeSize;
+
+            // Iterate over all extension sub-blocks by checking the block length. A block length of 0 marks the end of current extension 
+            while (offset < imageLength && imageData[offset] != 0) {
+                offset += imageData[offset] + 1;
+            }
+
+            // Advance past the block terminator to the start of the next extension or frame
+            offset++;
+            if (offset >= imageLength) {
+                extensionIncomplete = 1;
+                break;
+            }
         } else if (descriptorHeaderFound) {
             // Check for the start of an Image Descriptor
-            offset += c_imageDescriptorSize;
+            // Break when the Image Descriptor for redundant frames is found
+            if (framesLoaded == index + 1) {
+                frameComplete = 1;
+                break;
+            }
 
-            // Advance Start of Frame offset if local color table exists. Check for existence by reading MSB of packed byte 
-            if (offset < imageLength && imageData[offset - 1] & 0x80) {
+            // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) bytes of Image Descriptor
+            offset += c_imageDescriptorSize - 1;
+            if (offset >= imageLength) {
+                descriptorIncomplete = 1;
+                break;
+            }
+
+            // Offset moved past the last Image Descriptor byte
+            offset ++;
+            if (offset >= imageLength) {
+                imageHeaderUnknown = 1;
+                break;
+            }
+
+            // Advance offset if local color table exists. Check for existence by reading MSB of packed byte 
+            if (imageData[offset - 1] & 0x80) {
                 // Extract the last three bits from packed byte to get the Local Color Table Size representation and compute actual size
                 offset += 3 << ((imageData[offset - 1] & 0x7) + 1);
             }
+
+            // Advance to the Image Data section
             offset++;
+            if (offset >= imageLength) {
+                imageHeaderUnknown = 1;
+                break;
+            }
+
+            // Iterate over all image data sub-blocks by checking the block length. A block length of 0 marks the end of current frame
+            // Image Blocks are tracked as frame status is marked incomplete only when the beginning of the third block is noticed
+            imageBlocks = 0;
+            while (offset < imageLength && imageData[offset] != 0) {
+                // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) data sub-blocks
+                offset += imageData[offset];
+                if (offset >= imageLength) {
+                    imageDataIncomplete = 1;
+                }
+
+                // Offset is moved past the last data sub-block
+                offset++;
+                if (offset >= imageLength && !imageDataIncomplete) {
+                    frameIncomplete = 1;
+                }
+
+                if (!imageDataIncomplete && !frameIncomplete) {
+                    imageBlocks++;
+                }
+            }
+
+            if (imageDataIncomplete || frameIncomplete) {
+                break;
+            }
+
+            // Point offset to either the trailer byte or to the beginning of the next extension or frame 
+            offset++;
+            if (offset >= imageLength) {
+                frameIncomplete = 1;
+                break;
+            }
+
+            // Reached end of the image data for current frame
+            if (imageData[offset] == c_gifTrailer) {
+                frameComplete = 1;
+                break;
+            } else {
+                // Increment the number of frames encountered if we fully advance through the image data block
+                framesLoaded++;
+            }
         } else {
             // Neither of the valid block headers were encountered, this means we have an unknown type
             return kCGImageStatusUnknownType;
         }
-
-        // Iterate over all extension sub-blocks by checking the block length. A block length of 0 marks the end of current extension 
-        while (offset < imageLength && imageData[offset] != 0) {
-            offset += imageData[offset] + 1;
-        }
-
-        if (offset < imageLength && descriptorHeaderFound) {
-            // Increment the number of frames encountered if we see descriptor and fully advance through the image data block
-            framesLoaded++;
-        }
-
-        // Increment to start of next block, then check if we've gone past the ended of the loaded image
-        offset++;
-        if (offset >= imageLength) {
-            break;
-        }
     }
 
-    // If we have encountered less frames than the index, then loading the frame at the index is not started, so return Unknown Type
-    // If the end was reached during index, then return Incomplete, and if we have found all frames plus the index, return Complete
-    if (framesLoaded < index) {
-        return kCGImageStatusUnknownType;
-    } else if (framesLoaded == index) {
-        return kCGImageStatusIncomplete;
-    } else {
+    if (frameComplete) {
         return kCGImageStatusComplete;
+    } else if (frameIncomplete) {
+        return kCGImageStatusIncomplete;
+    } else if (imageDataIncomplete) {
+        return (framesLoaded == index && imageBlocks >= 3) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+    } else if (imageHeaderUnknown) {
+        return kCGImageStatusUnknownType;
+    } else if (descriptorIncomplete) {
+        if (index == 0) {
+            return kCGImageStatusReadingHeader;
+        } else {
+            return (framesLoaded == index) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+        }        
+    } else if (extensionIncomplete) {
+        return (framesLoaded == index + 1) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+    } else {
+        return kCGImageStatusUnknownType;
     }
 }
 
@@ -308,7 +542,6 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 */
 - (CGImageSourceStatus)getBMPStatusAtIndex:(size_t)index {
     static const size_t c_fileSizeIndex = 2;
-    static const size_t c_pixelOffsetIndex = 10;
 
     // Return if requesting for invalid frames
     if (index != 0) {
@@ -323,15 +556,12 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
     }
 
     // Check if incoming data stream size matches image file size 
-    // Bound check in parent CGImageSourceGetStatusAtIndex function for a length of 96 
     if (imageLength == get32BitValue(imageData, c_fileSizeIndex)) {
         return kCGImageStatusComplete;
+    } else {
+        // Apple's implementation doesn't return kCGImageStatusIncomplete for BMP images
+        return kCGImageStatusUnknownType;
     }
-
-    // Check if partial image data is present in the data stream
-    uint32_t pixelArrayOffset = get32BitValue(imageData, c_pixelOffsetIndex);
-
-    return (pixelArrayOffset >= imageLength) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
 }
 
 /**
@@ -395,16 +625,12 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
              https://en.wikipedia.org/wiki/ICO_(file_format)
 */
 - (CGImageSourceStatus)getICOStatusAtIndex:(size_t)index {
-    static const size_t c_headerSize = 6;
-    static const size_t c_pixelOffset = 8;
-    static const size_t c_imageDataLengthSize = 4;
-    static const size_t c_imagePixelOffsetSize = 4;
+    static const size_t c_reservedOffset = 4;
+    static const size_t c_imageCountOffset = 2;
+    static const size_t c_sizeOffset = 8;
+    static const size_t c_dataSize = 4;
+    static const size_t c_offsetSize = 4;
     
-    // Return if requesting for invalid frames
-    if (index != 0) {
-        return kCGImageStatusUnknownType;
-    }
-
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
     
@@ -412,37 +638,79 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
         return kCGImageStatusReadingHeader;
     }
         
-    size_t offset = c_headerSize + c_pixelOffset;
-    for (size_t currentFrameIndex = 0; currentFrameIndex <= index; currentFrameIndex++) {
-        if (offset + 3 >= imageLength) {
-            return kCGImageStatusUnknownType;
-        } 
+    // Move the offset through 4 of the header bytes to point to the number of images in the file 
+    size_t offset = c_reservedOffset;
+    if (offset + 1 >= imageLength) {
+        return kCGImageStatusUnknownType;
+    }
+    
+    size_t imageCount = get16BitValue(imageData, offset);
 
-        uint32_t imageDataLength = get32BitValue(imageData, offset);
+    // Move the offset to point to the header for the first image
+    offset += c_imageCountOffset;
 
-        offset += c_imageDataLengthSize;
-        if (offset + 3 >= imageLength) {
-            return kCGImageStatusUnknownType;
-        } 
+    // The offset is moved to the image data size field of the last frame header 
+    // This is consistent with Apple's implementation that refers to the last frame irrespective of the one requested for
+    for (size_t currentFrameIndex = 0; currentFrameIndex < imageCount; currentFrameIndex++) {
 
-        uint32_t imagePixelOffset = get32BitValue(imageData, offset);
+        // Move the offset to point to the image data size field
+        offset += c_sizeOffset;
 
-        // Check if any of the image data is present in the data stream
-        if (imagePixelOffset >= imageLength) {
-            return kCGImageStatusUnknownType;
+        // Move the offset to the beginning of the next frame's header if available
+        if (currentFrameIndex != imageCount - 1) {
+            offset += c_dataSize + c_offsetSize;
         }
-
-        imagePixelOffset += imageDataLength - 1;
-
-        // Check if all image data is present in the data stream
-        if (imagePixelOffset >= imageLength) {
-            return kCGImageStatusUnknownType;
-        }
-
-        offset += c_imagePixelOffsetSize + c_pixelOffset;
     }
 
-    return kCGImageStatusComplete;
+    if (offset + 3 >= imageLength) {
+        return kCGImageStatusUnknownType;
+    } 
+
+    uint32_t imageDataLength = get32BitValue(imageData, offset); 
+
+    // Move the offset to the image data offset field of the header
+    offset += c_dataSize;
+    if (offset + 3 >= imageLength) {
+        return kCGImageStatusUnknownType;
+    } 
+
+    uint32_t imagePixelOffset = get32BitValue(imageData, offset);
+
+    // Check if all of the image data is present in the stream
+    // Apple does not return kCGImageStatusIncomplete for the ICO format
+    if (imageDataLength + imagePixelOffset <= imageLength) {
+        return kCGImageStatusComplete;
+    } else {
+        return kCGImageStatusUnknownType;
+    }
+}
+
+- (CGImageSourceStatus)getStatusAtIndex:(size_t)index {
+    if (!self.data) {
+        return kCGImageStatusUnexpectedEOF;
+    }
+
+    static const int c_minDataStreamSize = 96;
+    if ([self.data length] < c_minDataStreamSize) {
+        return kCGImageStatusReadingHeader;
+    }
+
+    CFStringRef imageFormat = [self getImageType];
+    if (imageFormat == kUTTypeJPEG) {
+        return [self getJPEGStatusAtIndex:index];
+    } else if (imageFormat == kUTTypeTIFF) {
+        return [self getTIFFStatusAtIndex:index];
+    } else if (imageFormat == kUTTypeGIF) {
+        return [self getGIFStatusAtIndex:index];
+    } else if (imageFormat == kUTTypePNG) {
+        return [self getPNGStatusAtIndex:index];
+    } else if (imageFormat == kUTTypeBMP) {
+        return [self getBMPStatusAtIndex:index];
+    } else if (imageFormat == kUTTypeICO) {
+        return [self getICOStatusAtIndex:index];
+    } else {
+        return kCGImageStatusUnknownType;
+    } 
 }
 @end
 
@@ -495,11 +763,17 @@ CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url, CFDictionaryRef option
  @Status Caveat
  @Notes Current implementation does not support kCGImageSourceShouldAllowFloat & kCGImageSourceShouldCache 
         when passed in as options dictionary keys
+        During incremental loading of PNG images, decoder creation succeeds only when all image data is available
 */
 CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef isrc, size_t index, CFDictionaryRef options) {
     RETURN_NULL_IF(!isrc);
-    NSData* imageData = ((ImageSource*)isrc).data;
+    ImageSource* source = (ImageSource*)isrc;
+    NSData* imageData = source.data;
     RETURN_NULL_IF(!imageData);
+
+    source.loadStatus = [source getStatusAtIndex:index];
+    source.loadIndex = index;
+    RETURN_NULL_IF(source.loadStatus != kCGImageStatusIncomplete && source.loadStatus != kCGImageStatusComplete);
     RETURN_NULL_IF(index > (CGImageSourceGetCount(isrc) - 1));
 
     MULTI_QI imageQueryInterface = {0};
@@ -884,18 +1158,8 @@ CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t 
     }
 
     CFStringRef imageFormat = CGImageSourceGetType(isrc);
-    if (imageFormat == kUTTypeJPEG) {
-        return [imageSrc getJPEGStatusAtIndex:index];
-    } else if (imageFormat == kUTTypeTIFF) {
-        return [imageSrc getTIFFStatusAtIndex:index];
-    } else if (imageFormat == kUTTypeGIF) {
-        return [imageSrc getGIFStatusAtIndex:index];
-    } else if (imageFormat == kUTTypePNG) {
-        return [imageSrc getPNGStatusAtIndex:index];
-    } else if (imageFormat == kUTTypeBMP) {
-        return [imageSrc getBMPStatusAtIndex:index];
-    } else if (imageFormat == kUTTypeICO) {
-        return [imageSrc getICOStatusAtIndex:index];
+    if (imageSrc.loadIndex == index) {
+        return imageSrc.loadStatus;
     } else {
         return kCGImageStatusUnknownType;
     } 

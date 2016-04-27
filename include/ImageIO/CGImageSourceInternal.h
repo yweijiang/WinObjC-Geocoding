@@ -25,6 +25,8 @@
 
 @interface ImageSource : NSObject
 @property (atomic) NSData* data;
+@property (atomic) CGImageSourceStatus loadStatus;
+@property (atomic) int loadIndex;
 @property (atomic) bool isFinalIncrementalSet;
 - (instancetype)initWithData:(CFDataRef)data;
 - (instancetype)initWithURL:(CFURLRef)url;
@@ -36,4 +38,5 @@
 - (CGImageSourceStatus)getBMPStatusAtIndex:(size_t)index;
 - (CGImageSourceStatus)getPNGStatusAtIndex:(size_t)index;
 - (CGImageSourceStatus)getICOStatusAtIndex:(size_t)index;
+- (CGImageSourceStatus)getStatusAtIndex:(size_t)index;
 @end
