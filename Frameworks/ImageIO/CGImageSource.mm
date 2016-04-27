@@ -25,7 +25,6 @@
 #import <Starboard.h>
 #include <NSLogging.h>
 #include <vector>
-#include <map>
 
 #include "COMIncludes.h"
 #include "Wincodec.h"
@@ -55,7 +54,7 @@ const size_t c_minDataStreamSize = 96;
 - (instancetype)initWithData:(CFDataRef)data {
     if (self = [super init]) {
         _data = (NSData*)data;
-        _nonIncrementalSource = true;
+        _incrementalSource = false;
     }
 
     return self;
@@ -64,7 +63,7 @@ const size_t c_minDataStreamSize = 96;
 - (instancetype)initWithURL:(CFURLRef)url {
     if (self = [super init]) {
         _data = [NSData dataWithContentsOfURL:(NSURL*)url];
-        _nonIncrementalSource = true;
+        _incrementalSource = false;
     }
 
     return self;
@@ -73,7 +72,15 @@ const size_t c_minDataStreamSize = 96;
 - (instancetype)initWithDataProvider:(CGDataProviderRef)provider {
     if (self = [super init]) {
         _data = (NSData*)CGDataProviderCopyData(provider);
-        _nonIncrementalSource = true;
+        _incrementalSource = false;
+    }
+
+    return self;                               
+}
+
+- (instancetype)initIncremental {
+    if (self = [super init]) {
+        _incrementalSource = true;
     }
 
     return self;                               
@@ -132,6 +139,7 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 /**
  @Notes      Helper function to get the status of JPEG images at the provided index.
              Progressively encoded JPEG images are not supported by Apple APIs and the current implementation does not support it.
+
  @References https://en.wikipedia.org/wiki/JPEG
              https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format                    
 */
@@ -176,22 +184,22 @@ uint32_t get32BitValueBigEndian(const uint8_t* data, size_t offset) {
 uint32_t getTagSize(uint16_t tagDataType, uint32_t tagDataCount) {
 
     // Data store that fetches the size of an incoming data type  
-    static const std::map<uint16_t, uint32_t> tagTypeSize = {
-        {1, 1}, // BYTE 8-bit unsigned integer
-        {2, 1}, // ASCII 8-bit, NULL-terminated string
-        {3, 2}, // SHORT 16-bit unsigned integer
-        {4, 4}, // LONG 32-bit unsigned integer
-        {5, 8}, // RATIONAL Two 32-bit unsigned integers
-        {6, 1}, // SBYTE 8-bit signed integer
-        {7, 1}, // UNDEFINE 8-bit byte
-        {8, 2}, // SSHORT 16-bit signed integer
-        {9, 4}, // SLONG 32-bit signed integer
-        {10, 8}, // SRATIONAL Two 32-bit signed integers
-        {11, 4}, // FLOAT 4-byte single-precision IEEE floating-point value
-        {12, 8}  // DOUBLE 8-byte double-precision IEEE floating-point value    
+    static const uint8_t tagTypeSize[] = {
+        1, // BYTE 8-bit unsigned integer
+        1, // ASCII 8-bit, NULL-terminated string
+        2, // SHORT 16-bit unsigned integer
+        4, // LONG 32-bit unsigned integer
+        8, // RATIONAL Two 32-bit unsigned integers
+        1, // SBYTE 8-bit signed integer
+        1, // UNDEFINE 8-bit byte
+        2, // SSHORT 16-bit signed integer
+        4, // SLONG 32-bit signed integer
+        8, // SRATIONAL Two 32-bit signed integers
+        4, // FLOAT 4-byte single-precision IEEE floating-point value
+        8  // DOUBLE 8-byte double-precision IEEE floating-point value    
     };
 
-    return (tagTypeSize.find(tagDataType)->second) * tagDataCount;
+    return tagTypeSize[tagDataType - 1] * tagDataCount;
 }
 
 // TIFF helper function that checks if tag data at the specified position is present in the data stream
@@ -202,10 +210,16 @@ bool tagDataFound(const uint8_t* imageData, NSUInteger imageLength, uint32_t off
         return false;
     }
 
+    static const size_t c_tagCountSize = 2;
+    static const size_t c_tagIDSize = 2;
+    static const size_t c_tagDataTypeSize = 2;
+    static const size_t c_tagDataCountSize = 4;
+    static const size_t c_tagDataOffsetSize = 4;
+
     uint16_t tagCount = get16BitValue(imageData, offset);
 
     // Move the offset to point to the TagList (Array of Tags)
-    offset += 2;
+    offset += c_tagCountSize;
 
     uint16_t i;
     uint32_t tagDataSize;
@@ -216,7 +230,7 @@ bool tagDataFound(const uint8_t* imageData, NSUInteger imageLength, uint32_t off
     // the last tag with offset data is loaded (if position is 1).
     for (i = 0; i < tagCount; i++) {
         // Move offset past the Tag ID field
-        offset += 2;
+        offset += c_tagIDSize;
 
         if (offset + 1 >= imageLength) {
             return false;
@@ -225,7 +239,7 @@ bool tagDataFound(const uint8_t* imageData, NSUInteger imageLength, uint32_t off
         uint16_t tagDataType = get16BitValue(imageData, offset);
 
         // Move offset past the tag data type
-        offset += 2;
+        offset += c_tagDataTypeSize;
         if (offset + 3 >= imageLength) {
             return false;
         } 
@@ -233,13 +247,13 @@ bool tagDataFound(const uint8_t* imageData, NSUInteger imageLength, uint32_t off
         uint32_t tagDataCount = get32BitValue(imageData, offset); 
 
         // Move offset past the tag data count
-        offset += 4;
+        offset += c_tagDataCountSize;
 
         // Compute the size of the current tag from data type and count
         tagDataSize = getTagSize(tagDataType, tagDataCount);
 
         // Check if the tag's data is too large for the NextIFDOffset field
-        if (tagDataSize > 4) {
+        if (tagDataSize > c_tagDataOffsetSize) {
             if (offset + 3 >= imageLength) {
                 return false;
             }
@@ -249,7 +263,7 @@ bool tagDataFound(const uint8_t* imageData, NSUInteger imageLength, uint32_t off
             lastTagDataSize = tagDataSize;
 
             // Exit the loop if the requested tag is the first one with fully loaded data
-            if (position == 0) {
+            if (position == false) {
                 offset = lastTagDataOffset;
                 tagDataSize = lastTagDataSize;
                 break;
@@ -257,13 +271,13 @@ bool tagDataFound(const uint8_t* imageData, NSUInteger imageLength, uint32_t off
         } 
 
         // Move the offset past the NextIFDOffset field
-         offset += 4;
+         offset += c_tagDataOffsetSize;
     }
 
-    if (position == 1 && lastTagDataOffset != 0) {
+    if (position == true && lastTagDataOffset != 0) {
         // The last tag with fully loaded data is present
         return (lastTagDataOffset + lastTagDataSize) <= imageLength ? true : false;
-    } else if (position == 0 && i <= tagCount) {
+    } else if (position == false && i <= tagCount) {
         // The first tag with fully loaded data is present
         return (offset + tagDataSize) <= imageLength ? true : false;
     } else {
@@ -276,7 +290,10 @@ bool tagDataFound(const uint8_t* imageData, NSUInteger imageLength, uint32_t off
 // The offset must be set to the start of the required frame's IFD header
 // Apple's implementation returns complete only when the last tag's data is completely loaded. 
 // Additionally, the Number of Tag Entries and TagList of the next frame's IFD must be present (if requested frame is not the last).   
-bool TiffFrameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
+bool tiffFrameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
+    static const size_t c_tagCountSize = 2;
+    static const size_t c_tagSize = 12;
+
     if (offset + 1 >= imageLength) {
         return false;
     }
@@ -286,7 +303,7 @@ bool TiffFrameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_
     uint16_t tagCount = get16BitValue(imageData, offset);
 
     // Each tag count size is 2 bytes and each tag is 12 bytes
-    offset += 2 + (tagCount * 12);
+    offset += c_tagCountSize + (tagCount * c_tagSize);
 
     if (offset + 3 >= imageLength) {
         return false;
@@ -309,25 +326,31 @@ bool TiffFrameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_
 
     // Move the offset past the next IFD's Tag Entry Count and TagList. This is needed to be consistent with Apple's implementation
     tagCount = get16BitValue(imageData, offset);
-    offset += 2 + (tagCount * 12);
+    offset += c_tagCountSize + (tagCount * c_tagSize);
     return offset <= imageLength ? true : false;
 }
 
 // TIFF helper function to identify incomplete frames
 // The offset must be set to the start of the required frame's IFD header
 // Apple's implementation returns incomplete only when the the frame's first tag data is completely loaded at the provided offset   
-bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
+bool tiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
     // Check if the first tag is present in the data stream
     return tagDataFound(imageData, imageLength, offset, 0);
 }
 
 /**
  @Notes      Helper function to get the status of TIFF images at the provided index
+             Current release supports TIFF sources with little-endian byte ordering only
+
  @References http://www.fileformat.info/format/tiff/egff.htm
              https://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
              http://www.awaresystems.be/imaging/tiff/faq.html
 */
 - (CGImageSourceStatus)getTIFFStatusAtIndex:(size_t)index {
+    static const size_t c_ifdOffset = 4;
+    static const size_t c_tagCountSize = 2;
+    static const size_t c_tagSize = 12;
+
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
 
@@ -336,7 +359,7 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
     }
     
     // Offset into the first Image File Directory (IFD) starts at byte offset 4
-    uint32_t offset = get32BitValue(imageData, 4);
+    uint32_t offset = get32BitValue(imageData, c_ifdOffset);
 
     // Check if data for previous image frames is present 
     for (size_t currentFrameIndex = 0; currentFrameIndex < index; currentFrameIndex++) {
@@ -347,7 +370,7 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
         uint16_t tagCount = get16BitValue(imageData, offset);
 
         // Each tag is 12 bytes and each tag count size is 2 bytes
-        offset += (tagCount * 12) + 2;
+        offset += c_tagCountSize + (tagCount * c_tagSize);
 
         if (offset + 3 >= imageLength) {
             return kCGImageStatusUnknownType;
@@ -357,9 +380,9 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
     }
 
     // Check if all image frame data is present in the data stream
-    if (TiffFrameComplete(imageData, imageLength, offset)) {
+    if (tiffFrameComplete(imageData, imageLength, offset)) {
         return kCGImageStatusComplete;
-    } else if (TiffFrameIncomplete(imageData, imageLength, offset)) {
+    } else if (tiffFrameIncomplete(imageData, imageLength, offset)) {
         return kCGImageStatusIncomplete;
     } else {
         return kCGImageStatusUnknownType;
@@ -369,6 +392,7 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
 /**
  @Notes      Helper function to get the status of GIF images at the provided index
              Interlaced GIF images are not supported by Apple APIs and the current implementation does not support it.
+
  @References https://www.w3.org/Graphics/GIF/spec-gif89a.txt
              https://en.wikipedia.org/wiki/GIF
              http://giflib.sourceforge.net/whatsinagif/bits_and_bytes.html
@@ -409,15 +433,15 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
     size_t imageBlocks = 0;
 
     // Flag to check if the previous frame was present in the data stream
-    bool frameProcessed = 0;
+    bool frameProcessed = false;
 
     // Flags for tracking the status of incremental loading
-    bool extensionIncomplete = 0;
-    bool descriptorIncomplete = 0;
-    bool imageHeaderUnknown = 0;
-    bool imageDataIncomplete = 0;
-    bool frameIncomplete = 0;
-    bool frameComplete = 0;
+    bool extensionIncomplete = false;
+    bool descriptorIncomplete = false;
+    bool imageHeaderUnknown = false;
+    bool imageDataIncomplete = false;
+    bool frameIncomplete = false;
+    bool frameComplete = false;
 
     // Loop continues until the Image Descriptor of the next frame is found or if the trailer for the overall image is encountered
     while (framesLoaded <= index) {
@@ -437,7 +461,7 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
             // Advance past the block terminator to the start of the next extension or frame
             offset++;
             if (offset >= imageLength) {
-                extensionIncomplete = 1;
+                extensionIncomplete = true;
                 break;
             }
         } else if (descriptorHeaderFound) {
@@ -450,21 +474,21 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
 
             // Continue to evaluate the loop condition when the needed frame is found
             if (framesLoaded == index + 1) {
-                frameComplete = 1;
+                frameComplete = true;
                 continue;
             }
 
             // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) bytes of Image Descriptor
             offset += c_imageDescriptorSize - 1;
             if (offset >= imageLength) {
-                descriptorIncomplete = 1;
+                descriptorIncomplete = true;
                 break;
             }
 
             // Offset moved past the last Image Descriptor byte
             offset ++;
             if (offset >= imageLength) {
-                imageHeaderUnknown = 1;
+                imageHeaderUnknown = true;
                 break;
             }
 
@@ -477,7 +501,7 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
             // Advance to the Image Data section
             offset++;
             if (offset >= imageLength) {
-                imageHeaderUnknown = 1;
+                imageHeaderUnknown = true;
                 break;
             }
 
@@ -488,13 +512,13 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
                 // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) data sub-blocks
                 offset += imageData[offset];
                 if (offset >= imageLength) {
-                    imageDataIncomplete = 1;
+                    imageDataIncomplete = true;
                 }
 
                 // Offset is moved past the last data sub-block
                 offset++;
                 if (offset >= imageLength && !imageDataIncomplete) {
-                    frameIncomplete = 1;
+                    frameIncomplete = true;
                 }
 
                 if (!imageDataIncomplete && !frameIncomplete) {
@@ -509,17 +533,17 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
             // Point offset to either the trailer byte or to the beginning of the next extension or frame 
             offset++;
             if (offset >= imageLength) {
-                framesLoaded == index ? frameIncomplete = 1 : imageHeaderUnknown = 1;
+                framesLoaded == index ? frameIncomplete = true : imageHeaderUnknown = true;
                 break;
             }
 
             // Reached end of the image data for current frame
             if (imageData[offset] == c_gifTrailer) {
-                frameComplete = 1;
+                frameComplete = true;
                 framesLoaded++;
             } else {
                 // Marks the end of a processed frame
-                frameProcessed = 1;
+                frameProcessed = true;
             }
         } else {
             // Neither of the valid block headers were encountered, this means we have an unknown type
@@ -556,6 +580,7 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
 
 /**
  @Notes      Helper function to get the status of BMP images at the provided index
+
  @References https://en.wikipedia.org/wiki/BMP_file_format
              http://www.fileformat.info/format/bmp/egff.htm
 */
@@ -586,6 +611,9 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
 /**
  @Notes      Helper function to get the status of PNG images at the provided index
              Interlaced PNG images are not supported by Apple APIs and the current implementation does not support it.
+             The PLTE chunk is mandatory for color type 3, optional for types 2 and 6, and absent for types 0 and 4. 
+             Apple verifies these requirements. The current release does not support this.
+
  @References https://www.w3.org/TR/PNG/
              https://en.wikipedia.org/wiki/Portable_Network_Graphics
 */
@@ -595,8 +623,8 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
     static const size_t c_lengthSize = 4;
     static const size_t c_chunkTypeSize = 4;
     static const size_t c_CRCSize = 4;
-    static const uint8_t c_imageEndIdentifier[] = {0x49, 0x45, 0x4E, 0x44};
-    static const uint8_t c_frameStartIdentifier[] = {0x49, 0x44, 0x41, 0x54};
+    static const uint8_t c_imageEndIdentifier[] = {'I', 'E', 'N', 'D'};
+    static const uint8_t c_frameStartIdentifier[] = {'I', 'D', 'A', 'T'};
     
     // Return if requesting for invalid frames
     if (index != 0) {
@@ -640,6 +668,7 @@ bool TiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
 
 /**
  @Notes      Helper function to get the status of ICO images at the provided index
+
  @References https://msdn.microsoft.com/en-us/library/ms997538.aspx 
              https://en.wikipedia.org/wiki/ICO_(file_format)
 */
@@ -1015,7 +1044,7 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
         Not all formats are supported.
 */
 CGImageSourceRef CGImageSourceCreateIncremental(CFDictionaryRef options) {
-    return (CGImageSourceRef)[[ImageSource alloc] init];
+    return (CGImageSourceRef)[[ImageSource alloc] initIncremental];
 }
 
 void CGImageSourceUpdateData(CGImageSourceRef isrc, CFDataRef data, bool final) {
@@ -1150,7 +1179,7 @@ CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc) {
         return kCGImageStatusInvalidData;
     }
 
-    if (imageSrc.nonIncrementalSource) {
+    if (!imageSrc.incrementalSource) {
         return kCGImageStatusComplete;
     }
 
@@ -1167,8 +1196,13 @@ CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc) {
 
 /**
  @Status Caveat
- @Notes Current release returns kCGImageStatusComplete, kCGImageStatusIncomplete, kCGImageStatusUnknownType, kCGImageStatusUnexpectedEOF or
-        kCGImageStatusReadingHeader only. kCGImageStatusInvalidData is not supported. 
+ @Notes The kCGImageStatusInvalidData status is not supported.
+        Only Baseline DCT-based JPEG sources are supported by Apple and the current implementation. 
+        Progressive DCT-based JPEG sources are not supported. 
+        TIFF sources with big-endian byte ordering are not supported.
+        Interlaced GIF and PNG sources are not supported by Apple and the current implementation.
+        The PLTE chunk is mandatory for color type 3, optional for types 2 and 6, and absent for types 0 and 4. 
+        This verification of PLTE presence is not supported. 
 */
 CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t index) {
     if (!isrc) {
@@ -1180,7 +1214,7 @@ CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t 
         return kCGImageStatusUnexpectedEOF;
     }
 
-    if (imageSrc.nonIncrementalSource) {
+    if (!imageSrc.incrementalSource) {
         if (index == imageSrc.loadIndex - 1 && index < CGImageSourceGetCount(isrc)) {
             return kCGImageStatusComplete;
         } else {

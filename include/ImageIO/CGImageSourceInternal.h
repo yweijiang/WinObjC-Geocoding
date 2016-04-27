@@ -25,13 +25,14 @@
 
 @interface ImageSource : NSObject
 @property (atomic) NSData* data;
-@property (atomic) bool nonIncrementalSource;
+@property (atomic) bool incrementalSource;
 @property (atomic) CGImageSourceStatus loadStatus;
 @property (atomic) int loadIndex;
 @property (atomic) bool isFinalIncrementalSet;
 - (instancetype)initWithData:(CFDataRef)data;
 - (instancetype)initWithURL:(CFURLRef)url;
 - (instancetype)initWithDataProvider:(CGDataProviderRef)provider;
+- (instancetype)initIncremental;
 - (CFStringRef)getImageType;
 - (CGImageSourceStatus)getJPEGStatusAtIndex:(size_t)index;
 - (CGImageSourceStatus)getTIFFStatusAtIndex:(size_t)index;
