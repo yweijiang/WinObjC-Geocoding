@@ -509,7 +509,7 @@ TEST(ImageIO, IncrementalJPEGImageWithFrameCheck) {
     }
 
     // Check frame status change sequence at corresponding stream lengths
-    bool imageStart = 0;
+    bool imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame[index] 
@@ -521,7 +521,7 @@ TEST(ImageIO, IncrementalJPEGImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage, c_streamLengthForFrame[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), c_frameStatus[index], "FrameStatus");
@@ -564,7 +564,7 @@ TEST(ImageIO, IncrementalBMPImageWithFrameCheck) {
     }
 
     // Check frame status change sequence at corresponding stream lengths
-    bool imageStart = 0;
+    bool imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame[index] 
@@ -576,7 +576,7 @@ TEST(ImageIO, IncrementalBMPImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage, c_streamLengthForFrame[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), c_frameStatus[index], "FrameStatus");
@@ -621,7 +621,7 @@ TEST(ImageIO, IncrementalPNGImageWithFrameCheck) {
     }
 
     // Check frame status change sequence at corresponding stream lengths
-    bool imageStart = 0;
+    bool imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame[index] 
@@ -633,7 +633,7 @@ TEST(ImageIO, IncrementalPNGImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage, c_streamLengthForFrame[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), c_frameStatus[index], "FrameStatus");
@@ -698,7 +698,7 @@ TEST(ImageIO, IncrementalTIFFImageWithFrameCheck) {
     }
 
     // Check frame1 status change sequence at corresponding stream lengths
-    bool imageStart = 0;
+    bool imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame1.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame1[index] 
@@ -710,14 +710,14 @@ TEST(ImageIO, IncrementalTIFFImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage1, c_streamLengthForFrame1[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), c_frameStatus1[index], "FrameStatus");
     }
     
     // Check frame2 status change sequence at corresponding stream lengths 
-    imageStart = 0;
+    imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame2.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame2[index] 
@@ -729,14 +729,14 @@ TEST(ImageIO, IncrementalTIFFImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage2, c_streamLengthForFrame2[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 1), c_frameStatus2[index], "FrameStatus");
     }
 
     // Check frame3 status change sequence at corresponding stream lengths
-    imageStart = 0;
+    imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame3.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame3[index] 
@@ -748,14 +748,14 @@ TEST(ImageIO, IncrementalTIFFImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage3, c_streamLengthForFrame3[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 2), c_frameStatus3[index], "FrameStatus");
     }
 
     // Check frame4 status change sequence at corresponding stream lengths
-    imageStart = 0;
+    imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame4.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame4[index] 
@@ -767,7 +767,7 @@ TEST(ImageIO, IncrementalTIFFImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage4, c_streamLengthForFrame4[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 3), c_frameStatus4[index], "FrameStatus");
@@ -815,7 +815,7 @@ TEST(ImageIO, IncrementalGIFImageWithFrameCheck) {
     static const std::vector<int> c_streamLengthForFrame3 = {1, 95, 96, 461697, 461698, 461706, 461707, 462472, 462473, 613937, 613938}; 
 
     // Frame4 status change sequence and corresponding stream lengths 
-    static const std::vector<int> c_frameStatus4 = {kCGImageStatusReadingHeader, kCGImageStatusReadingHeader, kCGImageStatusUnknownType, 
+    static const std::vector<int> c_frameStatus4 = {kCGImageStatusReadingHeader, kCGImageStatusReadingHeader, kCGImageStatusUnknownType,
                                                    kCGImageStatusUnknownType, kCGImageStatusIncomplete, kCGImageStatusIncomplete, 
                                                    kCGImageStatusUnknownType, kCGImageStatusUnknownType, kCGImageStatusIncomplete, 
                                                    kCGImageStatusIncomplete, kCGImageStatusComplete};
@@ -835,7 +835,7 @@ TEST(ImageIO, IncrementalGIFImageWithFrameCheck) {
     }
 
     // Check frame1 status change sequence at corresponding stream lengths
-    bool imageStart = 0;
+    bool imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame1.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame1[index] 
@@ -847,14 +847,14 @@ TEST(ImageIO, IncrementalGIFImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage1, c_streamLengthForFrame1[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), c_frameStatus1[index], "FrameStatus");
     }
     
     // Check frame2 status change sequence at corresponding stream lengths 
-    imageStart = 0;
+    imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame2.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame2[index] 
@@ -866,14 +866,14 @@ TEST(ImageIO, IncrementalGIFImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage2, c_streamLengthForFrame2[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 1), c_frameStatus2[index], "FrameStatus");
     }
 
     // Check frame3 status change sequence at corresponding stream lengths
-    imageStart = 0;
+    imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame3.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame3[index] 
@@ -885,14 +885,14 @@ TEST(ImageIO, IncrementalGIFImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage3, c_streamLengthForFrame3[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 2), c_frameStatus3[index], "FrameStatus");
     }
 
     // Check frame4 status change sequence at corresponding stream lengths
-    imageStart = 0;
+    imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame4.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame4[index] 
@@ -904,7 +904,7 @@ TEST(ImageIO, IncrementalGIFImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage4, c_streamLengthForFrame4[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 3), c_frameStatus4[index], "FrameStatus");
@@ -946,7 +946,7 @@ TEST(ImageIO, IncrementalICOImageWithFrameCheck) {
     }
 
     // Check frame status change sequence at corresponding stream lengths
-    bool imageStart = 0;
+    bool imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame[index] 
@@ -958,7 +958,7 @@ TEST(ImageIO, IncrementalICOImageWithFrameCheck) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage, c_streamLengthForFrame[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 0), c_frameStatus[index], "FrameStatus");
@@ -1000,7 +1000,7 @@ TEST(ImageIO, IncrementalTIFFNegativeScenario) {
     ASSERT_TRUE_MSG(imageRef != nil, "FAILED: CGImageSourceCreateIncremental returned nullptr");
 
     // Different indices fed to CGImageSourceCreateImageAtIndex and CGImageSourceGetStatusAtIndex
-    bool imageStart = 0;
+    bool imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame1.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame1[index] 
@@ -1012,14 +1012,14 @@ TEST(ImageIO, IncrementalTIFFNegativeScenario) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage1, c_streamLengthForFrame1[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, 3), c_frameStatus1[index], "FrameStatus");
     }
     
     // Negative indices fed to CGImageSourceCreateImageAtIndex and CGImageSourceGetStatusAtIndex 
-    imageStart = 0;
+    imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame2.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame2[index] 
@@ -1031,14 +1031,14 @@ TEST(ImageIO, IncrementalTIFFNegativeScenario) {
         // Check minimum stream length for valid image references 
         if (incrementalImage && !imageStart) {
             checkInt(c_streamLengthForImage2, c_streamLengthForFrame2[index], "ValidImageLength");
-            imageStart = 1;
+            imageStart = true;
         }
         
         checkInt(CGImageSourceGetStatusAtIndex(imageRef, -1), c_frameStatus2[index], "FrameStatus");
     }
 
     // Triggering CGImageSourceGetStatusAtIndex without an equivalent CGImageSourceCreateImageAtIndex
-    imageStart = 0;
+    imageStart = false;
     for (int index = 0; index < c_streamLengthForFrame3.size(); index++) {
         NSData* currentImageChunk = [NSData dataWithBytesNoCopy:(char*)[imageData bytes] 
                                                          length:c_streamLengthForFrame3[index] 
