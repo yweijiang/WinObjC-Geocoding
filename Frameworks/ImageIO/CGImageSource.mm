@@ -181,8 +181,11 @@ uint32_t get16BitValueBigEndian(const uint8_t* data, size_t offset) {
     return kCGImageStatusUnknownType;
 }
 
-// TIFF helper function to get the size of a specific tag with provided data type and count
-uint32_t getTiffTagSize(uint16_t tagDataType, uint32_t tagDataCount) {
+// TIFF helper function to get the size of a specific tag given the offset of its tag block
+// Assumes that imageData has already been confirmed to contain all of the tag block at the offset
+uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
+    static const size_t c_tagIDOffset = 2;
+    static const size_t c_tagDataTypeOffset = 4;
 
     // Data store that fetches the size of an incoming data type  
     static const uint8_t tagTypeSize[] = {
@@ -200,138 +203,10 @@ uint32_t getTiffTagSize(uint16_t tagDataType, uint32_t tagDataCount) {
         8  // DOUBLE 8-byte double-precision IEEE floating-point value    
     };
 
+    uint16_t tagDataType = get16BitValue(imageData, offset + c_tagIDOffset);
+    uint32_t tagDataCount = get32BitValue(imageData, offset + c_tagDataTypeOffset);
+    
     return tagTypeSize[tagDataType - 1] * tagDataCount;
-}
-
-// TIFF helper function that checks if tag data at the specified position is present in the data stream
-// The offset must be set to the start of the required frame's IFD header
-// The lastTagLoadCheck flag is set to false to check for the first tag (Incomplete) and set to true to check for the last tag (Complete)
-bool tiffTagDataPresent(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset, bool lastTagLoadCheck) {
-    if (offset + 1 >= imageLength) {
-        return false;
-    }
-
-    static const size_t c_tagCountSize = 2;
-    static const size_t c_tagIDSize = 2;
-    static const size_t c_tagDataTypeSize = 2;
-    static const size_t c_tagDataCountSize = 4;
-    static const size_t c_tagDataOffsetSize = 4;
-
-    uint16_t tagCount = get16BitValue(imageData, offset);
-
-    // Move the offset to point to the TagList (Array of Tags)
-    offset += c_tagCountSize;
-
-    uint32_t tagDataSize;
-    uint32_t lastTagDataOffset = 0;
-    uint32_t lastTagDataSize = 0;
-
-    // Iterate over all the tags until the first tag with data at an offset is loaded (if lastTagLoadCheck is false), or 
-    // the last tag with offset data is loaded (if lastTagLoadCheck is true).
-    for (uint16_t i = 0; i < tagCount; i++) {
-        // Move offset past the Tag ID field
-        offset += c_tagIDSize;
-
-        if (offset + 1 >= imageLength) {
-            return false;
-        } 
-
-        uint16_t tagDataType = get16BitValue(imageData, offset);
-
-        // Move offset past the tag data type
-        offset += c_tagDataTypeSize;
-        if (offset + 3 >= imageLength) {
-            return false;
-        } 
-
-        uint32_t tagDataCount = get32BitValue(imageData, offset); 
-
-        // Move offset past the tag data count
-        offset += c_tagDataCountSize;
-
-        // Compute the size of the current tag from data type and count
-        tagDataSize = getTiffTagSize(tagDataType, tagDataCount);
-
-        // Check if the tag's data is too large for the Tag Offset field
-        if (tagDataSize > c_tagDataOffsetSize) {
-            if (offset + 3 >= imageLength) {
-                return false;
-            }
-
-            // Make a copy of the Tag Data Size and Tag Data Offset
-            lastTagDataOffset = get32BitValue(imageData, offset);
-            lastTagDataSize = tagDataSize;
-
-            // Exit the loop if the requested tag is the first one with fully loaded data
-            if (lastTagLoadCheck == false) {
-                // The first tag with fully loaded data is present
-                return (lastTagDataOffset + lastTagDataSize) <= imageLength ? true : false;
-            }
-        } 
-
-        // Move the offset past the NextIFDOffset field
-         offset += c_tagDataOffsetSize;
-    }
-
-    if (lastTagLoadCheck == true && lastTagDataOffset != 0) {
-        // The last tag with fully loaded data is present
-        return (lastTagDataOffset + lastTagDataSize) <= imageLength ? true : false;
-    } else {
-        // No tags with data at offsets are present. Tag data is self contained in the NextIFDOffset field
-        return true;
-    }
-}
-
-// TIFF helper function to identify if a frame is completely loaded
-// The offset must be set to the start of the required frame's IFD header
-// Apple's implementation returns complete only when the last tag's data is completely loaded. 
-// Additionally, the Number of Tag Entries and TagList of the next frame's IFD must be present (if requested frame is not the last).   
-bool tiffFrameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
-    static const size_t c_tagCountSize = 2;
-    static const size_t c_tagSize = 12;
-
-    if (offset + 1 >= imageLength) {
-        return false;
-    }
-
-    // Make a copy of the IFD start offset. If the requested frame is the last, would need to check presence of the final tag's data.   
-    uint32_t ifdOffset = offset;
-    uint16_t tagCount = get16BitValue(imageData, ifdOffset);
-
-    // Each tag count size is 2 bytes and each tag is 12 bytes
-    ifdOffset += c_tagCountSize + (tagCount * c_tagSize);
-
-    if (ifdOffset + 3 >= imageLength) {
-        return false;
-    } 
-
-    // Get the next IFD's offset. Would be zero if the requested frame is the last.
-    uint32_t nextIfdOffset = get32BitValue(imageData, ifdOffset);
-
-    // Process offset only if the requested frame is not the last
-    if (nextIfdOffset != 0) {
-        ifdOffset = nextIfdOffset;
-    } else {
-        // Check if the last tag is present in the data stream
-        return tiffTagDataPresent(imageData, imageLength, offset, true);
-    }
-
-    if (ifdOffset + 1 >= imageLength) {
-        return false;
-    }
-
-    // Move the offset past the next IFD's Tag Entry Count and TagList. This is needed to be consistent with Apple's implementation
-    tagCount = get16BitValue(imageData, ifdOffset);
-    ifdOffset += c_tagCountSize + (tagCount * c_tagSize);
-    return ifdOffset <= imageLength ? true : false;
-}
-
-// TIFF helper function to identify incomplete frames
-// The offset must be set to the start of the required frame's IFD header
-// Apple's implementation returns incomplete only when the the frame's first tag data is completely loaded at the provided offset   
-bool tiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint32_t offset) {
-    // Check if the first tag is present in the data stream
-    return tiffTagDataPresent(imageData, imageLength, offset, false);
 }
 
 /**
@@ -345,6 +220,10 @@ bool tiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
 - (CGImageSourceStatus)getTIFFStatusAtIndex:(size_t)index {
     static const size_t c_ifdOffset = 4;
     static const size_t c_tagCountSize = 2;
+    static const size_t c_tagIDSize = 2;
+    static const size_t c_tagDataTypeSize = 2;
+    static const size_t c_tagDataCountSize = 4;
+    static const size_t c_tagDataOffsetSize = 4;
     static const size_t c_tagSize = 12;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
@@ -359,7 +238,7 @@ bool tiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
 
     // Check if data for previous image frames is present 
     for (size_t currentFrameIndex = 0; currentFrameIndex < index; currentFrameIndex++) {
-        if (offset + 1 >= imageLength) {
+        if (offset + 2 > imageLength) {
             return kCGImageStatusUnknownType;
         }
 
@@ -368,22 +247,106 @@ bool tiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
         // Each tag is 12 bytes and each tag count size is 2 bytes
         offset += c_tagCountSize + (tagCount * c_tagSize);
 
-        if (offset + 3 >= imageLength) {
+        if (offset + 4 > imageLength) {
             return kCGImageStatusUnknownType;
         }
 
         // Fetch the IFD offset for the next frame
         offset = get32BitValue(imageData, offset);
     }
-
-    // Check if all image frame data is present in the data stream
-    if (tiffFrameComplete(imageData, imageLength, offset)) {
-        return kCGImageStatusComplete;
-    } else if (tiffFrameIncomplete(imageData, imageLength, offset)) {
-        return kCGImageStatusIncomplete;
-    } else {
+    
+    if (offset + 2 > imageLength) {
         return kCGImageStatusUnknownType;
     }
+
+    // Make a copy of the IFD start offset. If the requested frame is the last, we need to check presence of the final tag's data.   
+    uint32_t startOffset = offset;
+    uint16_t tagCount = get16BitValue(imageData, offset);
+
+    // Each tag count size is 2 bytes and each tag is 12 bytes
+    offset += c_tagCountSize + (tagCount * c_tagSize);
+
+    if (offset + 4 > imageLength) {
+        return kCGImageStatusUnknownType;
+    } 
+
+    // Get the next IFD's offset. Would be zero if the requested frame is the last.
+    uint32_t nextOffset = get32BitValue(imageData, offset);
+
+    // If the requested frame is either the last frame of the image or the next frame has not been loaded, check current frame
+    if (nextOffset == 0 || nextOffset > imageLength) {
+        // Reset the offset to point to the TagList without advancing past all the tags
+        offset = startOffset + c_tagCountSize;
+
+        uint32_t tagDataSize;
+        uint32_t tagDataOffset;
+        bool completeTagFound = false;
+        bool incompleteTagFound = false;
+
+        // Iterate over all the tags until the first tag with data at an offset is loaded (if lastTagLoadCheck is false), or 
+        // the last tag with offset data is loaded (if lastTagLoadCheck is true).
+        for (uint16_t i = 0; i < tagCount; i++) {
+            // Check to make sure that the tag ID, DataType, and Count fields are all present.
+            // Each tag block is 12 bytes, 2 bytes for tag ID, 2 bytes for data type of tag, 4 bytes for data size,
+            // and 4 bytes for data offset, which is a pointer to where the tag data is stored.
+            // If the tag list is not fully loaded, then we automatically return UnknownType.
+            if (offset + 8 > imageLength) {
+                return kCGImageStatusUnknownType;
+            }
+
+            // Compute the size of the current tag
+            tagDataSize = getTiffTagSize(imageData, offset);
+
+            // Move offset to the beginning of the tag offset field
+            offset += c_tagIDSize + c_tagDataTypeSize + c_tagDataCountSize;
+
+            // If the tagDataSize is small enough, the tag data is stored in the tag offset field
+            // Otherwise, it contains an index to where the data is stored
+            if (tagDataSize > c_tagDataOffsetSize) {
+                if (offset + 4 > imageLength) {
+                    return kCGImageStatusUnknownType;
+                }
+
+                // Check the data pointed to by the tag data offset. If fully there, then at least some of the tag data is loaded.
+                tagDataOffset = get32BitValue(imageData, offset);
+                if (tagDataOffset + tagDataSize <= imageLength) {
+                    completeTagFound = true;
+                } else {
+                    incompleteTagFound = true;
+                }
+            } 
+
+            // Move the offset past the NextIFDOffset field
+             offset += c_tagDataOffsetSize;
+        }
+
+        if (completeTagFound && incompleteTagFound) {
+            // Some tag data present, but also some tag data incomplete
+            return kCGImageStatusIncomplete;
+        } else if (completeTagFound && !incompleteTagFound) {
+            // All tags with data offsets are complete, so all data in current frame is there
+            return kCGImageStatusComplete;
+        } else if (!completeTagFound && incompleteTagFound) {
+            // No tags with data offsets are loaded, so this is considered UnknownType
+            return kCGImageStatusUnknownType;
+        }
+
+        // If no complete or incomplete tag data was found, that means that the IFD only contained data small enough to fit
+        // in DataOffset fields, and since we confirmed that all the tags were loaded, this means the frame is complete.
+        return kCGImageStatusComplete;
+    }
+    
+    // If the requested frame is not the last frame and the next frame has been partially loaded, check the IFD of the next frame.
+    offset = nextOffset;
+
+    if (offset + 2 > imageLength) {
+        return kCGImageStatusIncomplete;
+    }
+
+    // Move the offset past the next IFD's Tag Entry Count and TagList. This is needed to be consistent with Apple's implementation
+    tagCount = get16BitValue(imageData, offset);
+    offset += c_tagCountSize + (tagCount * c_tagSize);
+    return offset <= imageLength ? kCGImageStatusComplete : kCGImageStatusIncomplete;
 }
 
 // Status changes for the GIF image source
@@ -701,7 +664,7 @@ size_t parseGIFFrame(const uint8_t* data, NSUInteger length, size_t* offset, boo
         
     // Move the offset through 4 of the header bytes to point to the number of images in the file 
     size_t offset = c_reservedOffset;
-    if (offset + 1 >= imageLength) {
+    if (offset + 2 > imageLength) {
         return kCGImageStatusUnknownType;
     }
     
@@ -723,7 +686,7 @@ size_t parseGIFFrame(const uint8_t* data, NSUInteger length, size_t* offset, boo
         }
     }
 
-    if (offset + 3 >= imageLength) {
+    if (offset + 4 > imageLength) {
         return kCGImageStatusUnknownType;
     } 
 
@@ -731,7 +694,7 @@ size_t parseGIFFrame(const uint8_t* data, NSUInteger length, size_t* offset, boo
 
     // Move the offset to the image data offset field of the header
     offset += c_dataSize;
-    if (offset + 3 >= imageLength) {
+    if (offset + 4 > imageLength) {
         return kCGImageStatusUnknownType;
     } 
 
