@@ -222,14 +222,13 @@ bool tiffTagDataPresent(const uint8_t* imageData, NSUInteger imageLength, uint32
     // Move the offset to point to the TagList (Array of Tags)
     offset += c_tagCountSize;
 
-    uint16_t i;
     uint32_t tagDataSize;
     uint32_t lastTagDataOffset = 0;
     uint32_t lastTagDataSize = 0;
 
     // Iterate over all the tags until the first tag with data at an offset is loaded (if lastTagLoadCheck is false), or 
     // the last tag with offset data is loaded (if lastTagLoadCheck is true).
-    for (i = 0; i < tagCount; i++) {
+    for (uint16_t i = 0; i < tagCount; i++) {
         // Move offset past the Tag ID field
         offset += c_tagIDSize;
 
@@ -253,7 +252,7 @@ bool tiffTagDataPresent(const uint8_t* imageData, NSUInteger imageLength, uint32
         // Compute the size of the current tag from data type and count
         tagDataSize = getTiffTagSize(tagDataType, tagDataCount);
 
-        // Check if the tag's data is too large for the NextIFDOffset field
+        // Check if the tag's data is too large for the Tag Offset field
         if (tagDataSize > c_tagDataOffsetSize) {
             if (offset + 3 >= imageLength) {
                 return false;
@@ -297,34 +296,34 @@ bool tiffFrameComplete(const uint8_t* imageData, NSUInteger imageLength, uint32_
 
     // Make a copy of the IFD start offset. If the requested frame is the last, would need to check presence of the final tag's data.   
     uint32_t ifdOffset = offset;
-    uint16_t tagCount = get16BitValue(imageData, offset);
+    uint16_t tagCount = get16BitValue(imageData, ifdOffset);
 
     // Each tag count size is 2 bytes and each tag is 12 bytes
-    offset += c_tagCountSize + (tagCount * c_tagSize);
+    ifdOffset += c_tagCountSize + (tagCount * c_tagSize);
 
-    if (offset + 3 >= imageLength) {
+    if (ifdOffset + 3 >= imageLength) {
         return false;
     } 
 
     // Get the next IFD's offset. Would be zero if the requested frame is the last.
-    uint32_t nextIfdOffset = get32BitValue(imageData, offset);
+    uint32_t nextIfdOffset = get32BitValue(imageData, ifdOffset);
 
     // Process offset only if the requested frame is not the last
     if (nextIfdOffset != 0) {
-        offset = nextIfdOffset;
+        ifdOffset = nextIfdOffset;
     } else {
         // Check if the last tag is present in the data stream
-        return tiffTagDataPresent(imageData, imageLength, ifdOffset, true);
+        return tiffTagDataPresent(imageData, imageLength, offset, true);
     }
 
-    if (offset + 1 >= imageLength) {
+    if (ifdOffset + 1 >= imageLength) {
         return false;
     }
 
     // Move the offset past the next IFD's Tag Entry Count and TagList. This is needed to be consistent with Apple's implementation
-    tagCount = get16BitValue(imageData, offset);
-    offset += c_tagCountSize + (tagCount * c_tagSize);
-    return offset <= imageLength ? true : false;
+    tagCount = get16BitValue(imageData, ifdOffset);
+    ifdOffset += c_tagCountSize + (tagCount * c_tagSize);
+    return ifdOffset <= imageLength ? true : false;
 }
 
 // TIFF helper function to identify incomplete frames
