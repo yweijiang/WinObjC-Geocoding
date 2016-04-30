@@ -277,15 +277,16 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
     if (nextOffset == 0 || nextOffset > imageLength) {
         // Reset the offset to point to the TagList without advancing past all the tags
         offset = startOffset + c_tagCountSize;
-
-        uint32_t tagDataSize;
-        uint32_t tagDataOffset;
+        
         bool completeTagFound = false;
         bool incompleteTagFound = false;
 
         // Iterate over all the tags until the first tag with data at an offset is loaded (if lastTagLoadCheck is false), or 
         // the last tag with offset data is loaded (if lastTagLoadCheck is true).
         for (uint16_t i = 0; i < tagCount; i++) {
+            uint32_t tagDataSize;
+            uint32_t tagDataOffset;
+
             // Check to make sure that the tag ID, DataType, and Count fields are all present.
             // Each tag block is 12 bytes, 2 bytes for tag ID, 2 bytes for data type of tag, 4 bytes for data size,
             // and 4 bytes for data offset, which is a pointer to where the tag data is stored.
