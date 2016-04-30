@@ -386,114 +386,23 @@ bool tiffFrameIncomplete(const uint8_t* imageData, NSUInteger imageLength, uint3
     }
 }
 
-// Status changes for the GIF image source
-enum gifSourceStatus {
-    c_gifReadingHeader = 2,
-    c_gifUnknownType = 3,    
-    c_gifIncomplete = 1,
-    c_gifParsed = 0
-};
-
 // GIF helper function to parse various Extensions - Graphic Control, Plain Text, Application & Comment
 // The offset to an extension is to be passed
-// Expects a flag to check if the extension follows a requested frame 
-// Also expects a flag to check if atleast 3 Image Data blocks of the requested frame were found
-// Returns the gifSourceStatus of incoming data streams
-size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t* offset, bool requestedFrame, bool blocksFound) {
+// Returns the offset to an Image Descriptor or to the next extension
+size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) {
     static const size_t c_extensionTypeSize = 2;
 
     //Advance offset past the extension labels
-    *offset += c_extensionTypeSize;
+    offset += c_extensionTypeSize;
 
     // Iterate over all extension sub-blocks by checking the block length. A block length of 0 marks the end of current extension 
-    while (*offset < length && data[*offset] != 0) {
-        *offset += data[*offset] + 1;
+    while (offset < length && data[offset] != 0) {
+        offset += data[offset] + 1;
     }
 
     // Advance past the block terminator to the start of the next extension or frame
-    // If associated with the requested frame, an UnknownType status (if atleast 3 image blocks aren't found) or 
-    // Incomplete status (with atleast 3 available image blocks) returned on stream interruption
-    // An UnKnownType status is returned for non-associated extensions 
-    (*offset)++;
-    if (*offset >= length) {
-        if (requestedFrame) {
-            return blocksFound ? c_gifIncomplete : c_gifUnknownType;
-        } else {
-            return c_gifUnknownType;
-        }
-    }
-    
-    return c_gifParsed;    
-}
-
-// GIF helper function to parse the Image Frame
-// The offset to a frame is to be passed
-// Expects a flag to check if the parsed frame is the requested one 
-// Also expects a flag to check if the requested frame is the first
-// Returns the gifSourceStatus of incoming data streams
-size_t parseGIFFrame(const uint8_t* data, NSUInteger length, size_t* offset, bool requestedFrame, bool firstFrame) {
-    static const size_t c_imageDescriptorSize = 10;
-    static const size_t c_minDataBlocks = 3;
-
-    // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) bytes of the Image Descriptor
-    // A reading header status (for first frame), incomplete status (for other requested frames) or 
-    // unknown status (for non-requested frames) returned on stream interruption
-    *offset += c_imageDescriptorSize - 1;
-    if (*offset >= length) {
-        if (firstFrame) {
-            return c_gifReadingHeader;
-        } else {
-            return requestedFrame ? c_gifIncomplete : c_gifUnknownType;
-        }
-    }
-
-    // Offset moved past the last Image Descriptor byte
-    // An unknown type status returned on stream interruption
-    (*offset)++;
-    if (*offset >= length) {
-        return c_gifUnknownType;
-    }
-
-    // Advance offset if local color table exists. Check for existence by reading MSB of packed byte 
-    if (data[*offset - 1] & 0x80) {
-        // Extract the last three bits from packed byte to get the Local Color Table Size representation and compute actual size
-        *offset += 3 << ((data[*offset - 1] & 0x7) + 1);
-    }
-
-    // Advance to the Image Data section
-    // An unknown type status returned on stream interruption
-    (*offset)++;
-    if (*offset >= length) {
-        return c_gifUnknownType;
-    }
-
-    // Iterate over all image data sub-blocks by checking the block length. A block length of 0 marks the end of current frame
-    size_t imageBlocks = 0;
-    while (data[*offset] != 0) {
-        // Move offset initially past the first (N - 1) data sub-blocks. This is done to match Apple's implementation. 
-        // An unknown status is returned until the sub-block after the fourth length field is reached. An incomplete status is returned later.
-        *offset += data[*offset]; 
-        if (*offset >= length) {
-            return (requestedFrame && imageBlocks >= c_minDataBlocks) ? c_gifIncomplete : c_gifUnknownType;
-        }
-
-        // Offset is made to point to the length field of the next block
-        // An unknown status is returned until the sub-block after the fourth length field is found. An incomplete status is returned later.
-        (*offset)++;
-        imageBlocks++;            
-        if (*offset >= length) {
-            return (requestedFrame && imageBlocks >= c_minDataBlocks) ? c_gifIncomplete : c_gifUnknownType;
-        }
-    }
-
-    // Point offset to either the trailer byte or to the beginning of the next extension or frame 
-    // An incomplete status (for requested frames) or an UnknownType status (for non-requested frames) is returned on interruption
-    (*offset)++;
-    if (*offset >= length) {
-        return requestedFrame ? c_gifIncomplete : c_gifUnknownType;
-    }
-
-    return c_gifParsed;
+    offset++;
+    return offset;    
 }
 
 /**
@@ -511,6 +420,8 @@ size_t parseGIFFrame(const uint8_t* data, NSUInteger length, size_t* offset, boo
     static const uint8_t c_gifExtensionHeader = 0x21;
     static const uint8_t c_gifDescriptorHeader = 0x2C;
     static const uint8_t c_gifTrailer = 0x3B;
+    static const size_t c_imageDescriptorSize = 10;
+    static const size_t c_minDataBlocks = 3;
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
@@ -534,30 +445,81 @@ size_t parseGIFFrame(const uint8_t* data, NSUInteger length, size_t* offset, boo
 
     size_t currentFrame = 0;
     bool blocksFound = false;
-    size_t status;
+    CGImageSourceStatus status;
 
     // Parse all available Extensions before any of the Image Data is found 
     while (imageData[offset] == c_gifExtensionHeader) {
-        status = parseGIFExtension(imageData, imageLength, &offset, currentFrame == index, blocksFound);
-        switch (status) {
-            case c_gifIncomplete:
-                return kCGImageStatusIncomplete;
-            case c_gifUnknownType:
+        offset = parseGIFExtension(imageData, imageLength, offset);
+
+        if (offset >= imageLength) {
+            if (currentFrame == index) {
+                return blocksFound ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+            } else {
                 return kCGImageStatusUnknownType;
+            }
         }
     }
 
     for (currentFrame = 0; currentFrame <= index; currentFrame++) {
         // Parse through the current frame
         if (imageData[offset] == c_gifDescriptorHeader) {
-            status = parseGIFFrame(imageData, imageLength, &offset, currentFrame == index, index == 0);
-            switch (status) {
-                case c_gifIncomplete:
-                    return kCGImageStatusIncomplete;
-                case c_gifUnknownType:
-                    return kCGImageStatusUnknownType;
-                case c_gifReadingHeader:
+
+            // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) bytes of the Image Descriptor
+            // A reading header status (for first frame), incomplete status (for other requested frames) or 
+            // unknown status (for non-requested frames) returned on stream interruption
+            offset += c_imageDescriptorSize - 1;
+            if (offset >= imageLength) {
+                if (index == 0) {
                     return kCGImageStatusReadingHeader;
+                } else {
+                    return currentFrame == index ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+                }
+            }
+
+            // Offset moved past the last Image Descriptor byte
+            // An unknown type status returned on stream interruption
+            offset++;
+            if (offset >= imageLength) {
+                return kCGImageStatusUnknownType;
+            }
+
+            // Advance offset if local color table exists. Check for existence by reading MSB of packed byte 
+            if (imageData[offset - 1] & 0x80) {
+                // Extract the last three bits from packed byte to get the Local Color Table Size representation and compute actual size
+                offset += 3 << ((imageData[offset - 1] & 0x7) + 1);
+            }
+
+            // Advance to the Image Data section
+            // An unknown type status returned on stream interruption
+            offset++;
+            if (offset >= imageLength) {
+                return kCGImageStatusUnknownType;
+            }
+
+            // Iterate over all image data sub-blocks by checking the block length. A block length of 0 marks the end of current frame
+            size_t imageBlocks = 0;
+            while (imageData[offset] != 0) {
+                // Move offset initially past the first (N - 1) data sub-blocks. This is done to match Apple's implementation. 
+                // An unknown status is returned until the sub-block after the fourth length field is reached. An incomplete status is returned later.
+                offset += imageData[offset]; 
+                if (offset >= imageLength) {
+                    return (currentFrame == index && imageBlocks >= c_minDataBlocks) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+                }
+
+                // Offset is made to point to the length field of the next block
+                // An unknown status is returned until the sub-block after the fourth length field is found. An incomplete status is returned later.
+                offset++;
+                imageBlocks++;            
+                if (offset >= imageLength) {
+                    return (currentFrame == index && imageBlocks >= c_minDataBlocks) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+                }
+            }
+
+            // Point offset to either the trailer byte or to the beginning of the next extension or frame 
+            // An incomplete status (for requested frames) or an UnknownType status (for non-requested frames) is returned on interruption
+            offset++;
+            if (offset >= imageLength) {
+                return currentFrame == index ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
             }
 
             // All blocks have been found since the frame has been completely parsed
@@ -571,12 +533,14 @@ size_t parseGIFFrame(const uint8_t* data, NSUInteger length, size_t* offset, boo
 
         // Parse all available Extensions before reaching the trailer or the next frame 
         while (imageData[offset] == c_gifExtensionHeader) {
-            status = parseGIFExtension(imageData, imageLength, &offset, currentFrame == index, blocksFound);
-            switch (status) {
-                case c_gifIncomplete:
-                    return kCGImageStatusIncomplete;
-                case c_gifUnknownType:
+            offset = parseGIFExtension(imageData, imageLength, offset);
+
+            if (offset >= imageLength) {
+                if (currentFrame == index) {
+                    return blocksFound ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
+                } else {
                     return kCGImageStatusUnknownType;
+                }
             }
         }
     }
