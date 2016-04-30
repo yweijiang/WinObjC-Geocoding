@@ -427,7 +427,7 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
         // Parse through the current frame
         if (imageData[offset] == c_gifDescriptorHeader) {
 
-            // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) bytes of the Image Descriptor
+            // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) bytes of Image Descriptor
             // A reading header status (for first frame), incomplete status (for other requested frames) or 
             // unknown status (for non-requested frames) returned on stream interruption
             offset += c_imageDescriptorSize - 1;
@@ -463,14 +463,16 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
             size_t imageBlocks = 0;
             while (imageData[offset] != 0) {
                 // Move offset initially past the first (N - 1) data sub-blocks. This is done to match Apple's implementation. 
-                // An unknown status is returned until the sub-block after the fourth length field is reached. An incomplete status is returned later.
+                // An unknown status is returned until the sub-block after the fourth length field is reached. 
+                // An incomplete status is returned later.
                 offset += imageData[offset]; 
                 if (offset >= imageLength) {
                     return (currentFrame == index && imageBlocks >= c_minDataBlocks) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
                 }
 
                 // Offset is made to point to the length field of the next block
-                // An unknown status is returned until the sub-block after the fourth length field is found. An incomplete status is returned later.
+                // An unknown status is returned until the sub-block after the fourth length field is found. 
+                // An incomplete status is returned later.
                 offset++;
                 imageBlocks++;            
                 if (offset >= imageLength) {
