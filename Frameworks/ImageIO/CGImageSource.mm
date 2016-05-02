@@ -414,7 +414,6 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
     }
 
     for (size_t currentFrame = 0; currentFrame <= index; currentFrame++) {
-        bool blocksFound = false;
 
         // Parse through the current frame
         if (imageData[offset] == c_gifDescriptorHeader) {
@@ -478,11 +477,6 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
             if (offset >= imageLength) {
                 return currentFrame == index ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
             }
-
-            // All blocks have been found since the frame has been completely parsed
-            if (currentFrame == index) {
-                blocksFound = true;
-            }
         } else {
             // Image data not found
             return kCGImageStatusUnknownType;
@@ -493,11 +487,7 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
             offset = parseGIFExtension(imageData, imageLength, offset);
 
             if (offset >= imageLength) {
-                if (currentFrame == index) {
-                    return blocksFound ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
-                } else {
-                    return kCGImageStatusUnknownType;
-                }
+                return (currentFrame == index) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
             }
         }
     }
