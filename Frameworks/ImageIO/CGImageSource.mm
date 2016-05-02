@@ -33,7 +33,7 @@
 
 using namespace Microsoft::WRL;
 
-static const wchar_t* TAG = L"CGImageSource"; 
+static const wchar_t* TAG = L"CGImageSource";
 const CFStringRef kCGImageSourceTypeIdentifierHint = static_cast<CFStringRef>(@"kCGImageSourceTypeIdentifierHint");
 const CFStringRef kCGImageSourceShouldAllowFloat = static_cast<CFStringRef>(@"kCGImageSourceShouldAllowFloat");
 const CFStringRef kCGImageSourceShouldCache = static_cast<CFStringRef>(@"kCGImageSourceShouldCache");
@@ -72,7 +72,7 @@ const size_t c_minDataStreamSize = 96;
         _data = (NSData*)CGDataProviderCopyData(provider);
     }
 
-    return self;                               
+    return self;
 }
 
 - (instancetype)initIncremental {
@@ -80,20 +80,20 @@ const size_t c_minDataStreamSize = 96;
         _incrementalSource = true;
     }
 
-    return self;                               
+    return self;
 }
 
 // Helper function to identify image format from image byte stream
 - (CFStringRef)getImageType {
-    char imageIdentifier[12] = {0};
+    char imageIdentifier[12] = { 0 };
     [self.data getBytes:&imageIdentifier length:12];
-    static const unsigned char BMPIdentifier[] = {'B','M'};
-    static const unsigned char GIFIdentifier[] = {'G','I','F'};
-    static const unsigned char ICOIdentifier[] = {0x00, 0x00, 0x01, 0x00};
-    static const unsigned char JPEGIdentifier[] = {0xFF, 0xD8, 0xFF};
-    static const unsigned char PNGIdentifier[] = {0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
-    static const unsigned char TIFFIdentifier1[] = {'M', 'M', 0x00, 0x2A};
-    static const unsigned char TIFFIdentifier2[] = {'I', 'I', 0x2A, 0x00};
+    static const unsigned char BMPIdentifier[] = { 'B', 'M' };
+    static const unsigned char GIFIdentifier[] = { 'G', 'I', 'F' };
+    static const unsigned char ICOIdentifier[] = { 0x00, 0x00, 0x01, 0x00 };
+    static const unsigned char JPEGIdentifier[] = { 0xFF, 0xD8, 0xFF };
+    static const unsigned char PNGIdentifier[] = { 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a };
+    static const unsigned char TIFFIdentifier1[] = { 'M', 'M', 0x00, 0x2A };
+    static const unsigned char TIFFIdentifier2[] = { 'I', 'I', 0x2A, 0x00 };
     CFStringRef imageFormat;
 
     if (!memcmp(imageIdentifier, BMPIdentifier, 2)) {
@@ -113,9 +113,10 @@ const size_t c_minDataStreamSize = 96;
     }
 
     if (!imageFormat) {
-        UNIMPLEMENTED_WITH_MSG("Image format is not supported. "
-                               "Current release supports JPEG, BMP, PNG, GIF, TIFF & ICO image formats only.");
-    } 
+        UNIMPLEMENTED_WITH_MSG(
+            "Image format is not supported. "
+            "Current release supports JPEG, BMP, PNG, GIF, TIFF & ICO image formats only.");
+    }
 
     return imageFormat;
 }
@@ -142,11 +143,11 @@ uint32_t get16BitValueBigEndian(const uint8_t* data, size_t offset) {
              Progressively encoded JPEG images are not supported by Apple APIs and the current implementation does not support it.
 
  @References https://en.wikipedia.org/wiki/JPEG
-             https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format                    
+             https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format
 */
 - (CGImageSourceStatus)getJPEGStatusAtIndex:(size_t)index {
-    static const uint8_t c_imageEndIdentifier[2] = {0xFF, 0xD9};
-    static const uint8_t c_scanStartIdentifier[2] = {0xFF, 0xDA};
+    static const uint8_t c_imageEndIdentifier[2] = { 0xFF, 0xD9 };
+    static const uint8_t c_scanStartIdentifier[2] = { 0xFF, 0xDA };
 
     // Return if requesting for invalid frames
     if (index != 0) {
@@ -155,7 +156,7 @@ uint32_t get16BitValueBigEndian(const uint8_t* data, size_t offset) {
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
-    
+
     if (imageLength < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
     }
@@ -163,7 +164,7 @@ uint32_t get16BitValueBigEndian(const uint8_t* data, size_t offset) {
     // Check if the End Of Image marker is present in the data stream
     if (imageData[imageLength - 2] == c_imageEndIdentifier[0] && imageData[imageLength - 1] == c_imageEndIdentifier[1]) {
         return kCGImageStatusComplete;
-    } 
+    }
 
     // Check if the Start Of Scan marker is present in the data stream
     for (size_t offset = 2, blockLength = 0; offset < imageLength - 3; offset += blockLength + 2) {
@@ -187,7 +188,7 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
     static const size_t c_tagIDOffset = 2;
     static const size_t c_tagDataTypeOffset = 4;
 
-    // Data store that fetches the size of an incoming data type  
+    // Data store that fetches the size of an incoming data type
     static const uint8_t tagTypeSize[] = {
         1, // BYTE 8-bit unsigned integer
         1, // ASCII 8-bit, NULL-terminated string
@@ -200,12 +201,12 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
         4, // SLONG 32-bit signed integer
         8, // SRATIONAL Two 32-bit signed integers
         4, // FLOAT 4-byte single-precision IEEE floating-point value
-        8  // DOUBLE 8-byte double-precision IEEE floating-point value    
+        8 // DOUBLE 8-byte double-precision IEEE floating-point value
     };
 
     uint16_t tagDataType = get16BitValue(imageData, offset + c_tagIDOffset);
     uint32_t tagDataCount = get32BitValue(imageData, offset + c_tagDataTypeOffset);
-    
+
     return tagTypeSize[tagDataType - 1] * tagDataCount;
 }
 
@@ -232,11 +233,11 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
     if (imageLength < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
     }
-    
+
     // Offset into the first Image File Directory (IFD) starts at byte offset 4
     uint32_t offset = get32BitValue(imageData, c_ifdOffset);
 
-    // Check if data for previous image frames is present 
+    // Check if data for previous image frames is present
     for (size_t currentFrameIndex = 0; currentFrameIndex < index; currentFrameIndex++) {
         if (offset + 2 > imageLength) {
             return kCGImageStatusUnknownType;
@@ -254,12 +255,12 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
         // Fetch the IFD offset for the next frame
         offset = get32BitValue(imageData, offset);
     }
-    
+
     if (offset + 2 > imageLength) {
         return kCGImageStatusUnknownType;
     }
 
-    // Make a copy of the IFD start offset. If the requested frame is the last, we need to check presence of the final tag's data.   
+    // Make a copy of the IFD start offset. If the requested frame is the last, we need to check presence of the final tag's data.
     uint32_t startOffset = offset;
     uint16_t tagCount = get16BitValue(imageData, offset);
 
@@ -268,7 +269,7 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
 
     if (offset + 4 > imageLength) {
         return kCGImageStatusUnknownType;
-    } 
+    }
 
     // Get the next IFD's offset. Would be zero if the requested frame is the last.
     uint32_t nextOffset = get32BitValue(imageData, offset);
@@ -277,14 +278,13 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
     if (nextOffset == 0 || nextOffset > imageLength) {
         // Reset the offset to point to the TagList without advancing past all the tags
         offset = startOffset + c_tagCountSize;
-        
+
         bool completeTagFound = false;
         bool incompleteTagFound = false;
 
-        // Iterate over all the tags until the first tag with data at an offset is loaded (if lastTagLoadCheck is false), or 
+        // Iterate over all the tags until the first tag with data at an offset is loaded (if lastTagLoadCheck is false), or
         // the last tag with offset data is loaded (if lastTagLoadCheck is true).
         for (uint16_t i = 0; i < tagCount; i++) {
-
             // Check to make sure that the tag ID, DataType, and Count fields are all present.
             // Each tag block is 12 bytes, 2 bytes for tag ID, 2 bytes for data type of tag, 4 bytes for data size,
             // and 4 bytes for data offset, which is a pointer to where the tag data is stored.
@@ -313,10 +313,10 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
                 } else {
                     incompleteTagFound = true;
                 }
-            } 
+            }
 
             // Move the offset past the NextIFDOffset field
-             offset += c_tagDataOffsetSize;
+            offset += c_tagDataOffsetSize;
         }
 
         if (completeTagFound && incompleteTagFound) {
@@ -334,7 +334,7 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
         // in DataOffset fields, and since we confirmed that all the tags were loaded, this means the frame is complete.
         return kCGImageStatusComplete;
     }
-    
+
     // If the requested frame is not the last frame and the next frame has been partially loaded, check the IFD of the next frame.
     offset = nextOffset;
 
@@ -354,16 +354,16 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
 size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) {
     static const size_t c_extensionTypeSize = 2;
 
-    //Advance offset past the extension labels
+    // Advance offset past the extension labels
     offset += c_extensionTypeSize;
 
-    // Iterate over all extension sub-blocks by checking the block length. A block length of 0 marks the end of current extension 
+    // Iterate over all extension sub-blocks by checking the block length. A block length of 0 marks the end of current extension
     while (offset < length && data[offset] != 0) {
         offset += data[offset] + 1;
     }
 
     // Advance past the block terminator to the start of the next extension or frame
-    return ++offset;    
+    return ++offset;
 }
 
 /**
@@ -386,25 +386,25 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
 
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
-        
+
     if (imageLength < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
     }
 
     size_t offset = c_headerSize + c_logicalDescriptorSize;
 
-    // Advance offset if global color table exists. Check for existence by reading MSB of packed byte 
+    // Advance offset if global color table exists. Check for existence by reading MSB of packed byte
     if (imageData[c_packedFieldOffset] & 0x80) {
         // Extract the last three bits from packed byte to get the Global Color Table Size representation and compute actual size
         offset += 3 << ((imageData[c_packedFieldOffset] & 0x7) + 1);
 
-        // Return unknown if offset is somewhere past the end of the image data before any image frames are found
+        // Return unknown if offset is past the end of the image data before any image frames are found
         if (offset >= imageLength) {
             return kCGImageStatusUnknownType;
         }
     }
 
-    // Parse all available Extensions before any of the Image Data is found 
+    // Parse all available Extensions before any of the Image Data is found
     while (imageData[offset] == c_gifExtensionHeader) {
         offset = parseGIFExtension(imageData, imageLength, offset);
 
@@ -414,12 +414,10 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
     }
 
     for (size_t currentFrame = 0; currentFrame <= index; currentFrame++) {
-
         // Parse through the current frame
         if (imageData[offset] == c_gifDescriptorHeader) {
-
             // To replicate Apple's status change sequence, offset is initially moved past only the first (N - 1) bytes of Image Descriptor
-            // A reading header status (for first frame), incomplete status (for other requested frames) or 
+            // A reading header status (for first frame), incomplete status (for other requested frames) or
             // unknown status (for non-requested frames) returned on stream interruption
             offset += c_imageDescriptorSize - 1;
             if (offset >= imageLength) {
@@ -437,7 +435,7 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
                 return kCGImageStatusUnknownType;
             }
 
-            // Advance offset if local color table exists. Check for existence by reading MSB of packed byte 
+            // Advance offset if local color table exists. Check for existence by reading MSB of packed byte
             if (imageData[offset - 1] & 0x80) {
                 // Extract the last three bits from packed byte to get the Local Color Table Size representation and compute actual size
                 offset += 3 << ((imageData[offset - 1] & 0x7) + 1);
@@ -453,25 +451,25 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
             // Iterate over all image data sub-blocks by checking the block length. A block length of 0 marks the end of current frame
             size_t imageBlocks = 0;
             while (imageData[offset] != 0) {
-                // Move offset initially past the first (N - 1) data sub-blocks. This is done to match Apple's implementation. 
-                // An unknown status is returned until the sub-block after the fourth length field is reached. 
+                // Move offset initially past the first (N - 1) data sub-blocks. This is done to match Apple's implementation.
+                // An unknown status is returned until the sub-block after the fourth length field is reached.
                 // An incomplete status is returned later.
-                offset += imageData[offset]; 
+                offset += imageData[offset];
                 if (offset >= imageLength) {
                     return (currentFrame == index && imageBlocks >= c_minDataBlocks) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
                 }
 
                 // Offset is made to point to the length field of the next block
-                // An unknown status is returned until the sub-block after the fourth length field is found. 
+                // An unknown status is returned until the sub-block after the fourth length field is found.
                 // An incomplete status is returned later.
                 offset++;
-                imageBlocks++;            
+                imageBlocks++;
                 if (offset >= imageLength) {
                     return (currentFrame == index && imageBlocks >= c_minDataBlocks) ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
                 }
             }
 
-            // Point offset to either the trailer byte or to the beginning of the next extension or frame 
+            // Point offset to either the trailer byte or to the beginning of the next extension or frame
             // An incomplete status (for requested frames) or an UnknownType status (for non-requested frames) is returned on interruption
             offset++;
             if (offset >= imageLength) {
@@ -482,7 +480,7 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
             return kCGImageStatusUnknownType;
         }
 
-        // Parse all available Extensions before reaching the trailer or the next frame 
+        // Parse all available Extensions before reaching the trailer or the next frame
         while (imageData[offset] == c_gifExtensionHeader) {
             offset = parseGIFExtension(imageData, imageLength, offset);
 
@@ -492,7 +490,7 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
         }
     }
 
-    // The frame is completely loaded if either a GIF trailer or the Image Descriptor of the next frame are present.   
+    // The frame is completely loaded if either a GIF trailer or the Image Descriptor of the next frame are present.
     if (imageData[offset] == c_gifTrailer || imageData[offset] == c_gifDescriptorHeader) {
         return kCGImageStatusComplete;
     } else {
@@ -521,7 +519,7 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
         return kCGImageStatusReadingHeader;
     }
 
-    // Check if incoming data stream size matches image file size 
+    // Check if incoming data stream size matches image file size
     if (imageLength == get32BitValue(imageData, c_fileSizeIndex)) {
         return kCGImageStatusComplete;
     } else {
@@ -533,7 +531,7 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
 /**
  @Notes      Helper function to get the status of PNG images at the provided index
              Interlaced PNG images are not supported by Apple APIs and the current implementation does not support it.
-             The PLTE chunk is mandatory for color type 3, optional for types 2 and 6, and absent for types 0 and 4. 
+             The PLTE chunk is mandatory for color type 3, optional for types 2 and 6, and absent for types 0 and 4.
              Apple verifies these requirements. The current release does not support this.
 
  @References https://www.w3.org/TR/PNG/
@@ -546,14 +544,14 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
     static const size_t c_chunkTypeSize = 4;
     static const size_t c_chunkDataOffset = 7;
     static const size_t c_CRCSize = 4;
-    static const uint8_t c_imageEndIdentifier[] = {'I', 'E', 'N', 'D'};
-    static const uint8_t c_frameStartIdentifier[] = {'I', 'D', 'A', 'T'};
-    
+    static const uint8_t c_imageEndIdentifier[] = { 'I', 'E', 'N', 'D' };
+    static const uint8_t c_frameStartIdentifier[] = { 'I', 'D', 'A', 'T' };
+
     // Return if requesting for invalid frames
     if (index != 0) {
         return kCGImageStatusUnknownType;
     }
-     
+
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
 
@@ -565,25 +563,21 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
     size_t endIndex = imageLength - c_imageEndIdentifierReverseIndex;
 
     // Check for Image End identifier
-    if (imageData[endIndex] == c_imageEndIdentifier[0] &&
-        imageData[endIndex + 1] == c_imageEndIdentifier[1] && 
-        imageData[endIndex + 2] == c_imageEndIdentifier[2] && 
-        imageData[endIndex + 3] == c_imageEndIdentifier[3]) {
+    if (imageData[endIndex] == c_imageEndIdentifier[0] && imageData[endIndex + 1] == c_imageEndIdentifier[1] &&
+        imageData[endIndex + 2] == c_imageEndIdentifier[2] && imageData[endIndex + 3] == c_imageEndIdentifier[3]) {
         return kCGImageStatusComplete;
     }
 
     // Check if the Start of Frame identifier is present in the data stream
     size_t offset = c_headerSize;
-    while (offset + c_chunkDataOffset < imageLength) {        
+    while (offset + c_chunkDataOffset < imageLength) {
         uint32_t chunkLength = get32BitValueBigEndian(imageData, offset);
         offset += c_lengthSize;
-        if (imageData[offset] == c_frameStartIdentifier[0] &&
-            imageData[offset + 1] == c_frameStartIdentifier[1] && 
-            imageData[offset + 2] == c_frameStartIdentifier[2] && 
-            imageData[offset + 3] == c_frameStartIdentifier[3]) {
+        if (imageData[offset] == c_frameStartIdentifier[0] && imageData[offset + 1] == c_frameStartIdentifier[1] &&
+            imageData[offset + 2] == c_frameStartIdentifier[2] && imageData[offset + 3] == c_frameStartIdentifier[3]) {
             return kCGImageStatusIncomplete;
         }
-        
+
         offset += c_chunkTypeSize + chunkLength + c_CRCSize;
     }
 
@@ -593,7 +587,7 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
 /**
  @Notes      Helper function to get the status of ICO images at the provided index
 
- @References https://msdn.microsoft.com/en-us/library/ms997538.aspx 
+ @References https://msdn.microsoft.com/en-us/library/ms997538.aspx
              https://en.wikipedia.org/wiki/ICO_(file_format)
 */
 - (CGImageSourceStatus)getICOStatusAtIndex:(size_t)index {
@@ -602,29 +596,28 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
     static const size_t c_sizeOffset = 8;
     static const size_t c_dataSize = 4;
     static const size_t c_offsetSize = 4;
-    
+
     const uint8_t* imageData = static_cast<const uint8_t*>([self.data bytes]);
     NSUInteger imageLength = [self.data length];
-    
+
     if (imageLength < c_minDataStreamSize) {
         return kCGImageStatusReadingHeader;
     }
-        
-    // Move the offset through 4 of the header bytes to point to the number of images in the file 
+
+    // Move the offset through 4 of the header bytes to point to the number of images in the file
     size_t offset = c_reservedOffset;
     if (offset + 2 > imageLength) {
         return kCGImageStatusUnknownType;
     }
-    
+
     size_t imageCount = get16BitValue(imageData, offset);
 
     // Move the offset to point to the header for the first image
     offset += c_imageCountOffset;
 
-    // The offset is moved to the image data size field of the last frame header 
+    // The offset is moved to the image data size field of the last frame header
     // This is consistent with Apple's implementation that refers to the last frame irrespective of the one requested for
     for (size_t currentFrameIndex = 0; currentFrameIndex < imageCount; currentFrameIndex++) {
-
         // Move the offset to point to the image data size field
         offset += c_sizeOffset;
 
@@ -636,15 +629,15 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
 
     if (offset + 4 > imageLength) {
         return kCGImageStatusUnknownType;
-    } 
+    }
 
-    uint32_t imageDataLength = get32BitValue(imageData, offset); 
+    uint32_t imageDataLength = get32BitValue(imageData, offset);
 
     // Move the offset to the image data offset field of the header
     offset += c_dataSize;
     if (offset + 4 > imageLength) {
         return kCGImageStatusUnknownType;
-    } 
+    }
 
     uint32_t imagePixelOffset = get32BitValue(imageData, offset);
 
@@ -682,15 +675,15 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
         return [self getICOStatusAtIndex:index];
     } else {
         return kCGImageStatusUnknownType;
-    } 
+    }
 }
 @end
 
 /**
  @Status Caveat
- @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO. 
+ @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO.
         Not all formats are supported.
-        kCGImageSourceTypeIdentifierHint is not supported when passed in as an options dictionary key. 
+        kCGImageSourceTypeIdentifierHint is not supported when passed in as an options dictionary key.
 */
 CGImageSourceRef CGImageSourceCreateWithDataProvider(CGDataProviderRef provider, CFDictionaryRef options) {
     RETURN_NULL_IF(!provider);
@@ -703,9 +696,9 @@ CGImageSourceRef CGImageSourceCreateWithDataProvider(CGDataProviderRef provider,
 
 /**
  @Status Caveat
- @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO. 
+ @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO.
         Not all formats are supported.
-        kCGImageSourceTypeIdentifierHint is not supported when passed in as an options dictionary key. 
+        kCGImageSourceTypeIdentifierHint is not supported when passed in as an options dictionary key.
 */
 CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data, CFDictionaryRef options) {
     RETURN_NULL_IF(!data);
@@ -718,7 +711,7 @@ CGImageSourceRef CGImageSourceCreateWithData(CFDataRef data, CFDictionaryRef opt
 
 /**
  @Status Caveat
- @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO. 
+ @Notes The current implementation supports common image file formats such as JPEG, GIF, TIFF, BMP, PNG and ICO.
         Not all formats are supported.
         kCGImageSourceTypeIdentifierHint is not supported when passed in as an options dictionary key.
 */
@@ -733,7 +726,7 @@ CGImageSourceRef CGImageSourceCreateWithURL(CFURLRef url, CFDictionaryRef option
 
 /**
  @Status Caveat
- @Notes Current implementation does not support kCGImageSourceShouldAllowFloat & kCGImageSourceShouldCache 
+ @Notes Current implementation does not support kCGImageSourceShouldAllowFloat & kCGImageSourceShouldCache
         when passed in as options dictionary keys
         During incremental loading of PNG images, decoder creation succeeds only when all image data is available
 */
@@ -748,8 +741,8 @@ CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef isrc, size_t index, 
     RETURN_NULL_IF(source.loadStatus != kCGImageStatusIncomplete && source.loadStatus != kCGImageStatusComplete);
     RETURN_NULL_IF(index > (CGImageSourceGetCount(isrc) - 1));
 
-    MULTI_QI imageQueryInterface = {0};
-    static const GUID IID_IWICImagingFactory = {0xec5ec8a9,0xc395,0x4314,0x9c,0x77,0x54,0xd7,0xa9,0x35,0xff,0x70};
+    MULTI_QI imageQueryInterface = { 0 };
+    static const GUID IID_IWICImagingFactory = { 0xec5ec8a9, 0xc395, 0x4314, 0x9c, 0x77, 0x54, 0xd7, 0xa9, 0x35, 0xff, 0x70 };
     imageQueryInterface.pIID = &IID_IWICImagingFactory;
     RETURN_NULL_IF_FAILED(
         CoCreateInstanceFromApp(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, nullptr, 1, &imageQueryInterface));
@@ -766,7 +759,7 @@ CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef isrc, size_t index, 
         UNIMPLEMENTED_WITH_MSG("kCGImageSourceShouldCache is not supported in current implementation.");
     }
 
-    ComPtr<IWICBitmapDecoder> imageDecoder;                
+    ComPtr<IWICBitmapDecoder> imageDecoder;
     RETURN_NULL_IF_FAILED(imageFactory->CreateDecoderFromStream(imageStream.Get(), nullptr, WICDecodeMetadataCacheOnDemand, &imageDecoder));
 
     ComPtr<IWICBitmapFrameDecode> imageFrame;
@@ -783,12 +776,8 @@ CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef isrc, size_t index, 
         UNIMPLEMENTED_WITH_MSG("kCGImageSourceShouldAllowFloat is not supported in current implementation.");
     }
 
-    RETURN_NULL_IF_FAILED(imageFormatConverter->Initialize(imageFrame.Get(), 
-                                                           GUID_WICPixelFormat32bppRGBA,
-                                                           WICBitmapDitherTypeNone, 
-                                                           nullptr, 
-                                                           0.f, 
-                                                           WICBitmapPaletteTypeCustom));
+    RETURN_NULL_IF_FAILED(imageFormatConverter->Initialize(
+        imageFrame.Get(), GUID_WICPixelFormat32bppRGBA, WICBitmapDitherTypeNone, nullptr, 0.f, WICBitmapPaletteTypeCustom));
 
     const unsigned int frameSize = frameWidth * frameHeight * 4;
     unsigned char* frameByteArray = static_cast<unsigned char*>(IwMalloc(frameSize));
@@ -801,28 +790,28 @@ CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef isrc, size_t index, 
     RETURN_NULL_IF_FAILED(imageFormatConverter->CopyPixels(0, frameWidth * 4, frameSize, frameByteArray));
     cleanup.Dismiss();
 
-    NSData* frameData = [NSData dataWithBytesNoCopy:frameByteArray length:frameSize freeWhenDone:YES];    
-    CGDataProviderRef frameDataProvider =  CGDataProviderCreateWithCFData((CFDataRef)frameData);
+    NSData* frameData = [NSData dataWithBytesNoCopy:frameByteArray length:frameSize freeWhenDone:YES];
+    CGDataProviderRef frameDataProvider = CGDataProviderCreateWithCFData((CFDataRef)frameData);
     CGColorSpaceRef colorspaceRgb = CGColorSpaceCreateDeviceRGB();
-    CGImageRef imageRef = CGImageCreate(frameWidth, 
-                                        frameHeight, 
-                                        8, 
-                                        32, 
-                                        frameWidth * 4, 
-                                        colorspaceRgb, 
-                                        kCGImageAlphaFirst, 
-                                        frameDataProvider, 
-                                        nullptr, 
-                                        true, 
+    CGImageRef imageRef = CGImageCreate(frameWidth,
+                                        frameHeight,
+                                        8,
+                                        32,
+                                        frameWidth * 4,
+                                        colorspaceRgb,
+                                        kCGImageAlphaFirst,
+                                        frameDataProvider,
+                                        nullptr,
+                                        true,
                                         kCGRenderingIntentDefault);
     CGDataProviderRelease(frameDataProvider);
-    CGColorSpaceRelease(colorspaceRgb);                                         
+    CGColorSpaceRelease(colorspaceRgb);
     return imageRef;
 }
 
 /**
  @Status Caveat
- @Notes Current implementation does not support kCGImageSourceShouldAllowFloat, kCGImageSourceShouldCache & 
+ @Notes Current implementation does not support kCGImageSourceShouldAllowFloat, kCGImageSourceShouldCache &
         kCGImageSourceCreateThumbnailWithTransform when passed in as options dictionary keys
 */
 CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t index, CFDictionaryRef options) {
@@ -831,14 +820,14 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
     RETURN_NULL_IF(!imageData);
     RETURN_NULL_IF(index > (CGImageSourceGetCount(isrc) - 1));
 
-    MULTI_QI imageQueryInterface = {0};
-    static const GUID IID_IWICImagingFactory = {0xec5ec8a9,0xc395,0x4314,0x9c,0x77,0x54,0xd7,0xa9,0x35,0xff,0x70};
+    MULTI_QI imageQueryInterface = { 0 };
+    static const GUID IID_IWICImagingFactory = { 0xec5ec8a9, 0xc395, 0x4314, 0x9c, 0x77, 0x54, 0xd7, 0xa9, 0x35, 0xff, 0x70 };
     imageQueryInterface.pIID = &IID_IWICImagingFactory;
     RETURN_NULL_IF_FAILED(
         CoCreateInstanceFromApp(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, nullptr, 1, &imageQueryInterface));
 
     ComPtr<IWICImagingFactory> imageFactory = (IWICImagingFactory*)imageQueryInterface.pItf;
-    ComPtr<IWICStream> imageStream;        
+    ComPtr<IWICStream> imageStream;
     RETURN_NULL_IF_FAILED(imageFactory->CreateStream(&imageStream));
 
     unsigned char* imageByteArray = (unsigned char*)[imageData bytes];
@@ -856,11 +845,12 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
     RETURN_NULL_IF_FAILED(imageDecoder->GetFrame(index, &imageFrame));
 
     if (options && CFDictionaryContainsKey(options, kCGImageSourceCreateThumbnailWithTransform)) {
-        UNIMPLEMENTED_WITH_MSG("kCGImageSourceCreateThumbnailWithTransform is not supported in "
-                                "current implementation.");
+        UNIMPLEMENTED_WITH_MSG(
+            "kCGImageSourceCreateThumbnailWithTransform is not supported in "
+            "current implementation.");
     }
-    
-    ComPtr<IWICFormatConverter> imageFormatConverter;                        
+
+    ComPtr<IWICFormatConverter> imageFormatConverter;
     RETURN_NULL_IF_FAILED(imageFactory->CreateFormatConverter(&imageFormatConverter));
 
     ComPtr<IWICBitmapScaler> imageScaler;
@@ -873,14 +863,14 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
 
     // Check if incoming image frame has an existing thumbnail. Return NULL if absent & thumbnail creation flags are not specified.
     if (!SUCCEEDED(imageFrame->GetThumbnail(&imageThumbnail))) {
-        if (options && (CFDictionaryContainsKey(options, kCGImageSourceCreateThumbnailFromImageIfAbsent) || 
+        if (options && (CFDictionaryContainsKey(options, kCGImageSourceCreateThumbnailFromImageIfAbsent) ||
                         CFDictionaryContainsKey(options, kCGImageSourceCreateThumbnailFromImageAlways))) {
             RETURN_NULL_IF_FAILED(imageFrame->GetSize(&thumbnailWidth, &thumbnailHeight));
-        }  
+        }
     } else {
         thumbnailExists = true;
         RETURN_NULL_IF_FAILED(imageThumbnail->GetSize(&thumbnailWidth, &thumbnailHeight));
-    } 
+    }
 
     unsigned int maxThumbnailSize = 0;
     if (options && CFDictionaryContainsKey(options, kCGImageSourceThumbnailMaxPixelSize)) {
@@ -896,7 +886,7 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
             thumbnailWidth = thumbnailWidth / thumbnailHeight * maxThumbnailSize;
             thumbnailHeight = maxThumbnailSize;
         }
-                                    
+
         if (!thumbnailWidth || !thumbnailHeight) {
             thumbnailWidth = maxThumbnailSize;
             thumbnailHeight = maxThumbnailSize;
@@ -904,61 +894,48 @@ CGImageRef CGImageSourceCreateThumbnailAtIndex(CGImageSourceRef isrc, size_t ind
     }
 
     // Scale thumbnail according to the calculated dimensions
-    if (!thumbnailExists || (thumbnailExists && 
-                             options && 
-                             CFDictionaryContainsKey(options, kCGImageSourceCreateThumbnailFromImageAlways))) {
-        RETURN_NULL_IF_FAILED(imageScaler->Initialize(imageFrame.Get(),
-                                                      thumbnailWidth,
-                                                      thumbnailHeight,
-                                                      WICBitmapInterpolationModeCubic));    
+    if (!thumbnailExists ||
+        (thumbnailExists && options && CFDictionaryContainsKey(options, kCGImageSourceCreateThumbnailFromImageAlways))) {
+        RETURN_NULL_IF_FAILED(imageScaler->Initialize(imageFrame.Get(), thumbnailWidth, thumbnailHeight, WICBitmapInterpolationModeCubic));
     } else {
-        RETURN_NULL_IF_FAILED(imageScaler->Initialize(imageThumbnail.Get(),
-                                                      thumbnailWidth,
-                                                      thumbnailHeight,
-                                                      WICBitmapInterpolationModeCubic));    
+        RETURN_NULL_IF_FAILED(
+            imageScaler->Initialize(imageThumbnail.Get(), thumbnailWidth, thumbnailHeight, WICBitmapInterpolationModeCubic));
     }
 
     if (options && CFDictionaryContainsKey(options, kCGImageSourceShouldAllowFloat)) {
         UNIMPLEMENTED_WITH_MSG("kCGImageSourceShouldAllowFloat is not supported in current implementation.");
     }
 
-    RETURN_NULL_IF_FAILED(imageFormatConverter->Initialize(imageScaler.Get(), 
-                                                           GUID_WICPixelFormat32bppRGBA,
-                                                           WICBitmapDitherTypeNone, 
-                                                           nullptr, 
-                                                           0.f, 
-                                                           WICBitmapPaletteTypeCustom));
+    RETURN_NULL_IF_FAILED(imageFormatConverter->Initialize(
+        imageScaler.Get(), GUID_WICPixelFormat32bppRGBA, WICBitmapDitherTypeNone, nullptr, 0.f, WICBitmapPaletteTypeCustom));
 
     const unsigned int thumbnailSize = thumbnailWidth * thumbnailHeight * 4;
     unsigned char* thumbnailByteArray = static_cast<unsigned char*>(IwMalloc(thumbnailSize));
     if (!thumbnailByteArray) {
         NSTraceInfo(TAG, @"CGImageSourceCreateThumbnailAtIndex cannot allocate memory");
-        return nullptr;    
+        return nullptr;
     }
 
     auto cleanup = wil::ScopeExit([&]() { IwFree(thumbnailByteArray); });
-    RETURN_NULL_IF_FAILED(imageFormatConverter->CopyPixels(0, 
-                                                           thumbnailWidth * 4, 
-                                                           thumbnailSize, 
-                                                           thumbnailByteArray));
+    RETURN_NULL_IF_FAILED(imageFormatConverter->CopyPixels(0, thumbnailWidth * 4, thumbnailSize, thumbnailByteArray));
     cleanup.Dismiss();
 
-    NSData* thumbnailData = [NSData dataWithBytesNoCopy:thumbnailByteArray length:thumbnailSize freeWhenDone:YES];    
+    NSData* thumbnailData = [NSData dataWithBytesNoCopy:thumbnailByteArray length:thumbnailSize freeWhenDone:YES];
     CGDataProviderRef thumbnailDataProvider = CGDataProviderCreateWithCFData((CFDataRef)thumbnailData);
     CGColorSpaceRef colorspaceRgb = CGColorSpaceCreateDeviceRGB();
-    CGImageRef imageRef = CGImageCreate(thumbnailWidth, 
-                                        thumbnailHeight, 
-                                        8, 
-                                        32, 
-                                        thumbnailWidth * 4, 
-                                        colorspaceRgb, 
-                                        kCGImageAlphaFirst, 
-                                        thumbnailDataProvider, 
-                                        nullptr, 
-                                        true, 
+    CGImageRef imageRef = CGImageCreate(thumbnailWidth,
+                                        thumbnailHeight,
+                                        8,
+                                        32,
+                                        thumbnailWidth * 4,
+                                        colorspaceRgb,
+                                        kCGImageAlphaFirst,
+                                        thumbnailDataProvider,
+                                        nullptr,
+                                        true,
                                         kCGRenderingIntentDefault);
     CGDataProviderRelease(thumbnailDataProvider);
-    CGColorSpaceRelease(colorspaceRgb);                                                
+    CGColorSpaceRelease(colorspaceRgb);
     return imageRef;
 }
 
@@ -1000,7 +977,7 @@ CFTypeID CGImageSourceGetTypeID() {
 
 /**
  @Status Caveat
- @Notes Current release supports JPEG, BMP, PNG, GIF, TIFF & ICO image formats only 
+ @Notes Current release supports JPEG, BMP, PNG, GIF, TIFF & ICO image formats only
 */
 CFStringRef CGImageSourceGetType(CGImageSourceRef isrc) {
     RETURN_NULL_IF(!isrc);
@@ -1011,11 +988,12 @@ CFStringRef CGImageSourceGetType(CGImageSourceRef isrc) {
 
 /**
  @Status Caveat
- @Notes Current release supports JPEG, BMP, PNG, GIF, TIFF & ICO image formats only 
+ @Notes Current release supports JPEG, BMP, PNG, GIF, TIFF & ICO image formats only
 */
 CFArrayRef CGImageSourceCopyTypeIdentifiers() {
-    static const CFStringRef typeIdentifiers[] = {kUTTypePNG, kUTTypeJPEG, kUTTypeGIF, kUTTypeTIFF, kUTTypeICO, kUTTypeBMP};
-    CFArrayRef imageTypeIdentifiers = CFArrayCreate(nullptr, (const void**)typeIdentifiers, ARRAYSIZE(typeIdentifiers), &kCFTypeArrayCallBacks);
+    static const CFStringRef typeIdentifiers[] = { kUTTypePNG, kUTTypeJPEG, kUTTypeGIF, kUTTypeTIFF, kUTTypeICO, kUTTypeBMP };
+    CFArrayRef imageTypeIdentifiers =
+        CFArrayCreate(nullptr, (const void**)typeIdentifiers, ARRAYSIZE(typeIdentifiers), &kCFTypeArrayCallBacks);
     return imageTypeIdentifiers;
 }
 
@@ -1029,43 +1007,43 @@ size_t CGImageSourceGetCount(CGImageSourceRef isrc) {
         return 0;
     }
 
-    MULTI_QI imageQueryInterface = {0};
-    static const GUID IID_IWICImagingFactory = {0xec5ec8a9,0xc395,0x4314,0x9c,0x77,0x54,0xd7,0xa9,0x35,0xff,0x70};
+    MULTI_QI imageQueryInterface = { 0 };
+    static const GUID IID_IWICImagingFactory = { 0xec5ec8a9, 0xc395, 0x4314, 0x9c, 0x77, 0x54, 0xd7, 0xa9, 0x35, 0xff, 0x70 };
     imageQueryInterface.pIID = &IID_IWICImagingFactory;
     HRESULT status = CoCreateInstanceFromApp(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, nullptr, 1, &imageQueryInterface);
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"CoCreateInstanceFromApp failed with status=%x\n", status);
         return 0;
-    } 
-    
+    }
+
     ComPtr<IWICImagingFactory> imageFactory = (IWICImagingFactory*)imageQueryInterface.pItf;
-    ComPtr<IWICStream> imageStream;        
+    ComPtr<IWICStream> imageStream;
     status = imageFactory->CreateStream(&imageStream);
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"IWICImagingFactory::CreateStream failed with status=%x\n", status);
         return 0;
-    } 
+    }
 
     unsigned char* imageByteArray = (unsigned char*)[imageData bytes];
     int imageLength = [imageData length];
     status = imageStream->InitializeFromMemory(imageByteArray, imageLength);
-    if (!SUCCEEDED(status)) { 
+    if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"IWICStream::InitializeFromMemory failed with status=%x\n", status);
         return 0;
-    } 
-    
-    ComPtr<IWICBitmapDecoder> imageDecoder;        
+    }
+
+    ComPtr<IWICBitmapDecoder> imageDecoder;
     status = imageFactory->CreateDecoderFromStream(imageStream.Get(), nullptr, WICDecodeMetadataCacheOnDemand, &imageDecoder);
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"IWICImagingFactory::CreateDecoderFromStream failed with status=%x\n", status);
         return 0;
-    } 
-    
+    }
+
     size_t frameCount = 0;
     status = imageDecoder->GetFrameCount(&frameCount);
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"IWICBitmapDecoder::GetFrameCount failed with status=%x\n", status);
-    } 
+    }
 
     return frameCount;
 }
@@ -1121,12 +1099,12 @@ CGImageSourceStatus CGImageSourceGetStatus(CGImageSourceRef isrc) {
 /**
  @Status Caveat
  @Notes The kCGImageStatusInvalidData status is not supported.
-        Only Baseline DCT-based JPEG sources are supported by Apple and the current implementation. 
-        Progressive DCT-based JPEG sources are not supported. 
+        Only Baseline DCT-based JPEG sources are supported by Apple and the current implementation.
+        Progressive DCT-based JPEG sources are not supported.
         TIFF sources with big-endian byte ordering are not supported.
         Interlaced GIF and PNG sources are not supported by Apple and the current implementation.
-        The PLTE chunk is mandatory for color type 3, optional for types 2 and 6, and absent for types 0 and 4. 
-        This verification of PLTE presence is not supported. 
+        The PLTE chunk is mandatory for color type 3, optional for types 2 and 6, and absent for types 0 and 4.
+        This verification of PLTE presence is not supported.
 */
 CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t index) {
     if (!isrc) {
@@ -1155,5 +1133,5 @@ CGImageSourceStatus CGImageSourceGetStatusAtIndex(CGImageSourceRef isrc, size_t 
         return imageSrc.loadStatus;
     } else {
         return kCGImageStatusUnknownType;
-    } 
+    }
 }
