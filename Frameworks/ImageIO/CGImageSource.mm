@@ -284,8 +284,6 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
         // Iterate over all the tags until the first tag with data at an offset is loaded (if lastTagLoadCheck is false), or 
         // the last tag with offset data is loaded (if lastTagLoadCheck is true).
         for (uint16_t i = 0; i < tagCount; i++) {
-            uint32_t tagDataSize;
-            uint32_t tagDataOffset;
 
             // Check to make sure that the tag ID, DataType, and Count fields are all present.
             // Each tag block is 12 bytes, 2 bytes for tag ID, 2 bytes for data type of tag, 4 bytes for data size,
@@ -296,7 +294,7 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
             }
 
             // Compute the size of the current tag
-            tagDataSize = getTiffTagSize(imageData, offset);
+            uint32_t tagDataSize = getTiffTagSize(imageData, offset);
 
             // Move offset to the beginning of the tag offset field
             offset += c_tagIDSize + c_tagDataTypeSize + c_tagDataCountSize;
@@ -309,7 +307,7 @@ uint32_t getTiffTagSize(const uint8_t* imageData, uint32_t offset) {
                 }
 
                 // Check the data pointed to by the tag data offset. If fully there, then at least some of the tag data is loaded.
-                tagDataOffset = get32BitValue(imageData, offset);
+                uint32_t tagDataOffset = get32BitValue(imageData, offset);
                 if (tagDataOffset + tagDataSize <= imageLength) {
                     completeTagFound = true;
                 } else {
@@ -365,8 +363,7 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
     }
 
     // Advance past the block terminator to the start of the next extension or frame
-    offset++;
-    return offset;    
+    return ++offset;    
 }
 
 /**
@@ -407,24 +404,18 @@ size_t parseGIFExtension(const uint8_t* data, NSUInteger length, size_t offset) 
         }
     }
 
-    size_t currentFrame = 0;
-    bool blocksFound = false;
-    CGImageSourceStatus status;
-
     // Parse all available Extensions before any of the Image Data is found 
     while (imageData[offset] == c_gifExtensionHeader) {
         offset = parseGIFExtension(imageData, imageLength, offset);
 
         if (offset >= imageLength) {
-            if (currentFrame == index) {
-                return blocksFound ? kCGImageStatusIncomplete : kCGImageStatusUnknownType;
-            } else {
-                return kCGImageStatusUnknownType;
-            }
+            return kCGImageStatusUnknownType;
         }
     }
 
-    for (currentFrame = 0; currentFrame <= index; currentFrame++) {
+    for (size_t currentFrame = 0; currentFrame <= index; currentFrame++) {
+        bool blocksFound = false;
+
         // Parse through the current frame
         if (imageData[offset] == c_gifDescriptorHeader) {
 
