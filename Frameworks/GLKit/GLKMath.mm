@@ -382,17 +382,17 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeOrtho(float left, float right, float bot, 
     res.m00 = 2.f / (right - left);
     res.m10 = 0.f;
     res.m20 = 0.f;
-    res.m30 = (0.f - right - left) / (right - left);
+    res.m30 = -(right + left) / (right - left);
 
     res.m01 = 0.f;
     res.m11 = 2.f / (top - bot);
     res.m21 = 0.f;
-    res.m31 = (0.f - top - bot) / (top - bot);
+    res.m31 = -(top + bot) / (top - bot);
 
     res.m02 = 0.f;
     res.m12 = 0.f;
     res.m22 = -2.f / (far - near);
-    res.m32 = (far + near) / (far - near);
+    res.m32 = -(far + near) / (far - near);
 
     res.m03 = 0.f;
     res.m13 = 0.f;
@@ -816,32 +816,55 @@ GLKIT_EXPORT void GLKMatrix4MultiplyVector4Array(GLKMatrix4 m, GLKVector4* vecs,
 }
 
 /**
- @Status Stub
- @Notes Will invert non-invertible arrays.
+ @Status Interoperable
 */
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, BOOL* isInvertible) {
-    UNIMPLEMENTED();
-    GLKMatrix4 rotated = m;
-    GLKMatrix4 translated = GLKMatrix4Identity;
+    GLKMatrix4 a;
+    GLKMatrix4 aNorm;
+    float determinant;
+    
+    a.m00 =  (m.m11 * m.m22 * m.m33) + (m.m12 * m.m23 * m.m31) + (m.m13 * m.m21 * m.m32) - (m.m11 * m.m23 * m.m32) - (m.m12 * m.m21 * m.m33) - (m.m13 * m.m22 * m.m31);
+    a.m01 =  (m.m01 * m.m23 * m.m32) + (m.m02 * m.m21 * m.m33) + (m.m03 * m.m22 * m.m31) - (m.m01 * m.m22 * m.m33) - (m.m02 * m.m31 * m.m23) - (m.m03 * m.m32 * m.m21);
+    a.m02 =  (m.m01 * m.m12 * m.m33) + (m.m02 * m.m13 * m.m31) + (m.m03 * m.m11 * m.m32) - (m.m01 * m.m13 * m.m32) - (m.m02 * m.m11 * m.m33) - (m.m03 * m.m12 * m.m31);
+    a.m03 =  (m.m01 * m.m13 * m.m22) + (m.m02 * m.m11 * m.m23) + (m.m03 * m.m12 * m.m21) - (m.m01 * m.m12 * m.m23) - (m.m03 * m.m11 * m.m22) - (m.m02 * m.m13 * m.m21);
+    a.m10 =  (m.m10 * m.m23 * m.m32) + (m.m13 * m.m22 * m.m30) + (m.m12 * m.m20 * m.m33) - (m.m10 * m.m22 * m.m33) - (m.m13 * m.m20 * m.m32) - (m.m12 * m.m23 * m.m30);
+    a.m11 =  (m.m00 * m.m22 * m.m33) + (m.m02 * m.m23 * m.m30) + (m.m03 * m.m20 * m.m32) - (m.m00 * m.m23 * m.m32) - (m.m02 * m.m20 * m.m33) - (m.m03 * m.m22 * m.m30);
+    a.m12 =  (m.m00 * m.m13 * m.m32) + (m.m02 * m.m10 * m.m33) + (m.m03 * m.m12 * m.m30) - (m.m00 * m.m12 * m.m33) - (m.m03 * m.m10 * m.m32) - (m.m02 * m.m13 * m.m30);
+    a.m13 =  (m.m00 * m.m12 * m.m23) + (m.m02 * m.m13 * m.m20) + (m.m03 * m.m10 * m.m22) - (m.m00 * m.m13 * m.m22) - (m.m02 * m.m10 * m.m23) - (m.m03 * m.m12 * m.m20);
+    a.m20 =  (m.m10 * m.m21 * m.m33) + (m.m11 * m.m23 * m.m30) + (m.m13 * m.m20 * m.m31) - (m.m10 * m.m23 * m.m31) - (m.m11 * m.m20 * m.m33) - (m.m13 * m.m21 * m.m30);
+    a.m21 =  (m.m00 * m.m23 * m.m31) + (m.m01 * m.m20 * m.m33) + (m.m03 * m.m21 * m.m30) - (m.m00 * m.m21 * m.m33) - (m.m03 * m.m20 * m.m31) - (m.m01 * m.m23 * m.m30);
+    a.m22 =  (m.m00 * m.m11 * m.m33) + (m.m01 * m.m13 * m.m30) + (m.m03 * m.m10 * m.m31) - (m.m00 * m.m13 * m.m31) - (m.m01 * m.m10 * m.m33) - (m.m03 * m.m11 * m.m30);
+    a.m23 =  (m.m00 * m.m13 * m.m21) + (m.m01 * m.m10 * m.m23) + (m.m03 * m.m11 * m.m20) - (m.m00 * m.m11 * m.m23) - (m.m01 * m.m13 * m.m20) - (m.m03 * m.m10 * m.m21);
+    a.m30 =  (m.m10 * m.m22 * m.m31) + (m.m11 * m.m20 * m.m32) + (m.m12 * m.m21 * m.m30) - (m.m10 * m.m21 * m.m32) - (m.m12 * m.m20 * m.m31) - (m.m11 * m.m22 * m.m30);
+    a.m31 =  (m.m00 * m.m21 * m.m32) + (m.m01 * m.m22 * m.m30) + (m.m02 * m.m20 * m.m31) - (m.m00 * m.m22 * m.m31) - (m.m01 * m.m20 * m.m32) - (m.m02 * m.m21 * m.m30);
+    a.m32 =  (m.m00 * m.m12 * m.m31) + (m.m01 * m.m10 * m.m32) + (m.m02 * m.m11 * m.m30) - (m.m00 * m.m11 * m.m32) - (m.m02 * m.m10 * m.m31) - (m.m01 * m.m12 * m.m30);
+    a.m33 =  (m.m00 * m.m11 * m.m22) + (m.m01 * m.m12 * m.m20) + (m.m02 * m.m10 * m.m21) - (m.m00 * m.m12 * m.m21) - (m.m01 * m.m10 * m.m22) - (m.m02 * m.m11 * m.m20);
 
-    // This is only going to work in very limited circumstances.
-    // (ie, m is of the form translate(rotate(m))
-    if (isInvertible) {
+    determinant = m.m00 * a.m00 + m.m01 * a.m10 + m.m02 * a.m20 + m.m03 * a.m30;
+
+    if (determinant == 0)
+    {
+        *isInvertible = false;
+
+        aNorm = { 0 };
+        aNorm.m00 = 1.0f;
+        aNorm.m11 = 1.0f;
+        aNorm.m22 = 1.0f;
+        aNorm.m33 = 1.0f;
+    }
+    else
+    {
         *isInvertible = true;
+
+        float determinantInv = 1.0f / determinant;
+
+        for (int i = 0; i < 16; i++)
+        {
+            aNorm.m[i] = a.m[i] * determinantInv;
+        }
     }
 
-    std::swap(rotated.m01, rotated.m10);
-    std::swap(rotated.m02, rotated.m20);
-    std::swap(rotated.m12, rotated.m21);
-    rotated.m30 = 0.f;
-    rotated.m31 = 0.f;
-    rotated.m32 = 0.f;
-
-    translated.m30 = -m.m30;
-    translated.m31 = -m.m31;
-    translated.m32 = -m.m32;
-
-    return GLKMatrix4Multiply(rotated, translated);
+    return aNorm;
 }
 
 /**
@@ -919,17 +942,22 @@ GLKIT_EXPORT GLKMatrix3 GLKMatrix3MakeZRotation(float rad) {
  @Status Interoperable
 */
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeRotation(float rad, float x, float y, float z) {
-    float magn = sqrtf(x * x + y * y + z * z);
-    if (magn < COMPARISON_EPSILON) {
-        return GLKMatrix4MakeIdentity();
-    }
+    const float magn = sqrtf(x * x + y * y + z * z);
+    GLKMatrix4 res = { 0 };
+    float invMagn;
 
-    float invMagn = 1.f / magn;
+
+    if (magn < COMPARISON_EPSILON) {
+        invMagn = -NAN;
+    }
+    else
+    {
+        invMagn = 1.f / magn;
+    }
+    
     x *= invMagn;
     y *= invMagn;
     z *= invMagn;
-
-    GLKMatrix4 res = { 0 };
 
     res.m00 = 1.f + (1.f - cosf(rad)) * (x * x - 1.f);
     res.m10 = -z * sinf(rad) + (1.f - cosf(rad)) * x * y;
@@ -950,11 +978,10 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeRotation(float rad, float x, float y, floa
 */
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeXRotation(float rad) {
     GLKMatrix4 res = { 0 };
-
     res.m00 = 1.f;
     res.m11 = res.m22 = cosf(rad);
-    res.m12 = -sinf(rad);
-    res.m21 = sinf(rad);
+    res.m12 = sinf(rad);
+    res.m21 = -sinf(rad);
     res.m33 = 1.f;
 
     return res;
@@ -965,11 +992,11 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeXRotation(float rad) {
 */
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeYRotation(float rad) {
     GLKMatrix4 res = { 0 };
-
+    
     res.m11 = 1.f;
     res.m00 = res.m22 = cosf(rad);
-    res.m02 = sinf(rad);
-    res.m20 = -sinf(rad);
+    res.m02 = -sinf(rad);
+    res.m20 = sinf(rad);
     res.m33 = 1.f;
 
     return res;
@@ -982,8 +1009,8 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeZRotation(float rad) {
     GLKMatrix4 res = { 0 };
 
     res.m00 = res.m11 = cosf(rad);
-    res.m01 = -sinf(rad);
-    res.m10 = sinf(rad);
+    res.m01 = sinf(rad);
+    res.m10 = -sinf(rad);
     res.m22 = 1.f;
     res.m33 = 1.f;
 
@@ -999,6 +1026,7 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeTranslation(float x, float y, float z) {
     res.m30 = x;
     res.m31 = y;
     res.m32 = z;
+    res.m33 = 1.0f;
 
     return res;
 }
