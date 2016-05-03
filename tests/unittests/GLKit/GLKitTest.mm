@@ -79,32 +79,6 @@ bool hasVariable(GLKShaderPair* p, const char* varName, bool checkVS = true, boo
     return false;
 }
 
-bool matricesEqualWithinTolerance(void* m1, void* m2, int dimension = 4, float tolerance = COMPARISON_EPSILON) {
-    
-    const int NumElements = dimension*dimension;
-    bool bWithinTolerance = true;
-    float *pM1 = (float*)m1;
-    float *pM2 = (float*)m2;
-
-    assert (dimension <= 4);
-
-    for (int i = 0; i < NumElements; i++)
-    {
-        const float delta = fabsf(pM1[i] - pM2[i]);
-        if (delta > tolerance)
-        {
-            bWithinTolerance = false;
-            break;
-        }
-    }
-
-    return bWithinTolerance;
-}
-
-bool matricesEqual(void* m1, void* m2, int dimension = 4) {
-    return matricesEqualWithinTolerance(m1, m2, dimension, 0.0f);
-}
-
 static void checkMatrixWithinTolerance(const char* pStr, const float* pM, const float* pMGolden, int dimension = 4, float tolerance = COMPARISON_EPSILON) {
     
     int index = 0;
@@ -121,7 +95,16 @@ static void checkMatrixWithinTolerance(const char* pStr, const float* pM, const 
             // Specifically, ASSERT_NEAR incorrectly marks +/- NaN values as not being identical
             if (pMUInt[index] != pMGoldenUInt[index])
             {
-                ASSERT_NEAR_MSG(pM[index], pMGolden[index], tolerance, "TEST FAILED: %s \n\tMatrix mismatch at M[%i][%i]\n\t\tGOLDEN: %f\n\t\tACTUAL: %f\n", pStr, i, j, pMGolden[index], pM[index]);            
+                ASSERT_NEAR_MSG(
+                    pM[index], 
+                    pMGolden[index], 
+                    tolerance, 
+                    "TEST FAILED: %s \n\tMatrix mismatch at M[%i][%i]\n\t\tGOLDEN: %f\n\t\tACTUAL: %f\n", 
+                    pStr, 
+                    i, 
+                    j, 
+                    pMGolden[index], 
+                    pM[index]);            
             }
 
             index++;
@@ -456,14 +439,14 @@ TEST(GLKit, TemporaryShaderNodes) {
 }
 
 TEST(GLKit, BasicMath) {
-    BOOL       invertible = FALSE;
+    BOOL invertible = FALSE;
 
     Dw32 cos2f;
     Dw32 sin2f;
     Dw32 negSin2f;
 
-    cos2f.f32    = cosf(2.f);
-    sin2f.f32    = sinf(2.f);
+    cos2f.f32 = cosf(2.f);
+    sin2f.f32 = sinf(2.f);
     negSin2f.f32 = -sin2f.f32;
 
     const Dw32 goldenIdentity[16] = {  0x3f800000, 0x00000000, 0x00000000, 0x00000000, 
