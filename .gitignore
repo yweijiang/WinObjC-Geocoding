@@ -33,4 +33,3 @@ build/package/package.log
 tools/vsimporter/build/
 tools/vsimporter/include/version.h
 msvc/ClangCompileTask.pdb
-/.lfsconfig
