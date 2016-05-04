@@ -10,10 +10,8 @@
 
 using namespace GLKitShader;
 
-typedef struct _Dw32
-{
-    union
-    {
+typedef struct _Dw32 {
+    union {
         unsigned int u32;
         float f32;
     };
@@ -79,32 +77,28 @@ bool hasVariable(GLKShaderPair* p, const char* varName, bool checkVS = true, boo
     return false;
 }
 
-static void checkMatrixWithinTolerance(const char* pStr, const float* pM, const float* pMGolden, int dimension = 4, float tolerance = COMPARISON_EPSILON) {
-    
+static void checkMatrixWithinTolerance(
+    const char* pStr, const float* pM, const float* pMGolden, int dimension = 4, float tolerance = COMPARISON_EPSILON) {
     int index = 0;
-    const unsigned int* pMUInt = reinterpret_cast<const unsigned int *>(pM);
-    const unsigned int* pMGoldenUInt = reinterpret_cast<const unsigned int *>(pMGolden);
+    const unsigned int* pMUInt = reinterpret_cast<const unsigned int*>(pM);
+    const unsigned int* pMGoldenUInt = reinterpret_cast<const unsigned int*>(pMGolden);
 
-
-    assert (dimension <= 4);
+    assert(dimension <= 4);
 
     for (int i = 0; i < dimension; i++) {
-        for (int j = 0; j < dimension; j++)
-        {
+        for (int j = 0; j < dimension; j++) {
             // Catch cases where element data are identical but ASSERT_NEAR and ASSERT_EQ identifies as different
             // Specifically, ASSERT_NEAR incorrectly marks +/- NaN values as not being identical
-            if (pMUInt[index] != pMGoldenUInt[index])
-            {
-                ASSERT_NEAR_MSG(
-                    pM[index], 
-                    pMGolden[index], 
-                    tolerance, 
-                    "TEST FAILED: %s \n\tMatrix mismatch at M[%i][%i]\n\t\tGOLDEN: %f\n\t\tACTUAL: %f\n", 
-                    pStr, 
-                    i, 
-                    j, 
-                    pMGolden[index], 
-                    pM[index]);            
+            if (pMUInt[index] != pMGoldenUInt[index]) {
+                ASSERT_NEAR_MSG(pM[index],
+                                pMGolden[index],
+                                tolerance,
+                                "TEST FAILED: %s \n\tMatrix mismatch at M[%i][%i]\n\t\tGOLDEN: %f\n\t\tACTUAL: %f\n",
+                                pStr,
+                                i,
+                                j,
+                                pMGolden[index],
+                                pM[index]);
             }
 
             index++;
