@@ -10,12 +10,12 @@
 
 using namespace GLKitShader;
 
-typedef struct _Dw32 {
+struct Dw32 {
     union {
         unsigned int u32;
         float f32;
     };
-} Dw32;
+};
 
 
 NSString* stripSource(NSString* s, NSString* searchStr) {
@@ -79,11 +79,12 @@ bool hasVariable(GLKShaderPair* p, const char* varName, bool checkVS = true, boo
 
 static void checkMatrixWithinTolerance(
     const char* pStr, const float* pM, const float* pMGolden, int dimension = 4, float tolerance = COMPARISON_EPSILON) {
-    int index = 0;
     const unsigned int* pMUInt = reinterpret_cast<const unsigned int*>(pM);
     const unsigned int* pMGoldenUInt = reinterpret_cast<const unsigned int*>(pMGolden);
 
     assert(dimension <= 4);
+
+    int index = 0;
 
     for (int i = 0; i < dimension; i++) {
         for (int j = 0; j < dimension; j++) {

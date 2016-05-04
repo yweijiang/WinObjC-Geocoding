@@ -850,7 +850,7 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, BOOL* isInvertible) {
     a.m33 = ((m.m00 * m.m11 * m.m22) + (m.m01 * m.m12 * m.m20) + (m.m02 * m.m10 * m.m21)) -
             ((m.m00 * m.m12 * m.m21) + (m.m01 * m.m10 * m.m22) + (m.m02 * m.m11 * m.m20));
 
-    float determinant = m.m00 * a.m00 + m.m01 * a.m10 + m.m02 * a.m20 + m.m03 * a.m30;
+    const float determinant = m.m00 * a.m00 + m.m01 * a.m10 + m.m02 * a.m20 + m.m03 * a.m30;
 
     if (determinant == 0) {
         *isInvertible = false;
