@@ -15,28 +15,188 @@
 //******************************************************************************
 
 #import <StubReturn.h>
+#import <CoreLocation/CLLocation.h>
 #import <CoreLocation/CLGeocoder.h>
+#import <CoreLocation/CLPlacemark.h>
+#import <UWP/WindowsDevicesGeolocation.h>
+#import <UWP/WindowsServicesMaps.h>
+#import "CLPlacemarkInternal.h"
+#import "Windows.h"
+
+/**
+ * CLLocationManager class extension.
+ */
+@interface CLGeocoder () {
+}
+
+@property(nonatomic, readwrite, getter=isGeocoding) BOOL geocoding;
+@end
 
 @implementation CLGeocoder
+
+- (instancetype)init {
+    if (self = [super init]) {
+        _geocoding = false;
+    } 
+
+    return self;
+}
+
 /**
  @Status Stub
 */
 - (void)reverseGeocodeLocation:(CLLocation*)location completionHandler:(CLGeocodeCompletionHandler)completionHandler {
-    UNIMPLEMENTED();
+    if (self.isGeocoding) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler(nullptr, nullptr); // Need appropriate error code
+        });
+    } else {
+        self.geocoding = true;
+        WDGBasicGeoposition* geoposition = [WDGBasicGeoposition init];
+        geoposition.latitude = location.coordinate.latitude;
+        geoposition.longitude = location.coordinate.longitude;
+
+        WDGGeopoint* geopoint = [WDGGeopoint make:geoposition];
+
+        [WSMMapLocationFinder findLocationsAtAsync:geopoint success:^void(WSMMapLocationFinderResult* results){
+            self.geocoding = false;
+            NSMutableArray* reverseGeocodeResult = [[NSMutableArray alloc] init];
+
+            int reverseGeocodeResultCount = [results.locations count];
+            for (int i = 0; i < reverseGeocodeResultCount; i++) {
+                WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
+
+                NSString* resultName = [currentResult displayName];
+                CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
+                                                                        longitude:[[[currentResult point] position] longitude]];
+                
+                CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithName:resultName location:resultLocation];
+                [reverseGeocodeResult addObject:currentPlacemark];   
+            }
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(reverseGeocodeResult, nullptr);
+            });
+        } failure:^void(NSError* error){
+            self.geocoding = false;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(nullptr, error);
+            });
+        }];
+    }
 }
 
 /**
  @Status Stub
 */
 - (void)geocodeAddressDictionary:(NSDictionary*)addressDictionary completionHandler:(CLGeocodeCompletionHandler)completionHandler {
-    UNIMPLEMENTED();
+    if (self.isGeocoding) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler(nullptr, nullptr); // Need appropriate error code
+        });
+    } else {
+        self.geocoding = true;
+
+        NSString* addressStreet = [addressDictionary objectForKey:@"Street"];
+        NSString* addressCity = [addressDictionary objectForKey:@"City"];
+        NSString* addressState = [addressDictionary objectForKey:@"State"];
+        NSString* addressZIP = [addressDictionary objectForKey:@"ZIP"];
+        NSString* addressCountry = [addressDictionary objectForKey:@"Country"];
+
+        NSMutableString* fullAddress = [[NSMutableString alloc] init];
+        if (addressStreet) {
+            [fullAddress appendFormat:@"%@, ", addressStreet];
+        }
+
+        if (addressCity) {
+            [fullAddress appendFormat:@"%@, ", addressCity];
+        }
+
+        if (addressState && addressZIP) {
+            [fullAddress appendFormat:@"%@ %@, ", addressState, addressZIP];
+        } else if (addressState) {
+            [fullAddress appendFormat:@"%@, ", addressState];
+        } else if (addressZIP) {
+            [fullAddress appendFormat:@"%@, ", addressZIP];
+        }
+
+        if (addressCountry) {
+            [fullAddress appendFormat:@"%@", addressCountry];
+        }
+
+        if ([fullAddress hasSuffix:@", "]) {
+            [fullAddress deleteCharactersInRange:NSMakeRange([fullAddress length] - 2, 2)];
+        }
+
+        [WSMMapLocationFinder findLocationsAsync:fullAddress referencePoint:nullptr success:^void(WSMMapLocationFinderResult* results){
+            self.geocoding = false;
+            NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
+
+            int geocodeResultCount = [results.locations count];
+            for (int i = 0; i < geocodeResultCount; i++) {
+                WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
+
+                NSString* resultName = [currentResult displayName];
+                CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
+                                                                        longitude:[[[currentResult point] position] longitude]];
+                
+                CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithName:resultName location:resultLocation];
+                [geocodeResult addObject:currentPlacemark];   
+            }
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(geocodeResult, nullptr);
+            });
+        } failure:^void(NSError* error){
+            self.geocoding = false;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(nullptr, error);
+            });
+        }];
+    }
 }
 
 /**
  @Status Stub
 */
 - (void)geocodeAddressString:(NSString*)addressString completionHandler:(CLGeocodeCompletionHandler)completionHandler {
-    UNIMPLEMENTED();
+    if (self.isGeocoding) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler(nullptr, nullptr); // Need appropriate error code
+        });
+    } else {
+        self.geocoding = true;
+
+        NSLog(@"Made it inside geocodeAddressString!");
+
+        [WSMMapLocationFinder findLocationsAsync:addressString referencePoint:nullptr success:^void(WSMMapLocationFinderResult* results){
+            self.geocoding = false;
+            NSLog(@"Windows Projection API Call Success!");
+            NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
+
+            int geocodeResultCount = [results.locations count];
+            for (int i = 0; i < geocodeResultCount; i++) {
+                WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
+
+                NSString* resultName = [currentResult displayName];
+                CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
+                                                                        longitude:[[[currentResult point] position] longitude]];
+                
+                CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithName:resultName location:resultLocation];
+                [geocodeResult addObject:currentPlacemark];   
+            }
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(geocodeResult, nullptr);
+            });
+        } failure:^void(NSError* error){
+            self.geocoding = false;
+            NSLog(@"Windows Projection API Call Failure!");
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(nullptr, error);
+            });
+        }];
+    }
 }
 
 /**
@@ -45,7 +205,43 @@
 - (void)geocodeAddressString:(NSString*)addressString
                     inRegion:(CLRegion*)region
            completionHandler:(CLGeocodeCompletionHandler)completionHandler {
-    UNIMPLEMENTED();
+    if (self.isGeocoding) {
+        //dispatch_async(dispatch_get_main_queue(), ^{
+        //    completionHandler(nullptr, nullptr); // Need appropriate error code
+        //});
+    } else {
+        self.geocoding = true;
+        WDGBasicGeoposition* geoposition = [WDGBasicGeoposition init];
+        // Create a geoposition using the CLRegion specified. CLRegion is not yet defined.
+
+        WDGGeopoint* geopoint = [WDGGeopoint make:geoposition];
+
+        [WSMMapLocationFinder findLocationsAsync:addressString referencePoint:geopoint success:^void(WSMMapLocationFinderResult* results){
+            self.geocoding = false;
+            NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
+
+            int geocodeResultCount = [results.locations count];
+            for (int i = 0; i < geocodeResultCount; i++) {
+                WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
+
+                NSString* resultName = [currentResult displayName];
+                CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
+                                                                        longitude:[[[currentResult point] position] longitude]];
+                
+                CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithName:resultName location:resultLocation];
+                [geocodeResult addObject:currentPlacemark];   
+            }
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(geocodeResult, nullptr);
+            });
+        } failure:^void(NSError* error){
+            self.geocoding = false;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(nullptr, error);
+            });
+        }];
+    }
 }
 
 /**

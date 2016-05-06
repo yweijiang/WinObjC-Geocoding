@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -13,27 +14,17 @@
 // THE SOFTWARE.
 //
 //******************************************************************************
-
 #pragma once
 
 #import <CoreLocation/CoreLocationExport.h>
-#import <Foundation/NSArray.h>
-#import <Foundation/NSError.h>
+#import <Foundation/NSObject.h>
 
 @class CLLocation;
 @class CLRegion;
+@class NSTimeZone;
+@class NSDictionary;
+@class NSArray;
 
-typedef void (^CLGeocodeCompletionHandler)(NSArray* placemark, NSError* error);
-
-CORELOCATION_EXPORT_CLASS
-@interface CLGeocoder : NSObject
-- (void)reverseGeocodeLocation:(CLLocation*)location completionHandler:(CLGeocodeCompletionHandler)completionHandler;
-- (void)geocodeAddressDictionary:(NSDictionary*)addressDictionary
-               completionHandler:(CLGeocodeCompletionHandler)completionHandler;
-- (void)geocodeAddressString:(NSString*)addressString completionHandler:(CLGeocodeCompletionHandler)completionHandler;
-- (void)geocodeAddressString:(NSString*)addressString
-                    inRegion:(CLRegion*)region
-           completionHandler:(CLGeocodeCompletionHandler)completionHandler;
-- (void)cancelGeocode STUB_METHOD;
-@property (readonly, getter=isGeocoding, nonatomic) BOOL geocoding;
+@interface CLPlacemark ()
+-(instancetype)initWithName:(NSString*)name location:(CLLocation*)location;
 @end

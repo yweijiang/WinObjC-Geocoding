@@ -15,16 +15,67 @@
 //******************************************************************************
 
 #import <StubReturn.h>
+#import <Starboard.h>
 #import <CoreLocation/CLPlacemark.h>
 
+@interface CLPlacemark ()
+
+@property (readwrite, nonatomic) CLLocation* location;
+@property (readwrite, nonatomic) NSString* name;
+@property (readwrite, nonatomic) NSDictionary* addressDictionary;
+@property (readwrite, nonatomic) NSString* ISOcountryCode;
+@property (readwrite, nonatomic) NSString* country;
+@property (readwrite, nonatomic) NSString* postalCode;
+@property (readwrite, nonatomic) NSString* administrativeArea;
+@property (readwrite, nonatomic) NSString* subAdministrativeArea;
+@property (readwrite, nonatomic) NSString* locality;
+@property (readwrite, nonatomic) NSString* subLocality;
+@property (readwrite, nonatomic) NSString* thoroughfare;
+@property (readwrite, nonatomic) NSString* subThoroughfare;
+@property (readwrite, nonatomic) CLRegion* region;
+@property (readwrite, nonatomic) NSTimeZone* timeZone;
+@property (readwrite, nonatomic) NSString* inlandWater;
+@property (readwrite, nonatomic) NSString* ocean;
+@property (readwrite, nonatomic) NSArray<NSString*>* areasOfInterest;
+
+@end
+
 @implementation CLPlacemark
+
+- (instancetype)initWithName:(NSString*)name location:(CLLocation*)location {
+    if (self = [super init]) {
+        _name = name;
+        _location = location;
+    }
+
+    return self;
+}
 
 /**
  @Status Stub
 */
 - (instancetype)initWithPlacemark:(CLPlacemark*)placemark {
-    UNIMPLEMENTED();
-    return StubReturn();
+    if (self = [super init]) {
+        _location = placemark.location;
+        _name = [placemark.name copy];
+        _addressDictionary = [placemark.addressDictionary copy];
+        _ISOcountryCode = [placemark.ISOcountryCode copy];
+        _country = [placemark.country copy];
+        _postalCode = [placemark.postalCode copy];
+        _administrativeArea = [placemark.administrativeArea copy];
+        _subAdministrativeArea = [placemark.subAdministrativeArea copy];
+        _locality = [placemark.locality copy];
+        _subLocality = [placemark.subLocality copy];
+        _thoroughfare = [placemark.thoroughfare copy];
+        _subThoroughfare = [placemark.subThoroughfare copy];
+        _region = placemark.region;
+        _timeZone = placemark.timeZone;
+        _inlandWater = [placemark.inlandWater copy];
+        _ocean = [placemark.ocean copy];
+        _areasOfInterest = placemark.areasOfInterest;
+    }
+
+    return self;
 }
 
 /**
