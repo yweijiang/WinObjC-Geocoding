@@ -41,6 +41,7 @@
 #import "AccelerateViewController.h"
 #import "CoreMotionViewController.h"
 #import "ShadowViewController.h"
+#import "AudioToolboxViewController.h"
 
 #ifdef WINOBJC
 #import "XamlViewController.h"
@@ -57,6 +58,9 @@
     [super viewDidLoad];
     self.menuItems = [NSMutableArray array];
     
+    //AudioToolbox
+    [self addMenuItemViewController:[[AudioToolboxViewController alloc] init] andTitle:@"AudioToolbox"];
+   
     //CoreMotion
     [self addMenuItemViewController:[[CoreMotionViewController alloc] init] andTitle:@"CoreMotion"];
     
