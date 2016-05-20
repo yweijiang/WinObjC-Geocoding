@@ -52,7 +52,10 @@
         });
     } else {
         self.geocoding = true;
-        WDGBasicGeoposition* geoposition = [WDGBasicGeoposition init];
+
+        NSLog(@"Made it inside reverseGeocodeLocation!");
+
+        WDGBasicGeoposition* geoposition = [[WDGBasicGeoposition alloc] init];
         geoposition.latitude = location.coordinate.latitude;
         geoposition.longitude = location.coordinate.longitude;
 
@@ -60,6 +63,7 @@
 
         [WSMMapLocationFinder findLocationsAtAsync:geopoint success:^void(WSMMapLocationFinderResult* results){
             self.geocoding = false;
+            NSLog(@"Windows Projection API Call Success!");
             NSMutableArray* reverseGeocodeResult = [[NSMutableArray alloc] init];
 
             int reverseGeocodeResultCount = [results.locations count];
@@ -79,10 +83,13 @@
             });
         } failure:^void(NSError* error){
             self.geocoding = false;
+            NSLog(@"Windows Projection API Call Failure!");
             dispatch_async(dispatch_get_main_queue(), ^{
                 completionHandler(nullptr, error);
             });
         }];
+
+        NSLog(@"Made it past findLocationsAtAsync call!");
     }
 }
 
@@ -166,12 +173,8 @@
         });
     } else {
         self.geocoding = true;
-
-        NSLog(@"Made it inside geocodeAddressString!");
-
         [WSMMapLocationFinder findLocationsAsync:addressString referencePoint:nullptr success:^void(WSMMapLocationFinderResult* results){
             self.geocoding = false;
-            NSLog(@"Windows Projection API Call Success!");
             NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
 
             int geocodeResultCount = [results.locations count];
@@ -191,7 +194,6 @@
             });
         } failure:^void(NSError* error){
             self.geocoding = false;
-            NSLog(@"Windows Projection API Call Failure!");
             dispatch_async(dispatch_get_main_queue(), ^{
                 completionHandler(nullptr, error);
             });
@@ -206,12 +208,12 @@
                     inRegion:(CLRegion*)region
            completionHandler:(CLGeocodeCompletionHandler)completionHandler {
     if (self.isGeocoding) {
-        //dispatch_async(dispatch_get_main_queue(), ^{
-        //    completionHandler(nullptr, nullptr); // Need appropriate error code
-        //});
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completionHandler(nullptr, nullptr); // Need appropriate error code
+        });
     } else {
         self.geocoding = true;
-        WDGBasicGeoposition* geoposition = [WDGBasicGeoposition init];
+        WDGBasicGeoposition* geoposition = [[WDGBasicGeoposition alloc] init];
         // Create a geoposition using the CLRegion specified. CLRegion is not yet defined.
 
         WDGGeopoint* geopoint = [WDGGeopoint make:geoposition];

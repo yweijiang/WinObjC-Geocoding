@@ -18,12 +18,22 @@
 #import <CoreLocation/CLCircularRegion.h>
 
 @implementation CLCircularRegion
+
+@synthesize center = _center;
+@synthesize radius = _radius;
+@synthesize identifier = _identifier;
+
 /**
  @Status Stub
 */
 - (instancetype)initWithCenter:(CLLocationCoordinate2D)center radius:(CLLocationDistance)radius identifier:(NSString*)identifier {
-    UNIMPLEMENTED();
-    return StubReturn();
+    if (self = [super init]) {
+        _center = center;
+        _radius = radius;
+        _identifier = identifier;
+    }
+
+    return self;
 }
 
 /**

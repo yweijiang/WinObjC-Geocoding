@@ -41,6 +41,7 @@
 #import "AccelerateViewController.h"
 #import "CoreMotionViewController.h"
 #import "ShadowViewController.h"
+#import "CoreLocationViewController.h"
 
 #ifdef WINOBJC
 #import "XamlViewController.h"
@@ -57,7 +58,10 @@
     [super viewDidLoad];
     self.menuItems = [NSMutableArray array];
     
-    //CoreMotion
+    // CoreLocation
+    [self addMenuItemViewController:[[CoreLocationViewController alloc] init] andTitle:@"CoreLocation"];
+
+    // CoreMotion
     [self addMenuItemViewController:[[CoreMotionViewController alloc] init] andTitle:@"CoreMotion"];
     
     // Foundations tests

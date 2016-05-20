@@ -66,3 +66,22 @@ TEST(CoreLocation, CLLocation_CopyTest) {
     [location1 release];
     [location2 release];
 }
+
+TEST(CoreLocation, NewAPIBasicTest) {
+    CLLocationCoordinate2D coordinate = CLLocationCoordinate2DMake(245.2309, 90.124);
+    CLCircularRegion* testRegion = [[CLCircularRegion alloc] initWithCenter:coordinate radius:1.5 identifier:@"MyLocation"];
+
+    NSLog(@"coordinate latitude: %f", coordinate.latitude);
+    NSLog(@"coordinate longitude: %f", coordinate.longitude);
+
+    NSLog(@"region center latitude: %f", testRegion.center.latitude);
+    NSLog(@"region center longitude: %f", testRegion.center.longitude);
+    NSLog(@"region radius: %f", testRegion.radius);
+    NSLog(@"region identifier: %@", testRegion.identifier);
+
+    CLLocation* location1 = [[CLLocation alloc] initWithLatitude:47.674 longitude:-122.1215];
+    CLLocation* location2 = [[CLLocation alloc] initWithLatitude:37.323 longitude:-122.0322];
+
+    CLLocationDistance distance = [location1 getDistanceFrom:location2];
+    NSLog(@"distance between location 1 and 2: %f", distance);
+}

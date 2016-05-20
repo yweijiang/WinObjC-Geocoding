@@ -25,8 +25,13 @@
 - (instancetype)initCircularRegionWithCenter:(CLLocationCoordinate2D)center
                                       radius:(CLLocationDistance)radius
                                   identifier:(NSString*)identifier {
-    UNIMPLEMENTED();
-    return StubReturn();
+    if (self = [super init]) {
+        _center = center;
+        _radius = radius;
+        _identifier = identifier;
+    }
+
+    return self;
 }
 
 /**

@@ -25,6 +25,7 @@ const CLLocationAccuracy kCLLocationAccuracyThreeKilometers = 3000;
 const CLLocationAccuracy kCLLocationAccuracyBestForNavigation = 1;
 const CLLocationAccuracy kCLLocationAccuracyBest = 5;
 const CLLocationDistance kCLDistanceFilterNone = 0;
+const double earthRadius = 6371000.0; // Average radius in meters
 
 /**
  * CLLocation class extension.
@@ -52,17 +53,23 @@ const CLLocationDistance kCLDistanceFilterNone = 0;
 /**
  @Status Stub
 */
-CORELOCATION_EXPORT BOOL CLLocationCoordinate2DIsValid(CLLocationCoordinate2D coordinate) {
-    UNIMPLEMENTED();
-    return FALSE;
-}
-
-/**
- @Status Stub
-*/
 - (CLLocationDistance)getDistanceFrom:(const CLLocation*)location {
-    UNIMPLEMENTED();
-    return StubReturn();
+    double sourceLatitude = location.coordinate.latitude*M_PI/180.0;
+    double sourceLongitude = location.coordinate.longitude*M_PI/180.0;
+    double destinationLatitude = self.coordinate.latitude*M_PI/180.0;
+    double destinationLongitude = self.coordinate.longitude*M_PI/180.0;
+    
+    double latitudeDelta = destinationLatitude - sourceLatitude;
+    double longitudeDelta = destinationLongitude - sourceLongitude;
+
+    double a = sin(latitudeDelta/2) * sin(latitudeDelta/2) + 
+               cos(sourceLatitude) * cos(destinationLatitude) *
+               sin(longitudeDelta/2) * sin(longitudeDelta/2);
+
+    double c = 2*atan2(sqrt(a), sqrt(1-a));
+    CLLocationDistance distance = earthRadius * c;
+
+    return distance;
 }
 
 /**
@@ -231,8 +238,22 @@ CORELOCATION_EXPORT BOOL CLLocationCoordinate2DIsValid(CLLocationCoordinate2D co
  @Status Stub
 */
 - (CLLocationDistance)distanceFromLocation:(const CLLocation*)location {
-    UNIMPLEMENTED();
-    return StubReturn();
+    double sourceLatitude = location.coordinate.latitude*M_PI/180.0;
+    double sourceLongitude = location.coordinate.longitude*M_PI/180.0;
+    double destinationLatitude = self.coordinate.latitude*M_PI/180.0;
+    double destinationLongitude = self.coordinate.longitude*M_PI/180.0;
+    
+    double latitudeDelta = destinationLatitude - sourceLatitude;
+    double longitudeDelta = destinationLongitude - sourceLongitude;
+
+    double a = sin(latitudeDelta/2) * sin(latitudeDelta/2) + 
+               cos(sourceLatitude) * cos(destinationLatitude) *
+               sin(longitudeDelta/2) * sin(longitudeDelta/2);
+
+    double c = 2*atan2(sqrt(a), sqrt(1-a));
+    CLLocationDistance distance = earthRadius * c;
+
+    return distance;
 }
 
 /**

@@ -16,8 +16,41 @@
 
 #import <StubReturn.h>
 #import <CoreLocation/CLHeading.h>
+#import <Foundation/Foundation.h>
+
+/**
+ * CLHeading class extension.
+
+@interface CLHeading () {
+}
+
+@property (readwrite, nonatomic) CLLocationDirection magneticHeading;
+@property (readwrite, nonatomic) CLLocationDirection trueHeading;
+@property (readwrite, nonatomic) CLLocationDirection headingAccuracy;
+@property (readwrite, copy, nonatomic) NSDate* timestamp;
+@property (readwrite, copy, nonatomic) NSString* description;
+@property (readwrite, nonatomic) CLHeadingComponentValue x;
+@property (readwrite, nonatomic) CLHeadingComponentValue y;
+@property (readwrite, nonatomic) CLHeadingComponentValue z;
+@end
+*/
 
 @implementation CLHeading
+
+- (instancetype)initWithAccuracy:(CLLocationDirection)accuracy
+                 magneticHeading:(CLLocationDirection)magneticHeading
+                     trueHeading:(CLLocationDirection)trueHeading {
+	NSLog(@"Made it to init function");
+    if (self = [super init]) {
+        _headingAccuracy = accuracy;
+        _magneticHeading = magneticHeading;
+        _trueHeading = trueHeading;
+        _timestamp = [NSDate date];
+		NSLog(@"After Init. Magnetic Heading: %.3f        True Heading: %.3f        ", _magneticHeading, _trueHeading);
+    }
+
+    return self;
+}
 
 /**
  @Status Stub
