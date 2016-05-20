@@ -15,13 +15,13 @@
 //
 //******************************************************************************
 
-#import <StubReturn.h>
 #import <CoreLocation/CLRegion.h>
+#import <StubReturn.h>
 
 @implementation CLRegion
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 - (instancetype)initCircularRegionWithCenter:(CLLocationCoordinate2D)center
                                       radius:(CLLocationDistance)radius

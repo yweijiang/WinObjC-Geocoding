@@ -26,5 +26,5 @@
 @class NSArray;
 
 @interface CLPlacemark ()
--(instancetype)initWithName:(NSString*)name location:(CLLocation*)location;
+- (instancetype)initWithName:(NSString*)name location:(CLLocation*)location;
 @end

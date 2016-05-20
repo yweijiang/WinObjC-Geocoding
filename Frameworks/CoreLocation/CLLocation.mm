@@ -1,7 +1,7 @@
 //******************************************************************************
 //
 // Copyright (c) 2016 Intel Corporation. All rights reserved.
-// Copyright (c) 2016 Microsoft Corporation. All rights reserved.
+// Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
 //
@@ -15,9 +15,9 @@
 //
 //******************************************************************************
 
-#import <StubReturn.h>
-#import <Starboard.h>
 #import <CoreLocation/CLLocation.h>
+#import <Starboard.h>
+#import <StubReturn.h>
 
 const CLLocationAccuracy kCLLocationAccuracyHundredMeters = 100;
 const CLLocationAccuracy kCLLocationAccuracyKilometer = 1000;
@@ -26,7 +26,7 @@ const CLLocationAccuracy kCLLocationAccuracyThreeKilometers = 3000;
 const CLLocationAccuracy kCLLocationAccuracyBestForNavigation = 1;
 const CLLocationAccuracy kCLLocationAccuracyBest = 5;
 const CLLocationDistance kCLDistanceFilterNone = 0;
-const double earthRadius = 6371000.0; // Average radius in meters
+const double earthRadius = 6371000.0;
 
 /**
  * CLLocation class extension.
@@ -52,22 +52,21 @@ const double earthRadius = 6371000.0; // Average radius in meters
 }
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 - (CLLocationDistance)getDistanceFrom:(const CLLocation*)location {
-    double sourceLatitude = location.coordinate.latitude*M_PI/180.0;
-    double sourceLongitude = location.coordinate.longitude*M_PI/180.0;
-    double destinationLatitude = self.coordinate.latitude*M_PI/180.0;
-    double destinationLongitude = self.coordinate.longitude*M_PI/180.0;
-    
-    double latitudeDelta = destinationLatitude - sourceLatitude;
-    double longitudeDelta = destinationLongitude - sourceLongitude;
+    const double sourceLatitude = location.coordinate.latitude * M_PI / 180.0;
+    const double sourceLongitude = location.coordinate.longitude * M_PI / 180.0;
+    const double destinationLatitude = self.coordinate.latitude * M_PI / 180.0;
+    const double destinationLongitude = self.coordinate.longitude * M_PI / 180.0;
 
-    double a = sin(latitudeDelta/2) * sin(latitudeDelta/2) + 
-               cos(sourceLatitude) * cos(destinationLatitude) *
-               sin(longitudeDelta/2) * sin(longitudeDelta/2);
+    const double latitudeDelta = destinationLatitude - sourceLatitude;
+    const double longitudeDelta = destinationLongitude - sourceLongitude;
 
-    double c = 2*atan2(sqrt(a), sqrt(1-a));
+    const double a = sin(latitudeDelta / 2) * sin(latitudeDelta / 2) +
+                     cos(sourceLatitude) * cos(destinationLatitude) * sin(longitudeDelta / 2) * sin(longitudeDelta / 2);
+
+    const double c = 2 * atan2(sqrt(a), sqrt(1 - a));
     CLLocationDistance distance = earthRadius * c;
 
     return distance;
@@ -236,22 +235,21 @@ const double earthRadius = 6371000.0; // Average radius in meters
 }
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 - (CLLocationDistance)distanceFromLocation:(const CLLocation*)location {
-    double sourceLatitude = location.coordinate.latitude*M_PI/180.0;
-    double sourceLongitude = location.coordinate.longitude*M_PI/180.0;
-    double destinationLatitude = self.coordinate.latitude*M_PI/180.0;
-    double destinationLongitude = self.coordinate.longitude*M_PI/180.0;
-    
-    double latitudeDelta = destinationLatitude - sourceLatitude;
-    double longitudeDelta = destinationLongitude - sourceLongitude;
+    const double sourceLatitude = location.coordinate.latitude * M_PI / 180.0;
+    const double sourceLongitude = location.coordinate.longitude * M_PI / 180.0;
+    const double destinationLatitude = self.coordinate.latitude * M_PI / 180.0;
+    const double destinationLongitude = self.coordinate.longitude * M_PI / 180.0;
 
-    double a = sin(latitudeDelta/2) * sin(latitudeDelta/2) + 
-               cos(sourceLatitude) * cos(destinationLatitude) *
-               sin(longitudeDelta/2) * sin(longitudeDelta/2);
+    const double latitudeDelta = destinationLatitude - sourceLatitude;
+    const double longitudeDelta = destinationLongitude - sourceLongitude;
 
-    double c = 2*atan2(sqrt(a), sqrt(1-a));
+    const double a = sin(latitudeDelta / 2) * sin(latitudeDelta / 2) +
+                     cos(sourceLatitude) * cos(destinationLatitude) * sin(longitudeDelta / 2) * sin(longitudeDelta / 2);
+
+    const double c = 2 * atan2(sqrt(a), sqrt(1 - a));
     CLLocationDistance distance = earthRadius * c;
 
     return distance;

@@ -15,8 +15,8 @@
 //
 //******************************************************************************
 
-#import <StubReturn.h>
 #import <CoreLocation/CLCircularRegion.h>
+#import <StubReturn.h>
 
 @implementation CLCircularRegion
 
@@ -25,7 +25,7 @@
 @synthesize identifier = _identifier;
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 - (instancetype)initWithCenter:(CLLocationCoordinate2D)center radius:(CLLocationDistance)radius identifier:(NSString*)identifier {
     if (self = [super init]) {

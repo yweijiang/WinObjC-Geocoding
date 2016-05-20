@@ -17,8 +17,8 @@
 
 #pragma once
 
-#import <CoreLocation/CoreLocationExport.h>
 #import <CoreLocation/CoreLocationDataTypes.h>
+#import <CoreLocation/CoreLocationExport.h>
 #import <objc/runtime.h>
 
 CORELOCATION_EXPORT BOOL CLLocationCoordinate2DIsValid(CLLocationCoordinate2D coord);

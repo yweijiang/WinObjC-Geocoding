@@ -15,16 +15,16 @@
 //
 //******************************************************************************
 
-#import <StubReturn.h>
-#import <Starboard.h>
-#import <NSDateInternal.h>
+#import "NSLogging.h"
+#import <CoreLocation/CLHeading.h>
 #import <CoreLocation/CLLocation.h>
 #import <CoreLocation/CLLocationManager.h>
-#import <CoreLocation/CLHeading.h>
 #import <CoreLocation/CLLocationManagerDelegate.h>
-#import "NSLogging.h"
-#import <UWP/WindowsDevicesGeolocation.h>
+#import <NSDateInternal.h>
+#import <Starboard.h>
+#import <StubReturn.h>
 #import <UWP/WindowsApplicationModelExtendedExecution.h>
+#import <UWP/WindowsDevicesGeolocation.h>
 #import <UWP/WindowsDevicesSensors.h>
 #import <limits>
 #import <mutex>
@@ -135,6 +135,7 @@ static void _removeExtendedExecutionSession() {
 
 @property (readwrite, copy, nonatomic) CLLocation* location;
 @property (readwrite, copy, nonatomic) CLHeading* heading;
+// Note that heading2 is used because writing to heading seems to never actually cause it to change
 @property (readwrite, nonatomic) CLHeading* heading2;
 @end
 
@@ -436,24 +437,14 @@ static const int64_t c_timeoutInSeconds = 15LL;
  * @param {WDSCompassReading*} heading updated location values received from Windows.
  */
 - (void)_handleHeadingUpdate:(WDSCompassReading*)compassReading {
-	CLHeading* heading1 = [[CLHeading alloc] initWithAccuracy:0.0
-                                           magneticHeading:compassReading.headingMagneticNorth
-                                               trueHeading:[compassReading.headingTrueNorth doubleValue]];
-	NSLog(@"TestHeading: %f %f", heading1.magneticHeading, heading1.trueHeading);
-	NSLog(@"Test Heading: %d", heading1);
     @synchronized(self) {
         CLHeading* previousHeading = self.heading2;
-		NSLog(@"Previous Heading: %d", previousHeading);
 
         // Accuracy for Windows compass readings is an enum saying whether the result is accurate, semi-accurate, or inaccurate
         // The CLHeading accuracy field specifies the maximum amount of error that a reading will have, so leaving at 0 for now
         self.heading2 = [[CLHeading alloc] initWithAccuracy:0.0
-                                           magneticHeading:compassReading.headingMagneticNorth
-                                               trueHeading:[compassReading.headingTrueNorth doubleValue]];
-
-		NSLog(@"Before Delegate A. Magnetic Heading: %.3f        True Heading: %.3f        ", self.heading2.magneticHeading, self.heading2.trueHeading);
-		NSLog(@"Before Delegate B. Magnetic Heading: %.3f        True Heading: %.3f        ", compassReading.headingMagneticNorth, [compassReading.headingTrueNorth doubleValue]);
-		NSLog(@"Next Heading: %d", self.heading2);
+                                            magneticHeading:compassReading.headingMagneticNorth
+                                                trueHeading:[compassReading.headingTrueNorth doubleValue]];
 
         // Deliver heading to the appropriate location manager delegate
         if (_periodicHeadingUpdateRequested) {
@@ -678,7 +669,7 @@ static const int64_t c_timeoutInSeconds = 15LL;
 }
 
 /**
-@Status Stub
+@Status Interoperable
 */
 - (void)requestLocation {
     [self performSelectorOnMainThread:@selector(_getGeopositionAsyncWithAgeAndTimeout) withObject:nil waitUntilDone:NO];
@@ -728,7 +719,9 @@ static const int64_t c_timeoutInSeconds = 15LL;
 }
 
 /**
- @Status Stub
+ @Status Caveat
+ @Notes This will call the handler for heading change that you specify with heading information, but the heading property
+        of CLLocationManager will not work.
 */
 - (void)startUpdatingHeading {
     @synchronized(self) {
@@ -756,7 +749,7 @@ static const int64_t c_timeoutInSeconds = 15LL;
 }
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 - (void)stopUpdatingHeading {
     @synchronized(self) {
@@ -816,7 +809,6 @@ static const int64_t c_timeoutInSeconds = 15LL;
 
 /**
  @Status Stub
- @Notes
 */
 - (void)requestStateForRegion:(CLRegion*)region {
     UNIMPLEMENTED();

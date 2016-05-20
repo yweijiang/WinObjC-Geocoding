@@ -28,5 +28,5 @@
 @interface CLHeading ()
 - (instancetype)initWithAccuracy:(CLLocationDirection)accuracy
                  magneticHeading:(CLLocationDirection)magneticHeading
-	                 trueHeading:(CLLocationDirection)trueHeading;
+                     trueHeading:(CLLocationDirection)trueHeading;
 @end

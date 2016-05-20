@@ -23,16 +23,16 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     CGRect bounds = [[UIScreen mainScreen] bounds];
-    
+
     scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, bounds.size.width, bounds.size.height)];
     scrollView.backgroundColor = [UIColor whiteColor];
     scrollView.contentSize = CGSizeMake(450, 1200);
     scrollView.autoresizingMask = (UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight);
-    
+
     buttonLength = 72;
     locHeight = 80;
     headingHeight = 280;
-    
+
     // Create the location manager if this object does not
     // already have one.
     locationManager = [[CLLocationManager alloc] init];
@@ -55,29 +55,29 @@
         [headingLabel setTextAlignment:NSTextAlignmentLeft];
         [scrollView addSubview:headingLabel];
     }
-        
+
     [self.view setBackgroundColor:[UIColor whiteColor]];
     [self.view addSubview:scrollView];
 }
 
 // Delegate method from the CLLocationManagerDelegate protocol.
-- (void)locationManager:(CLLocationManager*)manager
-     didUpdateLocations:(NSArray*)locations {
+- (void)locationManager:(CLLocationManager*)manager didUpdateLocations:(NSArray*)locations {
     NSLog(@"Hit didUpdateLocations");
     CLLocation* location = [locations lastObject];
-    
+
     dispatch_async(dispatch_get_main_queue(), ^{
-        [locVal setText:[NSString stringWithFormat:@"Longitude: %.3f        Latitude: %.3f        ", 
-            location.coordinate.latitude, location.coordinate.longitude]];
+        [locVal setText:[NSString stringWithFormat:@"Longitude: %.3f        Latitude: %.3f        ",
+                                                   location.coordinate.latitude,
+                                                   location.coordinate.longitude]];
     });
 }
 
--(void)locationManager:(CLLocationManager*)manager didFailWithError:(NSError*)error{
-    NSLog(@"Error: %@",error.description);
+- (void)locationManager:(CLLocationManager*)manager didFailWithError:(NSError*)error {
+    NSLog(@"Error: %@", error.description);
 }
 
 // Methods for Location
--(void)setupLocation {
+- (void)setupLocation {
     locLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, locHeight - 5, 150, 50)];
     [locLabel setBackgroundColor:[UIColor whiteColor]];
     [locLabel setText:@"Location"];
@@ -111,41 +111,36 @@
     [scrollView addSubview:locVal];
 }
 
-
--(void)locStopUpdates {
+- (void)locStopUpdates {
     [locationManager stopUpdatingLocation];
 }
 
-
--(void)locStartUpdates {
+- (void)locStartUpdates {
     NSLog(@"Location services enabled? %d", [CLLocationManager locationServicesEnabled]);
     [locationManager startUpdatingLocation];
 }
 
-
--(void)locStopButtonPressed:(UIButton*)button {
+- (void)locStopButtonPressed:(UIButton*)button {
     locStartButton.enabled = YES;
     locStopButton.enabled = NO;
 
     [self locStopUpdates];
 }
 
-
--(void)locUpdateButtonPressed:(UIButton*)button {
+- (void)locUpdateButtonPressed:(UIButton*)button {
     NSLog(@"Location services enabled? %d", [CLLocationManager locationServicesEnabled]);
     [locationManager requestLocation];
 }
-            
 
--(void)locStartButtonPressed:(UIButton*)button {
+- (void)locStartButtonPressed:(UIButton*)button {
     locStartButton.enabled = NO;
     locStopButton.enabled = YES;
-    
+
     [self locStartUpdates];
 }
 
 // Methods for Heading
--(void)setupHeading {
+- (void)setupHeading {
     headingLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, headingHeight - 5, 150, 50)];
     [headingLabel setBackgroundColor:[UIColor whiteColor]];
     [headingLabel setText:@"Heading"];
@@ -173,37 +168,35 @@
 }
 
 // Delegate method from the CLLocationManagerDelegate protocol.
-- (void)locationManager:(CLLocationManager*)manager
-       didUpdateHeading:(CLHeading*)heading {
+- (void)locationManager:(CLLocationManager*)manager didUpdateHeading:(CLHeading*)heading {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [headingVal setText:[NSString stringWithFormat:@"Magnetic Heading: %.3f        True Heading: %.3f        ", 
-            heading.magneticHeading, heading.trueHeading]];
+        [headingVal setText:[NSString stringWithFormat:@"Magnetic Heading: %.3f        True Heading: %.3f        ",
+                                                       heading.magneticHeading,
+                                                       heading.trueHeading]];
     });
 }
 
--(void)headingStopUpdates {
+- (void)headingStopUpdates {
     NSLog(@"Location services enabled? %d", [CLLocationManager locationServicesEnabled]);
     [locationManager stopUpdatingHeading];
 }
 
-
--(void)headingStartUpdates {
+- (void)headingStartUpdates {
     NSLog(@"Location services enabled? %d", [CLLocationManager locationServicesEnabled]);
     [locationManager startUpdatingHeading];
 }
 
-
--(void)headingStopButtonPressed:(UIButton*)button {
+- (void)headingStopButtonPressed:(UIButton*)button {
     headingStartButton.enabled = YES;
     headingStopButton.enabled = NO;
 
     [self headingStopUpdates];
 }
 
--(void)headingStartButtonPressed:(UIButton*)button {
+- (void)headingStartButtonPressed:(UIButton*)button {
     headingStartButton.enabled = NO;
     headingStopButton.enabled = YES;
-    
+
     [self headingStartUpdates];
 }
 

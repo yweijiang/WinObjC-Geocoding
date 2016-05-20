@@ -15,12 +15,11 @@
 //
 //******************************************************************************
 
-#import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
 #import <CoreMotion/CoreMotion.h>
+#import <UIKit/UIKit.h>
 
-@interface CoreLocationViewController : UIViewController<CLLocationManagerDelegate>
-{
+@interface CoreLocationViewController : UIViewController <CLLocationManagerDelegate> {
     UILabel* locLabel;
     UILabel* locVal;
     UIButton* locStopButton;

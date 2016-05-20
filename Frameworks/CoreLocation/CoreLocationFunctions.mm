@@ -15,12 +15,11 @@
 //
 //******************************************************************************
 
-#import <StubReturn.h>
 #import <CoreLocation/CoreLocationFunctions.h>
+#import <StubReturn.h>
 
 /**
- @Status Stub
- @Notes
+ @Status Interoperable
 */
 BOOL CLLocationCoordinate2DIsValid(CLLocationCoordinate2D coord) {
     if (coord.latitude > 90.0 || coord.latitude < -90.0) {
@@ -35,10 +34,9 @@ BOOL CLLocationCoordinate2DIsValid(CLLocationCoordinate2D coord) {
 }
 
 /**
- @Status Stub
- @Notes
+ @Status Interoperable
 */
 CLLocationCoordinate2D CLLocationCoordinate2DMake(CLLocationDegrees latitude, CLLocationDegrees longitude) {
-    CLLocationCoordinate2D returnCoordinate = {latitude, longitude};
+    CLLocationCoordinate2D returnCoordinate = { latitude, longitude };
     return returnCoordinate;
 }

@@ -15,9 +15,9 @@
 //
 //******************************************************************************
 
-#import <StubReturn.h>
-#import <Starboard.h>
 #import <CoreLocation/CLPlacemark.h>
+#import <Starboard.h>
+#import <StubReturn.h>
 
 @interface CLPlacemark ()
 
@@ -53,7 +53,7 @@
 }
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 - (instancetype)initWithPlacemark:(CLPlacemark*)placemark {
     if (self = [super init]) {
