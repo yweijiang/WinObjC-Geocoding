@@ -228,7 +228,7 @@ const double earthRadius = 6371000.0;
          here: http://www.movable-type.co.uk/scripts/latlong.html
 */
 - (CLLocationDistance)distanceFromLocation:(const CLLocation*)location {
-    const double degreesToRadians = M_PI / 180.0;
+    static const double degreesToRadians = M_PI / 180.0;
     const double sourceLatitude = location.coordinate.latitude * degreesToRadians;
     const double sourceLongitude = location.coordinate.longitude * degreesToRadians;
     const double destinationLatitude = self.coordinate.latitude * degreesToRadians;
