@@ -54,26 +54,10 @@ const double earthRadius = 6371000.0;
 
 /**
  @Status Interoperable
- @Notes  This uses the "haversine" formula to find circular distance between two points, found
-         here: http://www.movable-type.co.uk/scripts/latlong.html
+ @Notes  This is a deprecated version of distanceFromLocation
 */
 - (CLLocationDistance)getDistanceFrom:(const CLLocation*)location {
-    const double degreesToRadians = M_PI / 180.0;
-    const double sourceLatitude = location.coordinate.latitude * degreesToRadians;
-    const double sourceLongitude = location.coordinate.longitude * degreesToRadians;
-    const double destinationLatitude = self.coordinate.latitude * degreesToRadians;
-    const double destinationLongitude = self.coordinate.longitude * degreesToRadians;
-
-    const double latitudeDelta = destinationLatitude - sourceLatitude;
-    const double longitudeDelta = destinationLongitude - sourceLongitude;
-
-    const double a = sin(latitudeDelta / 2) * sin(latitudeDelta / 2) +
-                     cos(sourceLatitude) * cos(destinationLatitude) * sin(longitudeDelta / 2) * sin(longitudeDelta / 2);
-
-    const double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    CLLocationDistance distance = earthRadius * c;
-
-    return distance;
+    return [self distanceFromLocation:location];
 }
 
 /**
@@ -240,12 +224,15 @@ const double earthRadius = 6371000.0;
 
 /**
  @Status Interoperable
+ @Notes  This uses the "haversine" formula to find circular distance between two points, found
+         here: http://www.movable-type.co.uk/scripts/latlong.html
 */
 - (CLLocationDistance)distanceFromLocation:(const CLLocation*)location {
-    const double sourceLatitude = location.coordinate.latitude * M_PI / 180.0;
-    const double sourceLongitude = location.coordinate.longitude * M_PI / 180.0;
-    const double destinationLatitude = self.coordinate.latitude * M_PI / 180.0;
-    const double destinationLongitude = self.coordinate.longitude * M_PI / 180.0;
+    const double degreesToRadians = M_PI / 180.0;
+    const double sourceLatitude = location.coordinate.latitude * degreesToRadians;
+    const double sourceLongitude = location.coordinate.longitude * degreesToRadians;
+    const double destinationLatitude = self.coordinate.latitude * degreesToRadians;
+    const double destinationLongitude = self.coordinate.longitude * degreesToRadians;
 
     const double latitudeDelta = destinationLatitude - sourceLatitude;
     const double longitudeDelta = destinationLongitude - sourceLongitude;
