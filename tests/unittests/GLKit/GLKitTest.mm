@@ -12,10 +12,8 @@
 
 using namespace GLKitShader;
 
-typedef struct _OutputData
-{
-    union
-    {
+typedef struct _OutputData {
+    union {
         GLKQuaternion quat;
         GLKVector3 vec3;
         GLKVector4 vec4;
