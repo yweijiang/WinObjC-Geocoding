@@ -12,15 +12,6 @@
 
 using namespace GLKitShader;
 
-typedef struct _Dw32
-{
-    union
-    {
-        unsigned int u32;
-        float f32;
-    };
-} Dw32;
-
 typedef struct _OutputData
 {
     union
@@ -33,8 +24,7 @@ typedef struct _OutputData
     };
 } OutputData;
 
-
-#define X_FUNCLIST                                                                                           \
+#define X_FUNCLIST                                                                                            \
     X(GLKFuncEnumMatrix4MakeIdentity,                        "GLKMatrix4MakeIdentity")                        \
     X(GLKFuncEnumQuaternionMakeIdentity,                     "GLKQuaternionMakeIdentity")                     \
     X(GLKFuncEnumMatrix4MakeLookAt,                          "GLKMatrix4MakeLookAt")                          \
@@ -76,8 +66,6 @@ typedef struct _OutputData
     X(GLKFuncEnumMatrix3Invert,                              "GLKMatrix3Invert")                              \
     X(GLKFuncEnumMatrix3InvertAndTranspose,                  "GLKMatrix3InvertAndTranspose")
 
-
-
 enum GLKFunctionEnums {
 #define X(Enum, String) Enum,
     X_FUNCLIST
@@ -90,56 +78,6 @@ static const char* glkFunctionNames[GLKFuncEnumMax] = {
     X_FUNCLIST
 #undef X
 };
-
-
-
-
-/*
-enum GLKFuncEnumEnums
-{
-    GLKFuncEnumMatrix4MakeIdentity,
-    GLKFuncEnumQuaternionMakeIdentity,
-    GLKFuncEnumMatrix4MakeLookAt,
-    GLKFuncEnumMatrix4MultiplyVector4,
-    GLKFuncEnumMatrix4Transpose,
-    GLKFuncEnumMatrix4InvertAndTranspose,
-    GLKFuncEnumMatrix4Invert,
-    GLKFuncEnumMatrix4MakeXRotation,
-    GLKFuncEnumMatrix4MakeYRotation,
-    GLKFuncEnumMatrix4MakeZRotation,
-    GLKFuncEnumMatrix4MakeTranslation,
-    GLKFuncEnumMatrix4RotateX,
-    GLKFuncEnumMatrix4RotateY,
-    GLKFuncEnumMatrix4RotateZ,
-    GLKFuncEnumMatrix4Rotate,
-    GLKFuncEnumMatrix4MakeOrtho,
-    GLKFuncEnumMatrix4RotateWithVector3,
-    GLKFuncEnumMatrix4RotateWithVector4,
-    GLKFuncEnumMatrix4Multiply,
-    GLKFuncEnumMatrix4MakeFrustum,
-    GLKFuncEnumQuaternionRotateVector3Array,
-    GLKFuncEnumMatrix4MakeRotation,
-    GLKFuncEnumMatrix4MultiplyVector3,
-    GLKFuncEnumMatrix4MultiplyVector3WithTranslation,
-    GLKFuncEnumMatrix4MultiplyVector4Array,
-    GLKFuncEnumMatrix4MultiplyVector3ArrayWithTranslation,
-    GLKFuncEnumMatrix4MultiplyVector3Array,
-    GLKFuncEnumMatrix4MakePerspective,
-    GLKFuncEnumQuaternionRotateVector4Array,
-    GLKFuncEnumQuaternionMakeWithMatrix3,
-    GLKFuncEnumQuaternionMakeWithMatrix4,
-    GLKFuncEnumMatrix4TranslateWithVector3,
-    GLKFuncEnumMatrix4TranslateWithVector4,
-    GLKFuncEnumMatrix4Scale,
-    GLKFuncEnumMatrix4ScaleWithVector3,
-    GLKFuncEnumMatrix4ScaleWithVector4,
-    GLKFuncEnumMatrix4Add,
-    GLKFuncEnumMatrix4Subtract,
-    GLKFuncEnumMatrix3Invert,
-    GLKFuncEnumMatrix3InvertAndTranspose,
-    GLKFuncEnumMax
-}*/
-
 
 NSString* stripSource(NSString* s, NSString* searchStr) {
     NSRange r;
