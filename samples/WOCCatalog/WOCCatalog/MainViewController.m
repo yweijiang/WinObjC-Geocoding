@@ -41,6 +41,7 @@
 #import "AccelerateViewController.h"
 #import "CoreMotionViewController.h"
 #import "ShadowViewController.h"
+#import "CoreLocationViewController.h"
 
 #ifdef WINOBJC
 #import "XamlViewController.h"
@@ -57,7 +58,10 @@
     [super viewDidLoad];
     self.menuItems = [NSMutableArray array];
     
-    //CoreMotion
+    // CoreLocation
+    [self addMenuItemViewController:[[CoreLocationViewController alloc] init] andTitle:@"CoreLocation"];
+
+    // CoreMotion
     [self addMenuItemViewController:[[CoreMotionViewController alloc] init] andTitle:@"CoreMotion"];
     
     // Foundations tests
@@ -133,12 +137,6 @@
 
     // Shadow
     [self addMenuItemViewController:[[ShadowViewController alloc] init] andTitle:@"Shadow"];
-
-    // XIBTest
-    UIStoryboard *board = [UIStoryboard storyboardWithName:@"XIBTest" bundle:[NSBundle mainBundle]];
-    UIViewController *controller = [board instantiateInitialViewController];
-
-    [self addMenuItemViewController:controller andTitle:@"XIB Test"];
 }
 
 - (void)didReceiveMemoryWarning {

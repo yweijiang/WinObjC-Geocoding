@@ -15,24 +15,28 @@
 //
 //******************************************************************************
 
-#pragma once
+#import <CoreLocation/CoreLocation.h>
+#import <CoreMotion/CoreMotion.h>
+#import <UIKit/UIKit.h>
 
-#import <CoreLocation/CoreLocationDataTypes.h>
-#import <CoreLocation/CoreLocationExport.h>
-#import <Foundation/NSObject.h>
+@interface CoreLocationViewController : UIViewController <CLLocationManagerDelegate> {
+    UILabel* locLabel;
+    UILabel* locVal;
+    UIButton* locStopButton;
+    UIButton* locStartButton;
+    UIButton* locUpdateButton;
+    UIActivityIndicatorView* progressInd;
+    int locHeight;
 
-@class NSDate;
+    UILabel* headingLabel;
+    UILabel* headingVal;
+    UIButton* headingStopButton;
+    UIButton* headingStartButton;
+    int headingHeight;
 
-typedef double CLHeadingComponentValue;
-
-CORELOCATION_EXPORT_CLASS
-@interface CLHeading : NSObject <NSCopying, NSSecureCoding>
-@property (readonly, nonatomic) CLLocationDirection magneticHeading;
-@property (readonly, nonatomic) CLLocationDirection trueHeading;
-@property (readonly, nonatomic) CLLocationDirection headingAccuracy;
-@property (readonly, copy, nonatomic) NSDate* timestamp;
-@property (readonly, copy, nonatomic) NSString* description;
-@property (readonly, nonatomic) CLHeadingComponentValue x;
-@property (readonly, nonatomic) CLHeadingComponentValue y;
-@property (readonly, nonatomic) CLHeadingComponentValue z;
+    CLLocationManager* locationManager;
+    CMMotionManager* motionManager;
+    UIScrollView* scrollView;
+    int buttonLength;
+}
 @end

@@ -1,6 +1,7 @@
 //******************************************************************************
 //
-// Copyright (c) 2015 Microsoft Corporation. All rights reserved.
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
+// Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
 //
@@ -14,17 +15,20 @@
 //
 //******************************************************************************
 
-#import <StubReturn.h>
-#import <Starboard.h>
-#import <NSDateInternal.h>
+#import "NSLogging.h"
+#import <CoreLocation/CLHeading.h>
 #import <CoreLocation/CLLocation.h>
 #import <CoreLocation/CLLocationManager.h>
 #import <CoreLocation/CLLocationManagerDelegate.h>
-#import "NSLogging.h"
-#import <UWP/WindowsDevicesGeolocation.h>
+#import <NSDateInternal.h>
+#import <Starboard.h>
+#import <StubReturn.h>
 #import <UWP/WindowsApplicationModelExtendedExecution.h>
+#import <UWP/WindowsDevicesGeolocation.h>
+#import <UWP/WindowsDevicesSensors.h>
 #import <limits>
 #import <mutex>
+#import "CLHeadingInternal.h"
 
 const CLLocationDistance CLLocationDistanceMax = std::numeric_limits<double>::max();
 const NSTimeInterval CLTimeIntervalMax = std::numeric_limits<double>::max();
@@ -116,23 +120,29 @@ static void _removeExtendedExecutionSession() {
 @interface CLLocationManager () {
     NSThread* _callerThread;
     WDGGeolocator* _uwpGeolocator;
+    WDSCompass* _uwpCompass;
     EventRegistrationToken _uwpStatusToken;
     EventRegistrationToken _uwpPeriodicPositionChangeToken;
+    EventRegistrationToken _uwpPeriodicHeadingChangeToken;
     // Ensures one ongoing call to request location authorization.
     BOOL _authorizing;
     BOOL _statusUpdateRequested;
     // Ensures atleast one ongoing periodic location update request.
     BOOL _periodicLocationUpdateRequested;
+    BOOL _periodicHeadingUpdateRequested;
     BOOL _extendedExecutionSessionRequested;
 }
 
 @property (readwrite, copy, nonatomic) CLLocation* location;
+@property (readwrite, copy, nonatomic) CLHeading* heading;
 @end
 
 /**
  * CLLocationManager main implementation.
  */
 @implementation CLLocationManager
+
+@synthesize heading = _heading;
 
 static const NSString* c_CLLocationManagerErrorDomain = @"CLLocationManager";
 static CLAuthorizationStatus g_authorizationStatus = kCLAuthorizationStatusNotDetermined;
@@ -209,6 +219,17 @@ static const int64_t c_timeoutInSeconds = 15LL;
 
     if ([self.delegate respondsToSelector:@selector(locationManager:didUpdateLocations:)]) {
         [self.delegate locationManager:self didUpdateLocations:locationArray];
+    }
+}
+
+/**
+ * Delivers heading to the location manager delegate. This method needs to be called on the thread that was used to
+ * initialize the location manager instance.
+ */
+- (void)_callUpdateHeadingsDelegate {
+    assert([[NSThread currentThread] isEqual:_callerThread]);
+    if ([self.delegate respondsToSelector:@selector(locationManager:didUpdateHeading:)]) {
+        [self.delegate locationManager:self didUpdateHeading:self.heading];
     }
 }
 
@@ -364,6 +385,16 @@ static const int64_t c_timeoutInSeconds = 15LL;
 }
 
 /**
+ * Handles compass's heading change events.
+ * @param {WDSCompass*} compass compass instance.
+ * @param {WDSCompassReadingChangedEventArgs*} event ReadingChangedEventArgs received from Windows.
+ */
+- (void)_handleHeadingChangedEvent:(WDSCompass*)compass statusEvent:(WDSCompassReadingChangedEventArgs*)event {
+    NSTraceVerbose(TAG, @"Received position changed event.");
+    [self _handleHeadingUpdate:event.reading];
+}
+
+/**
  * Handles location change updates.
  * @param {WDGGeoposition*} geoposition updated location values received from Windows.
  */
@@ -397,6 +428,31 @@ static const int64_t c_timeoutInSeconds = 15LL;
             }
         } else {
             [self performSelector:@selector(_callUpdateLocationsDelegate) onThread:_callerThread withObject:nil waitUntilDone:NO];
+        }
+    }
+}
+
+/**
+ * Handles heading change updates.
+ * @param {WDSCompassReading*} heading updated location values received from Windows.
+ */
+- (void)_handleHeadingUpdate:(WDSCompassReading*)compassReading {
+    @synchronized(self) {
+        CLHeading* previousHeading = self.heading;
+
+        // Accuracy for Windows compass readings is an enum saying whether the result is accurate, semi-accurate, or inaccurate
+        // The CLHeading accuracy field specifies the maximum amount of error that a reading will have, so leaving at 0 for now
+        self.heading = [[CLHeading alloc] initWithAccuracy:0.0
+                                            magneticHeading:compassReading.headingMagneticNorth
+                                                trueHeading:[compassReading.headingTrueNorth doubleValue]];
+
+        // Deliver heading to the appropriate location manager delegate
+        if (_periodicHeadingUpdateRequested) {
+            if (![self.heading isEqual:previousHeading]) {
+                [self performSelector:@selector(_callUpdateHeadingsDelegate) onThread:_callerThread withObject:nil waitUntilDone:NO];
+            }
+        } else {
+            [self performSelector:@selector(_callUpdateHeadingsDelegate) onThread:_callerThread withObject:nil waitUntilDone:NO];
         }
     }
 }
@@ -502,6 +558,9 @@ static const int64_t c_timeoutInSeconds = 15LL;
  @Status Interoperable
 */
 + (BOOL)headingAvailable {
+    if ([WDSCompass getDefault]) {
+        return YES;
+    }
     return NO;
 }
 
@@ -527,11 +586,15 @@ static const int64_t c_timeoutInSeconds = 15LL;
         _authorizing = NO;
         _statusUpdateRequested = NO;
         _periodicLocationUpdateRequested = NO;
+        _periodicHeadingUpdateRequested = NO;
         _location = nullptr;
+        _heading = nullptr;
         // Cache the caller's thread object to use it to call delegates on.
         _callerThread = [NSThread currentThread];
         // Initialize WDGGeolocator.
         _uwpGeolocator = [WDGGeolocator make];
+        _uwpCompass = [WDSCompass getDefault];
+        _headingOrientation = CLDeviceOrientationLandscapeLeft;
     }
 
     return self;
@@ -544,6 +607,10 @@ static const int64_t c_timeoutInSeconds = 15LL;
     // Note: We do not have to synchronize here as no other method will be called in parallel at this time.
     if (_periodicLocationUpdateRequested) {
         [_uwpGeolocator removePositionChangedEvent:_uwpPeriodicPositionChangeToken];
+        _periodicLocationUpdateRequested = NO;
+    }
+    if (_periodicHeadingUpdateRequested) {
+        [_uwpCompass removeReadingChangedEvent:_uwpPeriodicHeadingChangeToken];
         _periodicLocationUpdateRequested = NO;
     }
     if (_extendedExecutionSessionRequested) {
@@ -602,7 +669,7 @@ static const int64_t c_timeoutInSeconds = 15LL;
 }
 
 /**
-@Status Stub
+@Status Interoperable
 */
 - (void)requestLocation {
     [self performSelectorOnMainThread:@selector(_getGeopositionAsyncWithAgeAndTimeout) withObject:nil waitUntilDone:NO];
@@ -652,17 +719,50 @@ static const int64_t c_timeoutInSeconds = 15LL;
 }
 
 /**
- @Status Stub
+ @Status Caveat
+ @Notes This will call the handler for heading change that you specify with heading information, but the heading property
+        of CLLocationManager will not work.
 */
 - (void)startUpdatingHeading {
-    UNIMPLEMENTED();
+    @synchronized(self) {
+        if (!_periodicHeadingUpdateRequested) {
+            NSTraceInfo(TAG, @"Started periodic heading update");
+
+            if (self.allowsBackgroundLocationUpdates) {
+                // Request for a extended execution session so location updates can continue in the background.
+                _requestExtendedExecutionSession();
+                _extendedExecutionSessionRequested = YES;
+            }
+
+            // Register for position change event only the first time location update is requested.
+            __weak CLLocationManager* weakSelf = self;
+            _uwpPeriodicHeadingChangeToken =
+                [_uwpCompass addReadingChangedEvent:^void(WDSCompass* compass, WDSCompassReadingChangedEventArgs* event) {
+                    [weakSelf _handleHeadingChangedEvent:compass statusEvent:event];
+                }];
+            _periodicHeadingUpdateRequested = YES;
+        }
+
+        [self performSelectorOnMainThread:@selector(_getGeopositionAsync) withObject:nil waitUntilDone:NO];
+        // This does not actually update the location information, so no need to make a separate heading function for this
+    }
 }
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 - (void)stopUpdatingHeading {
-    UNIMPLEMENTED();
+    @synchronized(self) {
+        if (_periodicHeadingUpdateRequested) {
+            NSTraceInfo(TAG, @"Stopped periodic heading update");
+            [_uwpCompass removeReadingChangedEvent:_uwpPeriodicHeadingChangeToken];
+            if (_extendedExecutionSessionRequested) {
+                _removeExtendedExecutionSession();
+                _extendedExecutionSessionRequested = NO;
+            }
+            _periodicHeadingUpdateRequested = NO;
+        }
+    }
 }
 
 /**
@@ -709,7 +809,6 @@ static const int64_t c_timeoutInSeconds = 15LL;
 
 /**
  @Status Stub
- @Notes
 */
 - (void)requestStateForRegion:(CLRegion*)region {
     UNIMPLEMENTED();

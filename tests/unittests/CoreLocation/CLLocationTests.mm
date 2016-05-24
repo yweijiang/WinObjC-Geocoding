@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -65,4 +66,12 @@ TEST(CoreLocation, CLLocation_CopyTest) {
     ASSERT_OBJCEQ_MSG(location1, location2, "FAILED: location1 and location2 are equal!\n");
     [location1 release];
     [location2 release];
+}
+
+TEST(CoreLocation, NewAPIBasicTest) {
+    CLLocation* location1 = [[CLLocation alloc] initWithLatitude:47.674 longitude:-122.1215];
+    CLLocation* location2 = [[CLLocation alloc] initWithLatitude:37.323 longitude:-122.0322];
+
+    CLLocationDistance distance = [location1 getDistanceFrom:location2];
+    ASSERT_NEAR_MSG(distance, 1151001.746193, 0.0001, "FAILED: Distance: %f\n", distance);
 }
