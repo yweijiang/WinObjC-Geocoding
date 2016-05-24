@@ -5,10 +5,141 @@
 #include <math.h>
 #include "Frameworks/GLKit/ShaderGen.h"
 #include "Frameworks/GLKit/ShaderInfo.h"
+#import <mach/mach_defs.h>
+#import <mach/mach_time.h>
 
 #include <windows.h>
 
 using namespace GLKitShader;
+
+typedef struct _Dw32
+{
+    union
+    {
+        unsigned int u32;
+        float f32;
+    };
+} Dw32;
+
+typedef struct _OutputData
+{
+    union
+    {
+        GLKQuaternion quat;
+        GLKVector3 vec3;
+        GLKVector4 vec4;
+        GLKMatrix3 mat3;
+        GLKMatrix4 mat4;
+    };
+} OutputData;
+
+
+#define X_FUNCLIST                                                                                           \
+    X(GLKFuncEnumMatrix4MakeIdentity,                        "GLKMatrix4MakeIdentity")                        \
+    X(GLKFuncEnumQuaternionMakeIdentity,                     "GLKQuaternionMakeIdentity")                     \
+    X(GLKFuncEnumMatrix4MakeLookAt,                          "GLKMatrix4MakeLookAt")                          \
+    X(GLKFuncEnumMatrix4MultiplyVector4,                     "GLKMatrix4MultiplyVector4")                     \
+    X(GLKFuncEnumMatrix4Transpose,                           "GLKMatrix4Transpose")                           \
+    X(GLKFuncEnumMatrix4InvertAndTranspose,                  "GLKMatrix4InvertAndTranspose")                  \
+    X(GLKFuncEnumMatrix4Invert,                              "GLKMatrix4Invert")                              \
+    X(GLKFuncEnumMatrix4MakeXRotation,                       "GLKMatrix4MakeXRotation")                       \
+    X(GLKFuncEnumMatrix4MakeYRotation,                       "GLKMatrix4MakeYRotation")                       \
+    X(GLKFuncEnumMatrix4MakeZRotation,                       "GLKMatrix4MakeZRotation")                       \
+    X(GLKFuncEnumMatrix4MakeTranslation,                     "GLKMatrix4MakeTranslation")                     \
+    X(GLKFuncEnumMatrix4RotateX,                             "GLKMatrix4RotateX")                             \
+    X(GLKFuncEnumMatrix4RotateY,                             "GLKMatrix4RotateY")                             \
+    X(GLKFuncEnumMatrix4RotateZ,                             "GLKMatrix4RotateZ")                             \
+    X(GLKFuncEnumMatrix4Rotate,                              "GLKMatrix4Rotate")                              \
+    X(GLKFuncEnumMatrix4MakeOrtho,                           "GLKMatrix4MakeOrtho")                           \
+    X(GLKFuncEnumMatrix4RotateWithVector3,                   "GLKMatrix4RotateWithVector3")                   \
+    X(GLKFuncEnumMatrix4RotateWithVector4,                   "GLKMatrix4RotateWithVector4")                   \
+    X(GLKFuncEnumMatrix4Multiply,                            "GLKMatrix4Multiply")                            \
+    X(GLKFuncEnumMatrix4MakeFrustum,                         "GLKMatrix4MakeFrustum")                         \
+    X(GLKFuncEnumQuaternionRotateVector3Array,               "GLKQuaternionRotateVector3Array")               \
+    X(GLKFuncEnumMatrix4MakeRotation,                        "GLKMatrix4MakeRotation")                        \
+    X(GLKFuncEnumMatrix4MultiplyVector3,                     "GLKMatrix4MultiplyVector3")                     \
+    X(GLKFuncEnumMatrix4MultiplyVector3WithTranslation,      "GLKMatrix4MultiplyVector3WithTranslation")      \
+    X(GLKFuncEnumMatrix4MultiplyVector4Array,                "GLKMatrix4MultiplyVector4Array")                \
+    X(GLKFuncEnumMatrix4MultiplyVector3ArrayWithTranslation, "GLKMatrix4MultiplyVector3ArrayWithTranslation") \
+    X(GLKFuncEnumMatrix4MultiplyVector3Array,                "GLKMatrix4MultiplyVector3Array")                \
+    X(GLKFuncEnumMatrix4MakePerspective,                     "GLKMatrix4MakePerspective")                     \
+    X(GLKFuncEnumQuaternionRotateVector4Array,               "GLKQuaternionRotateVector4Array")               \
+    X(GLKFuncEnumQuaternionMakeWithMatrix3,                  "GLKQuaternionMakeWithMatrix3")                  \
+    X(GLKFuncEnumQuaternionMakeWithMatrix4,                  "GLKQuaternionMakeWithMatrix4")                  \
+    X(GLKFuncEnumMatrix4TranslateWithVector3,                "GLKMatrix4TranslateWithVector3")                \
+    X(GLKFuncEnumMatrix4TranslateWithVector4,                "GLKMatrix4TranslateWithVector4")                \
+    X(GLKFuncEnumMatrix4Scale,                               "GLKMatrix4Scale")                               \
+    X(GLKFuncEnumMatrix4ScaleWithVector3,                    "GLKMatrix4ScaleWithVector3")                    \
+    X(GLKFuncEnumMatrix4ScaleWithVector4,                    "GLKMatrix4ScaleWithVector4")                    \
+    X(GLKFuncEnumMatrix4Add,                                 "GLKMatrix4Add")                                 \
+    X(GLKFuncEnumMatrix4Subtract,                            "GLKMatrix4Subtract")                            \
+    X(GLKFuncEnumMatrix3Invert,                              "GLKMatrix3Invert")                              \
+    X(GLKFuncEnumMatrix3InvertAndTranspose,                  "GLKMatrix3InvertAndTranspose")
+
+
+
+enum GLKFunctionEnums {
+#define X(Enum, String) Enum,
+    X_FUNCLIST
+#undef X
+    GLKFuncEnumMax
+};
+
+static const char* glkFunctionNames[GLKFuncEnumMax] = {
+#define X(Enum, String) String,
+    X_FUNCLIST
+#undef X
+};
+
+
+
+
+/*
+enum GLKFuncEnumEnums
+{
+    GLKFuncEnumMatrix4MakeIdentity,
+    GLKFuncEnumQuaternionMakeIdentity,
+    GLKFuncEnumMatrix4MakeLookAt,
+    GLKFuncEnumMatrix4MultiplyVector4,
+    GLKFuncEnumMatrix4Transpose,
+    GLKFuncEnumMatrix4InvertAndTranspose,
+    GLKFuncEnumMatrix4Invert,
+    GLKFuncEnumMatrix4MakeXRotation,
+    GLKFuncEnumMatrix4MakeYRotation,
+    GLKFuncEnumMatrix4MakeZRotation,
+    GLKFuncEnumMatrix4MakeTranslation,
+    GLKFuncEnumMatrix4RotateX,
+    GLKFuncEnumMatrix4RotateY,
+    GLKFuncEnumMatrix4RotateZ,
+    GLKFuncEnumMatrix4Rotate,
+    GLKFuncEnumMatrix4MakeOrtho,
+    GLKFuncEnumMatrix4RotateWithVector3,
+    GLKFuncEnumMatrix4RotateWithVector4,
+    GLKFuncEnumMatrix4Multiply,
+    GLKFuncEnumMatrix4MakeFrustum,
+    GLKFuncEnumQuaternionRotateVector3Array,
+    GLKFuncEnumMatrix4MakeRotation,
+    GLKFuncEnumMatrix4MultiplyVector3,
+    GLKFuncEnumMatrix4MultiplyVector3WithTranslation,
+    GLKFuncEnumMatrix4MultiplyVector4Array,
+    GLKFuncEnumMatrix4MultiplyVector3ArrayWithTranslation,
+    GLKFuncEnumMatrix4MultiplyVector3Array,
+    GLKFuncEnumMatrix4MakePerspective,
+    GLKFuncEnumQuaternionRotateVector4Array,
+    GLKFuncEnumQuaternionMakeWithMatrix3,
+    GLKFuncEnumQuaternionMakeWithMatrix4,
+    GLKFuncEnumMatrix4TranslateWithVector3,
+    GLKFuncEnumMatrix4TranslateWithVector4,
+    GLKFuncEnumMatrix4Scale,
+    GLKFuncEnumMatrix4ScaleWithVector3,
+    GLKFuncEnumMatrix4ScaleWithVector4,
+    GLKFuncEnumMatrix4Add,
+    GLKFuncEnumMatrix4Subtract,
+    GLKFuncEnumMatrix3Invert,
+    GLKFuncEnumMatrix3InvertAndTranspose,
+    GLKFuncEnumMax
+}*/
+
 
 NSString* stripSource(NSString* s, NSString* searchStr) {
     NSRange r;
@@ -391,7 +522,7 @@ TEST(GLKit, TemporaryShaderNodes) {
 }
 
 TEST(GLKit, BasicMath) {
-    BOOL invertible = FALSE;
+    bool invertible = false;
 
     GLKVector4 v = GLKVector4Make(3.f, 2.f, 1.f, 1.f);
 
@@ -497,7 +628,8 @@ TEST(GLKit, Quaternions) {
     EXPECT_TRUE_MSG(fabsf(angle - (float)M_PI) <= COMPARISON_EPSILON, "Incorrect angle extracted!");
     EXPECT_TRUE_MSG(GLKVector3AllEqualToVector3(axis, GLKVector3YAxis()), "Incorrect rotation axis extracted!");
 
-    GLKVector3 rotated = GLKQuaternionRotateVector3(q, GLKVector3XAxis());
+    GLKVector3 rotated = GLKVector3XAxis();
+    GLKQuaternionRotateVector3Array(q, &rotated, 1);
     EXPECT_TRUE_MSG(GLKVector3AllEqualToScalar(GLKVector3Add(rotated, GLKVector3XAxis()), 0.f), "Quaternion rotation appears incorrect.");
 
     GLKMatrix3 xrot = GLKMatrix3MakeXRotation(M_PI / 3.f);
@@ -590,4 +722,420 @@ TEST(GLKit, Interpolation) {
     GLKVector4 zAxis = GLKVector4MakeWithVector3(GLKVector3ZAxis(), 0.f);
     GLKVector4 proj4 = GLKVector4Project(v4, zAxis);
     EXPECT_TRUE_MSG(GLKVector4AllEqualToVector4(proj4, zAxis), "GLKVector4 projection failed!");
+}
+
+TEST(GLKit, Performance) {
+    // Time tracking
+    struct mach_timebase_info tinfo;
+    mach_timebase_info(&tinfo);
+    const int64_t cpuFrequency = tinfo.denom;
+    uint64_t beginTick = 0;
+    uint64_t endTick = 0;
+    uint64_t totalTicks[GLKFuncEnumMax] = { 0 };
+
+    // Samples
+    const uint64_t numSamples = 100000;
+    const float numSamplesF32 = static_cast<float>(numSamples);
+
+    // Output buffer
+    const int numOutputBufferEntries = 64;
+    const int numOutputBufferEntriesDw = numOutputBufferEntries * sizeof(OutputData) / sizeof(int);
+    OutputData outputBuffer[numOutputBufferEntries];
+    unsigned int* pOutputBuffer = reinterpret_cast<unsigned int*>(outputBuffer);
+    volatile int bufferIndex;
+
+    // Intermediates
+    bool isInvertible;
+    unsigned int invertibleCount = 0;
+    GLKMatrix4 matrix4LookAt;
+    GLKMatrix4 matrix4Rotate;
+    GLKMatrix4 matrix4RotateX;
+    GLKMatrix4 matrix4RotateY;
+    GLKMatrix4 matrix4RotateZ;
+    GLKMatrix4 matrix4Translate;
+    GLKMatrix4 matrix4Identity;
+    GLKMatrix4 matrix4Ortho;
+    GLKMatrix3 matrix3RotateX;
+
+    // Start/Current values
+    GLKVector3 rotation = { 0.0f, 0.0f, 0.0f };
+    GLKVector3 eye = { 0.0f, 6.5f, -11.0f };
+    GLKVector3 look = { 0.0f, 0.0f, 0.0f };
+    GLKVector3 up = { 0.0f, 1.0f, 0.0f };
+    GLKVector3 scale = { 1.0f, 1.0f, 1.0f };
+    GLKVector3 translate = { 0.0f, 0.0f, 0.0f };
+    GLKVector4 scale4 = { 1.0f, 1.0f, 1.0f, 1.0f };
+    GLKVector4 translate4 = { 0.0f, 0.0f, 0.0f, 1.0f };
+    GLKVector3 rotationAxis = { 0.0f, 0.0f, 0.0f };
+    GLKVector4 rotation4Axis = { 0.0f, 0.0f, 0.0f, 1.0f };
+    float yrad = M_PI / 3.0f;
+    float left = -200.0f;
+    float right = 200.0f;
+    float top = -150.0f;
+    float bot = 150.0f;
+    float aspect = (left - right) / (bot - top);
+    float nearZ = 0.01f;
+    float farZ = 100.0f;
+
+    // Final values
+    const GLKVector3 rotationMax = { M_PI * 2.0f, M_PI * 2.0f, M_PI * 2.0f };
+    const GLKVector3 eyeMax = { 0.5f, 7.0f, -10.5f };
+    const GLKVector3 lookMax = { 0.5f, 0.5f, 0.5f };
+    const GLKVector3 upMax = { 0.0f, 1.0f, 0.0f };
+    const GLKVector3 scaleMax = { 10.0f, 10.0f, 10.0f };
+    const GLKVector3 translateMax = { 10.0f, 10.0f, 10.0f };
+    const GLKVector4 scale4Max = { 10.0f, 10.0f, 10.0f, 1.0f };
+    const GLKVector4 translate4Max = { 10.0f, 10.0f, 10.0f, 1.0f };
+    const GLKVector3 rotationAxisMax = { 3.0f, 2.0f, 1.0f };
+    const GLKVector4 rotation4AxisMax = { 3.0f, 2.0f, 1.0f, 1.0f };
+    const float yradMax = M_PI / 2.0f;
+    const float aspectMax = 16.0f / 9.0f;
+    const float nearZMax = 0.5f;
+    const float farZMax = 25.f;
+    const float leftMax = -800.0f;
+    const float rightMax = 800.0f;
+    const float topMax = -450.0f;
+    const float botMax = 450.0f;
+
+    // Other constants
+    const GLKVector4 vector4Ones = GLKVector4Make(1.0f, 1.0f, 1.0f, 1.0f);
+    const GLKVector3 vector3Ones = GLKVector3Make(1.0f, 1.0f, 1.0f);
+
+    // Deltas
+    GLKVector3 rotationDelta = GLKVector3DivideScalar(GLKVector3Subtract(rotationMax, rotation), numSamplesF32);
+    GLKVector3 eyeDelta = GLKVector3DivideScalar(GLKVector3Subtract(eyeMax, eye), numSamplesF32);
+    GLKVector3 lookDelta = GLKVector3DivideScalar(GLKVector3Subtract(lookMax, look), numSamplesF32);
+    GLKVector3 upDelta = GLKVector3DivideScalar(GLKVector3Subtract(upMax, up), numSamplesF32);
+    GLKVector3 scaleDelta = GLKVector3DivideScalar(GLKVector3Subtract(scaleMax, scale), numSamplesF32);
+    GLKVector3 translateDelta = GLKVector3DivideScalar(GLKVector3Subtract(translateMax, translate), numSamplesF32);
+    GLKVector4 scale4Delta = GLKVector4DivideScalar(GLKVector4Subtract(scale4Max, scale4), numSamplesF32);
+    GLKVector4 translate4Delta = GLKVector4DivideScalar(GLKVector4Subtract(translate4Max, translate4), numSamplesF32);
+    GLKVector3 rotationAxisDelta = GLKVector3DivideScalar(GLKVector3Subtract(rotationAxisMax, rotationAxis), numSamplesF32);
+    GLKVector4 rotation4AxisDelta = GLKVector4DivideScalar(GLKVector4Subtract(rotation4AxisMax, rotation4Axis), numSamplesF32);
+    float yradDelta = (yradMax - yrad) / numSamplesF32;
+    float aspectDelta = (aspectMax - aspect) / numSamplesF32;
+    float nearZDelta = (nearZMax - nearZ) / numSamplesF32;
+    float farZDelta = (farZMax - farZ) / numSamplesF32;
+    float leftDelta = (leftMax - left);
+    float rightDelta = (rightMax - right);
+    float topDelta = (topMax - top);
+    float botDelta = (botMax - bot);
+
+    srand((unsigned)time(NULL));
+
+    for (uint64_t i = 0; i < numSamples; i++) {
+        // Identities
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakeIdentity();
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakeIdentity] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].quat = GLKQuaternionMakeIdentity();
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumQuaternionMakeIdentity] += endTick - beginTick;
+
+
+        // Projection matrices
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakeLookAt(eye.x, eye.y, eye.z, look.x, look.y, look.z, up.x, up.y, up.z);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakeLookAt] += endTick - beginTick;
+        matrix4LookAt = outputBuffer[bufferIndex].mat4;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakeOrtho(left, right, bot, top, nearZ, farZ);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakeOrtho] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakeFrustum(left, right, bot, top, nearZ, farZ);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakeFrustum] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakePerspective(yrad, aspect, nearZ, farZ);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakePerspective] += endTick - beginTick;
+
+
+        // Rotation Matrices
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakeXRotation(rotation.x);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakeXRotation] += endTick - beginTick;
+        matrix4RotateX = outputBuffer[bufferIndex].mat4;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakeYRotation(rotation.y);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakeYRotation] += endTick - beginTick;
+        matrix4RotateY = outputBuffer[bufferIndex].mat4;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakeZRotation(rotation.z);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakeZRotation] += endTick - beginTick;
+        matrix4RotateZ = outputBuffer[bufferIndex].mat4;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4RotateX(matrix4Identity, rotation.x);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4RotateX] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4RotateY(matrix4Identity, rotation.y);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4RotateY] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4RotateZ(matrix4Identity, rotation.z);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4RotateZ] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4Rotate(matrix4Identity, rotation.x, rotationAxis.x, rotationAxis.y, rotationAxis.z);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4Rotate] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakeRotation(rotation.x, rotationAxis.x, rotationAxis.y, rotationAxis.z);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakeRotation] += endTick - beginTick;
+        matrix4Rotate = outputBuffer[bufferIndex].mat4;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4RotateWithVector3(matrix4Identity, rotation.x, rotationAxis);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4RotateWithVector3] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4RotateWithVector4(matrix4Identity, rotation.x, rotation4Axis);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4RotateWithVector4] += endTick - beginTick;
+
+
+        // Translation
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MakeTranslation(translate.x, translate.y, translate.z);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MakeTranslation] += endTick - beginTick;
+        matrix4Translate = outputBuffer[bufferIndex].mat4;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4TranslateWithVector3(matrix4Rotate, translate);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4TranslateWithVector3] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4TranslateWithVector4(matrix4Rotate, translate4);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4TranslateWithVector4] += endTick - beginTick;
+
+
+        // Matrix Transforms
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4Transpose(matrix4LookAt);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4Transpose] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4InvertAndTranspose(matrix4RotateX, &isInvertible);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4InvertAndTranspose] += endTick - beginTick;
+
+        if (isInvertible == true) {
+            invertibleCount++;
+        }
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4Invert(matrix4LookAt, &isInvertible);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4Invert] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4Multiply(matrix4Translate, matrix4RotateZ);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4Multiply] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4Scale(matrix4Rotate, scale.x, scale.y, scale.z);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4Scale] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4ScaleWithVector3(matrix4Rotate, scale);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4ScaleWithVector3] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4ScaleWithVector4(matrix4Rotate, scale4);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4ScaleWithVector4] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4Add(matrix4Rotate, matrix4Translate);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4Add] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4Subtract(matrix4Rotate, matrix4Translate);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4Subtract] += endTick - beginTick;
+
+        matrix3RotateX = GLKMatrix4GetMatrix3(matrix4RotateX);
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat3 = GLKMatrix3Invert(matrix3RotateX, &isInvertible);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix3Invert] += endTick - beginTick;
+
+        if (isInvertible == true) {
+            invertibleCount++;
+        }
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat3 = GLKMatrix3InvertAndTranspose(matrix3RotateX, &isInvertible);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix3InvertAndTranspose] += endTick - beginTick;
+
+        // Vector Transforms
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].vec4 = GLKMatrix4MultiplyVector4(matrix4LookAt, vector4Ones);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MultiplyVector4] += endTick - beginTick;
+
+        /*
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].quat = GLKQuaternionRotateVector3Array(GLKQuaternion q, GLKVector3* vecs, size_t numVecs);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumQuaternionRotateVector3Array] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MultiplyVector4Array(GLKMatrix4 m, GLKVector4* vecs, size_t numVecs);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MultiplyVector4Array] += endTick - beginTick;
+
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MultiplyVector3ArrayWithTranslation(matrix4LookAt, GLKVector3* vecs, size_t numVecs);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MultiplyVector3ArrayWithTranslation] += endTick - beginTick;
+
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].mat4 = GLKMatrix4MultiplyVector3Array(matrix4LookAt, GLKVector3* vecs, size_t numVecs);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MultiplyVector3Array] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].quat = GLKQuaternionRotateVector4Array(GLKQuaternion q, GLKVector4* vecs, size_t numVecs);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumQuaternionRotateVector4Array] += endTick - beginTick;
+
+        */
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].vec3 = GLKMatrix4MultiplyVector3(matrix4LookAt, vector3Ones);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MultiplyVector3] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].vec3 = GLKMatrix4MultiplyVector3WithTranslation(matrix4LookAt, vector3Ones);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumMatrix4MultiplyVector3WithTranslation] += endTick - beginTick;
+
+        // Quaternion
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].quat = GLKQuaternionMakeWithMatrix3(matrix3RotateX);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumQuaternionMakeWithMatrix3] += endTick - beginTick;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].quat = GLKQuaternionMakeWithMatrix4(matrix4Rotate);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumQuaternionMakeWithMatrix4] += endTick - beginTick;
+
+        // Increment varying values
+        eye = GLKVector3Add(eye, eyeDelta);
+        look = GLKVector3Add(look, lookDelta);
+        up = GLKVector3Add(up, upDelta);
+        scale = GLKVector3Add(scale, scaleDelta);
+        rotation = GLKVector3Add(rotation, rotationDelta);
+        rotationAxis = GLKVector3Add(rotationAxis, rotationAxisDelta);
+        translate = GLKVector3Add(translate, translateDelta);
+        scale4 = GLKVector4Add(scale4, scale4Delta);
+        rotation4Axis = GLKVector4Add(rotation4Axis, rotation4AxisDelta);
+        translate4 = GLKVector4Add(translate4, translate4Delta);
+        yrad += yradDelta;
+        left += leftDelta;
+        right += rightDelta;
+        top += topDelta;
+        bot += botDelta;
+        nearZ += nearZDelta;
+        farZ += farZDelta;
+
+        // Recalculate aspect with incremented base values
+        aspect = (left - right) / (bot - top);
+    }
+
+    unsigned int bufferIndexDw = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntriesDw);
+
+    const char* funcNameStr = "Function Name";
+    const char* execTimeStr = "Time(ms)";
+    const char* lineStr = "-------------------------------------------------------------------------------";
+
+    LOG_INFO("[ Print a random outBuffer value to guarantee dependency is created by the compiler %d]\n", pOutputBuffer[bufferIndexDw]);
+    LOG_INFO("%-48s %-s", funcNameStr, execTimeStr);
+    LOG_INFO("%.*s", 57, lineStr);
+    double totalTimeInMs = 0.0;
+
+
+    for (int i = 0; i < GLKFuncEnumMax; i++) {
+        double timeInMs = (double)totalTicks[i] / cpuFrequency * 1000.0;
+        LOG_INFO("%-48s %-f", glkFunctionNames[i], timeInMs);
+        totalTimeInMs += timeInMs;
+    }
+
+    LOG_INFO("Number of inversions: %d", invertibleCount);
+    LOG_INFO("Total Execution Time: %f", totalTimeInMs);
 }
