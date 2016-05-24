@@ -135,14 +135,14 @@ static void _removeExtendedExecutionSession() {
 
 @property (readwrite, copy, nonatomic) CLLocation* location;
 @property (readwrite, copy, nonatomic) CLHeading* heading;
-// Note that heading2 is used because writing to heading seems to never actually cause it to change
-@property (readwrite, nonatomic) CLHeading* heading2;
 @end
 
 /**
  * CLLocationManager main implementation.
  */
 @implementation CLLocationManager
+
+@synthesize heading = _heading;
 
 static const NSString* c_CLLocationManagerErrorDomain = @"CLLocationManager";
 static CLAuthorizationStatus g_authorizationStatus = kCLAuthorizationStatusNotDetermined;
@@ -229,7 +229,7 @@ static const int64_t c_timeoutInSeconds = 15LL;
 - (void)_callUpdateHeadingsDelegate {
     assert([[NSThread currentThread] isEqual:_callerThread]);
     if ([self.delegate respondsToSelector:@selector(locationManager:didUpdateHeading:)]) {
-        [self.delegate locationManager:self didUpdateHeading:self.heading2];
+        [self.delegate locationManager:self didUpdateHeading:self.heading];
     }
 }
 
@@ -438,17 +438,17 @@ static const int64_t c_timeoutInSeconds = 15LL;
  */
 - (void)_handleHeadingUpdate:(WDSCompassReading*)compassReading {
     @synchronized(self) {
-        CLHeading* previousHeading = self.heading2;
+        CLHeading* previousHeading = self.heading;
 
         // Accuracy for Windows compass readings is an enum saying whether the result is accurate, semi-accurate, or inaccurate
         // The CLHeading accuracy field specifies the maximum amount of error that a reading will have, so leaving at 0 for now
-        self.heading2 = [[CLHeading alloc] initWithAccuracy:0.0
+        self.heading = [[CLHeading alloc] initWithAccuracy:0.0
                                             magneticHeading:compassReading.headingMagneticNorth
                                                 trueHeading:[compassReading.headingTrueNorth doubleValue]];
 
         // Deliver heading to the appropriate location manager delegate
         if (_periodicHeadingUpdateRequested) {
-            if (![self.heading2 isEqual:previousHeading]) {
+            if (![self.heading isEqual:previousHeading]) {
                 [self performSelector:@selector(_callUpdateHeadingsDelegate) onThread:_callerThread withObject:nil waitUntilDone:NO];
             }
         } else {
@@ -594,7 +594,7 @@ static const int64_t c_timeoutInSeconds = 15LL;
         // Initialize WDGGeolocator.
         _uwpGeolocator = [WDGGeolocator make];
         _uwpCompass = [WDSCompass getDefault];
-        _headingOrientation = CLDeviceOrientationPortrait;
+        _headingOrientation = CLDeviceOrientationLandscapeLeft;
     }
 
     return self;

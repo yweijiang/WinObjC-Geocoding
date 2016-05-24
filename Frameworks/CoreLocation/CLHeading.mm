@@ -38,8 +38,18 @@
  @Status Stub
 */
 - (id)copyWithZone:(NSZone*)zone {
-    UNIMPLEMENTED();
-    return StubReturn();
+    CLHeading* newHeading = [[[self class] allocWithZone:zone] init];
+    if (newHeading) {
+        newHeading->_headingAccuracy = _headingAccuracy;
+        newHeading->_magneticHeading = _magneticHeading;
+        newHeading->_trueHeading = _trueHeading;
+        newHeading->_timestamp = [_timestamp copyWithZone:zone];
+		newHeading->_x = _x;
+		newHeading->_y = _y;
+		newHeading->_z = _z;
+    }
+
+    return newHeading;
 }
 
 /**

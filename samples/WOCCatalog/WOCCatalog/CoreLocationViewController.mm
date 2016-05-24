@@ -62,7 +62,6 @@
 
 // Delegate method from the CLLocationManagerDelegate protocol.
 - (void)locationManager:(CLLocationManager*)manager didUpdateLocations:(NSArray*)locations {
-    NSLog(@"Hit didUpdateLocations");
     CLLocation* location = [locations lastObject];
 
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -116,7 +115,6 @@
 }
 
 - (void)locStartUpdates {
-    NSLog(@"Location services enabled? %d", [CLLocationManager locationServicesEnabled]);
     [locationManager startUpdatingLocation];
 }
 
@@ -128,7 +126,6 @@
 }
 
 - (void)locUpdateButtonPressed:(UIButton*)button {
-    NSLog(@"Location services enabled? %d", [CLLocationManager locationServicesEnabled]);
     [locationManager requestLocation];
 }
 
@@ -162,7 +159,7 @@
 
     headingVal = [[UILabel alloc] initWithFrame:CGRectMake(0, headingHeight + 50, 350, 40)];
     [headingVal setBackgroundColor:[UIColor whiteColor]];
-    [headingVal setText:@"Magnetic Heading: 0.000        True Heading: 0.000        "];
+    [headingVal setText:@"Magnetic Heading: 0.000 True Heading: 0.000 "];
     [headingVal setTextAlignment:NSTextAlignmentRight];
     [scrollView addSubview:headingVal];
 }
@@ -170,19 +167,17 @@
 // Delegate method from the CLLocationManagerDelegate protocol.
 - (void)locationManager:(CLLocationManager*)manager didUpdateHeading:(CLHeading*)heading {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [headingVal setText:[NSString stringWithFormat:@"Magnetic Heading: %.3f        True Heading: %.3f        ",
+        [headingVal setText:[NSString stringWithFormat:@"Magnetic Heading: %.3f True Heading: %.3f ",
                                                        heading.magneticHeading,
                                                        heading.trueHeading]];
     });
 }
 
 - (void)headingStopUpdates {
-    NSLog(@"Location services enabled? %d", [CLLocationManager locationServicesEnabled]);
     [locationManager stopUpdatingHeading];
 }
 
 - (void)headingStartUpdates {
-    NSLog(@"Location services enabled? %d", [CLLocationManager locationServicesEnabled]);
     [locationManager startUpdatingHeading];
 }
 
