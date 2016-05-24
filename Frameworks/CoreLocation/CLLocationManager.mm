@@ -1,7 +1,7 @@
 //******************************************************************************
 //
 // Copyright (c) 2016 Intel Corporation. All rights reserved.
-// Copyright (c) 2016 Microsoft Corporation. All rights reserved.
+// Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
 //
@@ -443,8 +443,8 @@ static const int64_t c_timeoutInSeconds = 15LL;
         // Accuracy for Windows compass readings is an enum saying whether the result is accurate, semi-accurate, or inaccurate
         // The CLHeading accuracy field specifies the maximum amount of error that a reading will have, so leaving at 0 for now
         self.heading = [[CLHeading alloc] initWithAccuracy:0.0
-                                            magneticHeading:compassReading.headingMagneticNorth
-                                                trueHeading:[compassReading.headingTrueNorth doubleValue]];
+                                           magneticHeading:compassReading.headingMagneticNorth
+                                               trueHeading:[compassReading.headingTrueNorth doubleValue]];
 
         // Deliver heading to the appropriate location manager delegate
         if (_periodicHeadingUpdateRequested) {
@@ -561,6 +561,7 @@ static const int64_t c_timeoutInSeconds = 15LL;
     if ([WDSCompass getDefault]) {
         return YES;
     }
+
     return NO;
 }
 
@@ -720,8 +721,6 @@ static const int64_t c_timeoutInSeconds = 15LL;
 
 /**
  @Status Caveat
- @Notes This will call the handler for heading change that you specify with heading information, but the heading property
-        of CLLocationManager will not work.
 */
 - (void)startUpdatingHeading {
     @synchronized(self) {
@@ -743,8 +742,8 @@ static const int64_t c_timeoutInSeconds = 15LL;
             _periodicHeadingUpdateRequested = YES;
         }
 
-        [self performSelectorOnMainThread:@selector(_getGeopositionAsync) withObject:nil waitUntilDone:NO];
         // This does not actually update the location information, so no need to make a separate heading function for this
+        [self performSelectorOnMainThread:@selector(_getGeopositionAsync) withObject:nil waitUntilDone:NO];
     }
 }
 

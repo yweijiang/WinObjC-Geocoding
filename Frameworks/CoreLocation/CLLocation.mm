@@ -26,6 +26,7 @@ const CLLocationAccuracy kCLLocationAccuracyThreeKilometers = 3000;
 const CLLocationAccuracy kCLLocationAccuracyBestForNavigation = 1;
 const CLLocationAccuracy kCLLocationAccuracyBest = 5;
 const CLLocationDistance kCLDistanceFilterNone = 0;
+// Radius of the earth in meters
 const double earthRadius = 6371000.0;
 
 /**
@@ -53,12 +54,15 @@ const double earthRadius = 6371000.0;
 
 /**
  @Status Interoperable
+ @Notes  This uses the "haversine" formula to find circular distance between two points, found
+         here: http://www.movable-type.co.uk/scripts/latlong.html
 */
 - (CLLocationDistance)getDistanceFrom:(const CLLocation*)location {
-    const double sourceLatitude = location.coordinate.latitude * M_PI / 180.0;
-    const double sourceLongitude = location.coordinate.longitude * M_PI / 180.0;
-    const double destinationLatitude = self.coordinate.latitude * M_PI / 180.0;
-    const double destinationLongitude = self.coordinate.longitude * M_PI / 180.0;
+    const double degreesToRadians = M_PI / 180.0;
+    const double sourceLatitude = location.coordinate.latitude * degreesToRadians;
+    const double sourceLongitude = location.coordinate.longitude * degreesToRadians;
+    const double destinationLatitude = self.coordinate.latitude * degreesToRadians;
+    const double destinationLongitude = self.coordinate.longitude * degreesToRadians;
 
     const double latitudeDelta = destinationLatitude - sourceLatitude;
     const double longitudeDelta = destinationLongitude - sourceLongitude;

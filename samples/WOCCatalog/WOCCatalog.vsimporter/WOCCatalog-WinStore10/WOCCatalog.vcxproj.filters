@@ -153,7 +153,7 @@
     <ClangCompile Include="..\..\WOCCatalog\PickersViewController.m">
       <Filter>WOCCatalog</Filter>
     </ClangCompile>
-	<ClangCompile Include="..\..\WOCCatalog\CoreLocationViewController.m">
+    <ClangCompile Include="..\..\WOCCatalog\CoreLocationViewController.mm">
       <Filter>WOCCatalog</Filter>
     </ClangCompile>
     <SBResourceCopy Include="..\..\WOCCatalog\Images\photo9.jpg">

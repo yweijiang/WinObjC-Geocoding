@@ -33,16 +33,14 @@
     locHeight = 80;
     headingHeight = 280;
 
-    // Create the location manager if this object does not
-    // already have one.
     locationManager = [[CLLocationManager alloc] init];
     [locationManager requestWhenInUseAuthorization];
 
     locationManager.delegate = self;
     locationManager.desiredAccuracy = kCLLocationAccuracyBest;
 
-    // Set a movement threshold for new events.
-    locationManager.distanceFilter = 500; // meters
+    // Set a movement threshold for new events. Setting to 10 meters.
+    locationManager.distanceFilter = 10;
 
     [self setupLocation];
 
@@ -50,7 +48,6 @@
         [self setupHeading];
     } else {
         headingLabel = [[UILabel alloc] initWithFrame:CGRectMake(30, headingHeight, 300, 50)];
-        [headingLabel setBackgroundColor:nil];
         [headingLabel setText:@"Heading Not Available!"];
         [headingLabel setTextAlignment:NSTextAlignmentLeft];
         [scrollView addSubview:headingLabel];
@@ -66,8 +63,7 @@
 
     dispatch_async(dispatch_get_main_queue(), ^{
         [locVal setText:[NSString stringWithFormat:@"Longitude: %.3f        Latitude: %.3f        ",
-                                                   location.coordinate.latitude,
-                                                   location.coordinate.longitude]];
+                                                   location.coordinate.latitude, location.coordinate.longitude]];
     });
 }
 

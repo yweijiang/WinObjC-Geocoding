@@ -19,12 +19,6 @@
 #import <CoreLocation/CoreLocationExport.h>
 #import <Foundation/NSObject.h>
 
-@class CLLocation;
-@class CLRegion;
-@class NSTimeZone;
-@class NSDictionary;
-@class NSArray;
-
 @interface CLHeading ()
 - (instancetype)initWithAccuracy:(CLLocationDirection)accuracy
                  magneticHeading:(CLLocationDirection)magneticHeading
