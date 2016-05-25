@@ -39,8 +39,9 @@
     locationManager.delegate = self;
     locationManager.desiredAccuracy = kCLLocationAccuracyBest;
 
-    // Set a movement threshold for new events. Setting to 10 meters.
+    // Set movement threshold for location data at 10 meters and heading data at 5 degrees.
     locationManager.distanceFilter = 10;
+    locationManager.headingFilter = 5;
 
     [self setupLocation];
 
@@ -155,7 +156,7 @@
 
     headingVal = [[UILabel alloc] initWithFrame:CGRectMake(0, headingHeight + 50, 350, 40)];
     [headingVal setBackgroundColor:[UIColor whiteColor]];
-    [headingVal setText:@"Magnetic Heading: 0.000 True Heading: 0.000 "];
+    [headingVal setText:@"Mag Heading: 0.000 True Heading: 0.000 Acc: 0.000 "];
     [headingVal setTextAlignment:NSTextAlignmentRight];
     [scrollView addSubview:headingVal];
 }
@@ -163,9 +164,8 @@
 // Delegate method from the CLLocationManagerDelegate protocol.
 - (void)locationManager:(CLLocationManager*)manager didUpdateHeading:(CLHeading*)heading {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [headingVal setText:[NSString stringWithFormat:@"Magnetic Heading: %.3f True Heading: %.3f ",
-                                                       heading.magneticHeading,
-                                                       heading.trueHeading]];
+        [headingVal setText:[NSString stringWithFormat:@"Mag Heading: %.3f True Heading: %.3f Acc: %.3f",
+                                                       heading.magneticHeading, heading.trueHeading, heading.headingAccuracy]];
     });
 }
 

@@ -71,7 +71,7 @@ CORELOCATION_EXPORT_CLASS
 - (void)startUpdatingHeading;
 - (void)stopUpdatingHeading;
 - (void)dismissHeadingCalibrationDisplay STUB_METHOD;
-@property (assign, nonatomic) CLLocationDegrees headingFilter STUB_PROPERTY;
+@property (assign, nonatomic) CLLocationDegrees headingFilter;
 @property (assign, nonatomic) CLDeviceOrientation headingOrientation;
 - (void)startMonitoringForRegion:(CLRegion*)region STUB_METHOD;
 - (void)stopMonitoringForRegion:(CLRegion*)region STUB_METHOD;

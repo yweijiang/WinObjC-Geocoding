@@ -438,20 +438,26 @@ static const int64_t c_timeoutInSeconds = 15LL;
  */
 - (void)_handleHeadingUpdate:(WDSCompassReading*)compassReading {
     @synchronized(self) {
-        CLHeading* previousHeading = self.heading;
+        CLLocationDirection accuracy = 0.0;
+        if (compassReading.headingAccuracy == WDSMagnetometerAccuracyUnknown) {
+            accuracy = 999.999;
+        } else if (compassReading.headingAccuracy == WDSMagnetometerAccuracyUnreliable) {
+            accuracy = 180.0;
+        } else if (compassReading.headingAccuracy == WDSMagnetometerAccuracyApproximate) {
+            accuracy = 25.0;
+        } else if (compassReading.headingAccuracy == WDSMagnetometerAccuracyHigh) {
+            accuracy = 10.0;
+        }
 
-        // Accuracy for Windows compass readings is an enum saying whether the result is accurate, semi-accurate, or inaccurate
-        // The CLHeading accuracy field specifies the maximum amount of error that a reading will have, so leaving at 0 for now
-        self.heading = [[CLHeading alloc] initWithAccuracy:0.0
-                                           magneticHeading:compassReading.headingMagneticNorth
-                                               trueHeading:[compassReading.headingTrueNorth doubleValue]];
+        // Calculate angular change from previous heading and make sure it is larger than headingFilter
+        CLLocationDegrees headingDelta = fmod(abs(self.heading.magneticHeading - compassReading.headingMagneticNorth), 360.0);
+        headingDelta = headingDelta > 180.0 ? 360.0 - headingDelta : headingDelta;
+        if (headingDelta > self.headingFilter) {
+            self.heading = [[CLHeading alloc] initWithAccuracy:accuracy
+                                               magneticHeading:compassReading.headingMagneticNorth
+                                                   trueHeading:[compassReading.headingTrueNorth doubleValue]];
 
-        // Deliver heading to the appropriate location manager delegate
-        if (_periodicHeadingUpdateRequested) {
-            if (![self.heading isEqual:previousHeading]) {
-                [self performSelector:@selector(_callUpdateHeadingsDelegate) onThread:_callerThread withObject:nil waitUntilDone:NO];
-            }
-        } else {
+            // Call heading update delegate
             [self performSelector:@selector(_callUpdateHeadingsDelegate) onThread:_callerThread withObject:nil waitUntilDone:NO];
         }
     }
@@ -596,6 +602,7 @@ static const int64_t c_timeoutInSeconds = 15LL;
         _uwpGeolocator = [WDGGeolocator make];
         _uwpCompass = [WDSCompass getDefault];
         _headingOrientation = CLDeviceOrientationLandscapeLeft;
+        _headingFilter = 0;
     }
 
     return self;
