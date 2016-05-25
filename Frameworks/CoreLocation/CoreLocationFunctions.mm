@@ -15,8 +15,8 @@
 //
 //******************************************************************************
 
-#import <CoreLocation/CoreLocationFunctions.h>
 #import <StubReturn.h>
+#import <CoreLocation/CoreLocationFunctions.h>
 
 /**
  @Status Interoperable

@@ -68,10 +68,21 @@ TEST(CoreLocation, CLLocation_CopyTest) {
     [location2 release];
 }
 
-TEST(CoreLocation, NewAPIBasicTest) {
-    CLLocation* location1 = [[CLLocation alloc] initWithLatitude:47.674 longitude:-122.1215];
-    CLLocation* location2 = [[CLLocation alloc] initWithLatitude:37.323 longitude:-122.0322];
+TEST(CoreLocation, LocationDistanceTests) {
+    CLLocation* locationSeattle = [[CLLocation alloc] initWithLatitude:47.6062 longitude:-122.3321];
+    CLLocation* locationLosAngeles = [[CLLocation alloc] initWithLatitude:34.0522 longitude:-118.2437];
+    CLLocation* locationSanFrancisco = [[CLLocation alloc] initWithLatitude:37.7749 longitude:-122.4194];
+    CLLocation* locationChicago = [[CLLocation alloc] initWithLatitude:41.8781 longitude:-87.6298];
+    CLLocation* locationNewYork = [[CLLocation alloc] initWithLatitude:40.7128 longitude:-74.0059];
 
-    CLLocationDistance distance = [location1 getDistanceFrom:location2];
-    ASSERT_NEAR_MSG(distance, 1151001.746193, 0.0001, "FAILED: Distance: %f\n", distance);
+    CLLocationDistance distance1 = [locationSeattle getDistanceFrom:locationLosAngeles];
+    CLLocationDistance distance2 = [locationLosAngeles getDistanceFrom:locationSanFrancisco];
+    CLLocationDistance distance3 = [locationSeattle getDistanceFrom:locationChicago];
+    CLLocationDistance distance4 = [locationLosAngeles getDistanceFrom:locationNewYork];
+
+    // Check values within nearest 2 kilometers because radius of earth varies among measurements
+    ASSERT_NEAR_MSG(distance1, 1545791, 2000, "FAILED: Distance: %f\n", distance1);
+    ASSERT_NEAR_MSG(distance2, 559296, 2000, "FAILED: Distance: %f\n", distance2);
+    ASSERT_NEAR_MSG(distance3, 2789733, 2000, "FAILED: Distance: %f\n", distance3);
+    ASSERT_NEAR_MSG(distance4, 3936990, 2000, "FAILED: Distance: %f\n", distance4);
 }

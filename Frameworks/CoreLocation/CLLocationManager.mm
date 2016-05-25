@@ -15,19 +15,19 @@
 //
 //******************************************************************************
 
-#import "NSLogging.h"
-#import <CoreLocation/CLHeading.h>
+#import <StubReturn.h>
+#import <Starboard.h>
+#import <NSDateInternal.h>
 #import <CoreLocation/CLLocation.h>
 #import <CoreLocation/CLLocationManager.h>
 #import <CoreLocation/CLLocationManagerDelegate.h>
-#import <NSDateInternal.h>
-#import <Starboard.h>
-#import <StubReturn.h>
-#import <UWP/WindowsApplicationModelExtendedExecution.h>
+#import "NSLogging.h"
 #import <UWP/WindowsDevicesGeolocation.h>
-#import <UWP/WindowsDevicesSensors.h>
+#import <UWP/WindowsApplicationModelExtendedExecution.h>
 #import <limits>
 #import <mutex>
+#import <UWP/WindowsDevicesSensors.h>
+#import <CoreLocation/CLHeading.h>
 #import "CLHeadingInternal.h"
 
 const CLLocationDistance CLLocationDistanceMax = std::numeric_limits<double>::max();
@@ -390,7 +390,7 @@ static const int64_t c_timeoutInSeconds = 15LL;
  * @param {WDSCompassReadingChangedEventArgs*} event ReadingChangedEventArgs received from Windows.
  */
 - (void)_handleHeadingChangedEvent:(WDSCompass*)compass statusEvent:(WDSCompassReadingChangedEventArgs*)event {
-    NSTraceVerbose(TAG, @"Received position changed event.");
+    NSTraceVerbose(TAG, @"Received heading changed event.");
     [self _handleHeadingUpdate:event.reading];
 }
 
@@ -434,15 +434,21 @@ static const int64_t c_timeoutInSeconds = 15LL;
 
 /**
  * Handles heading change updates.
- * @param {WDSCompassReading*} heading updated location values received from Windows.
+ * @param {WDSCompassReading*} compassReading updated heading values received from Windows.
  */
 - (void)_handleHeadingUpdate:(WDSCompassReading*)compassReading {
     @synchronized(self) {
+        // WDS gives an enum for accuracy, whether it cannot be determined or is reliable/unreliable
+        // As per https://msdn.microsoft.com/en-us/library/windows/hardware/dn642102%28v=vs.85%29.aspx,
+        // High accuracy is given by 0-10 degrees of difference between measured and actual North,
+        // approximate accuracy is between 10 and 25, while unreliable is up to 180 degrees. iOS documentation
+        // states that a negative number is returned when the heading is invalid, so 180 degree error gives -1 and
+        // an unknown accuracy gives -2.
         CLLocationDirection accuracy = 0.0;
         if (compassReading.headingAccuracy == WDSMagnetometerAccuracyUnknown) {
-            accuracy = 999.999;
+            accuracy = -2.0;
         } else if (compassReading.headingAccuracy == WDSMagnetometerAccuracyUnreliable) {
-            accuracy = 180.0;
+            accuracy = -1.0;
         } else if (compassReading.headingAccuracy == WDSMagnetometerAccuracyApproximate) {
             accuracy = 25.0;
         } else if (compassReading.headingAccuracy == WDSMagnetometerAccuracyHigh) {
@@ -727,7 +733,7 @@ static const int64_t c_timeoutInSeconds = 15LL;
 }
 
 /**
- @Status Caveat
+ @Status Interoperable
 */
 - (void)startUpdatingHeading {
     @synchronized(self) {

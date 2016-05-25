@@ -15,9 +15,9 @@
 //
 //******************************************************************************
 
+#import <StubReturn.h>
 #import <CoreLocation/CLHeading.h>
 #import <Foundation/Foundation.h>
-#import <StubReturn.h>
 
 @implementation CLHeading
 
@@ -35,7 +35,7 @@
 }
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 - (id)copyWithZone:(NSZone*)zone {
     CLHeading* newHeading = [[[self class] allocWithZone:zone] init];

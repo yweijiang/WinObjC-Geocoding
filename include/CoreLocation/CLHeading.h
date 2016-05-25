@@ -17,9 +17,9 @@
 
 #pragma once
 
-#import <CoreLocation/CoreLocationDataTypes.h>
 #import <CoreLocation/CoreLocationExport.h>
 #import <Foundation/NSObject.h>
+#import <CoreLocation/CoreLocationDataTypes.h>
 
 @class NSDate;
 

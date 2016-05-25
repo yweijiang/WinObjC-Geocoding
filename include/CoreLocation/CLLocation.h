@@ -17,8 +17,8 @@
 
 #pragma once
 
-#import <CoreLocation/CoreLocationDataTypes.h>
 #import <CoreLocation/CoreLocationExport.h>
+#import <CoreLocation/CoreLocationDataTypes.h>
 #import <Foundation/NSObject.h>
 
 @class CLFloor;

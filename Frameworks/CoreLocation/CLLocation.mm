@@ -15,9 +15,9 @@
 //
 //******************************************************************************
 
-#import <CoreLocation/CLLocation.h>
-#import <Starboard.h>
 #import <StubReturn.h>
+#import <Starboard.h>
+#import <CoreLocation/CLLocation.h>
 
 const CLLocationAccuracy kCLLocationAccuracyHundredMeters = 100;
 const CLLocationAccuracy kCLLocationAccuracyKilometer = 1000;
@@ -225,7 +225,7 @@ const double earthRadius = 6371000.0;
 /**
  @Status Interoperable
  @Notes  This uses the "haversine" formula to find circular distance between two points, found
-         here: http://www.movable-type.co.uk/scripts/latlong.html
+         here: https://en.wikipedia.org/wiki/Haversine_formula
 */
 - (CLLocationDistance)distanceFromLocation:(const CLLocation*)location {
     static const double degreesToRadians = M_PI / 180.0;
