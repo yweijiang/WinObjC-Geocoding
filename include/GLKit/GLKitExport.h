@@ -15,7 +15,7 @@
 //******************************************************************************
 #ifndef GLKIT_IMPEXP
 #ifdef __GLKIT_INSIDE_BUILD
-#define GLKIT_IMPEXP
+#define GLKIT_IMPEXP __declspec(dllexport)
 #else
 #define GLKIT_IMPEXP __declspec(dllimport)
 #endif
@@ -23,10 +23,11 @@
 
 #ifndef GLKIT_EXPORT
 #ifdef __cplusplus
-#define GLKIT_EXPORT GLKIT_IMPEXP extern "C"
+#define GLKIT_EXPORT extern "C" GLKIT_IMPEXP
 #define GLKIT_EXPORT_CLASS GLKIT_IMPEXP
 #else
 #define GLKIT_EXPORT GLKIT_IMPEXP extern
 #define GLKIT_EXPORT_CLASS GLKIT_IMPEXP
+//TODO #import <Foundation/Foundation.h>
 #endif
 #endif

@@ -21,6 +21,8 @@
 
 #import <StubIncludes.h>
 
+#include "GLKitExport.h"
+
 #import <GLKit/GLKView.h>
 #import <GLKit/GLKViewController.h>
 

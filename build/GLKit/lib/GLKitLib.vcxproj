@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|ARM">
@@ -17,6 +17,9 @@
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\..\Frameworks\GLKit\GLKMathSse2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClangCompile Include="$(MSBuildThisFileDirectory)..\..\..\Frameworks\GLKit\GLKEffect.mm" />
@@ -53,7 +56,9 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(StarboardBasePath)\Frameworks\include;</AdditionalIncludeDirectories>
+      <AdditionalOptions>-D__GLKIT_INSIDE_BUILD %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(StarboardBasePath)\include;$(StarboardBasePath)\Frameworks\include;</AdditionalIncludeDirectories>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <ClangCompile>
       <AdditionalOptions>-DSTARBOARD_PORT=1 -D__GLKIT_INSIDE_BUILD %(AdditionalOptions)</AdditionalOptions>
@@ -63,18 +68,19 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(StarboardBasePath)\Frameworks\include;</AdditionalIncludeDirectories>
+      <AdditionalOptions>-D__GLKIT_INSIDE_BUILD %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(StarboardBasePath)\include;$(StarboardBasePath)\Frameworks\include;</AdditionalIncludeDirectories>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <ClangCompile>
       <AdditionalOptions>-DSTARBOARD_PORT=1 -D__GLKIT_INSIDE_BUILD %(AdditionalOptions)</AdditionalOptions>
       <IncludePaths>$(StarboardBasePath)\deps\prebuilt\include;$(StarboardBasePath)\deps\prebuilt\include\icu;$(StarboardBasePath)\Frameworks\include</IncludePaths>
-      <OptimizationLevel>Full</OptimizationLevel>
     </ClangCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|arm'">
     <ClCompile>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(StarboardBasePath)\Frameworks\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(StarboardBasePath)\include;$(StarboardBasePath)\Frameworks\include;</AdditionalIncludeDirectories>
     </ClCompile>
     <ClangCompile>
       <AdditionalOptions>-DSTARBOARD_PORT=1 -D__GLKIT_INSIDE_BUILD %(AdditionalOptions)</AdditionalOptions>
@@ -84,7 +90,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|arm'">
     <ClCompile>
       <CompileAsWinRT>false</CompileAsWinRT>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(StarboardBasePath)\Frameworks\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(StarboardBasePath)\include;$(StarboardBasePath)\Frameworks\include;</AdditionalIncludeDirectories>
     </ClCompile>
     <ClangCompile>
       <AdditionalOptions>-DSTARBOARD_PORT=1 -D__GLKIT_INSIDE_BUILD %(AdditionalOptions)</AdditionalOptions>
