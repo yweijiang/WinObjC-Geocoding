@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -28,6 +29,5 @@
 #else
 #define GLKIT_EXPORT GLKIT_IMPEXP extern
 #define GLKIT_EXPORT_CLASS GLKIT_IMPEXP
-//TODO #import <Foundation/Foundation.h>
 #endif
 #endif
