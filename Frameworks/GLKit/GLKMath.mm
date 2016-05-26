@@ -14,14 +14,14 @@
 //
 //******************************************************************************
 
+#import <GLKit/GLKMath.h>
+#import <GLKit/GLKitExport.h>
 #import <Starboard.h>
 #import <StubReturn.h>
-#import <GLKit/GLKitExport.h>
-#import <GLKit/GLKMath.h>
 
 #include <utility>
 
-/// Functions with SSE optimized equivalants. 
+/// Functions with SSE optimized equivalants.
 /// If there is an SSE equivalent, the non-SSE version must be placed within this block
 #if !defined(USE_SSE)
 const GLKMatrix3 GLKMatrix3Identity = GLKMatrix3MakeIdentity();
@@ -296,8 +296,7 @@ GLKIT_EXPORT GLKVector3 GLKMatrix4MultiplyVector3(GLKMatrix4 m, GLKVector3 vec) 
 /**
    @Status Interoperable
 */
-GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInvertible)
-{
+GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInvertible) {
     const float a1 = m.m[0];
     const float b1 = m.m[1];
     const float c1 = m.m[2];
@@ -310,17 +309,17 @@ GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInver
     const float determinant = (a1 * (b2 * c3 - b3 * c2) + a2 * (b3 * c1 - b1 * c3) + a3 * (b1 * c2 - b2 * c1));
 
     /*
-    const float determinant = m.m00 * (m.m11 * m.m22 - m.m12 * m.m21) + 
-                              m.m01 * (m.m12 * m.m20 - m.m10 * m.m22) + 
+    const float determinant = m.m00 * (m.m11 * m.m22 - m.m12 * m.m21) +
+                              m.m01 * (m.m12 * m.m20 - m.m10 * m.m22) +
                               m.m02 * (m.m10 * m.m21 - m.m11 * m.m20);*/
 
     GLKMatrix3 res;
 
     if (determinant == 0) {
         if (isInvertible != nullptr) {
-            *isInvertible = false;        
+            *isInvertible = false;
         }
-        
+
         res = { 0 };
         res.m00 = 1.0f;
         res.m11 = 1.0f;
@@ -329,11 +328,11 @@ GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInver
         if (isInvertible != nullptr) {
             *isInvertible = true;
         }
-        
-        res.m[0] = (m.m11 * m.m22 - m.m12 * m.m21) / determinant;   //item 1 of det
-        res.m[1] = (m.m12 * m.m20 - m.m10 * m.m22) / determinant;   //item 2 of det
-        res.m[2] = (m.m10 * m.m21 - m.m11 * m.m20) / determinant;   //item 3 of det
-        res.m[3] = (m.m02 * m.m21 - m.m01 * m.m22) / determinant;   
+
+        res.m[0] = (m.m11 * m.m22 - m.m12 * m.m21) / determinant; // item 1 of det
+        res.m[1] = (m.m12 * m.m20 - m.m10 * m.m22) / determinant; // item 2 of det
+        res.m[2] = (m.m10 * m.m21 - m.m11 * m.m20) / determinant; // item 3 of det
+        res.m[3] = (m.m02 * m.m21 - m.m01 * m.m22) / determinant;
         res.m[4] = (m.m00 * m.m22 - m.m02 * m.m20) / determinant;
         res.m[5] = (m.m01 * m.m20 - m.m00 * m.m21) / determinant;
         res.m[6] = (m.m01 * m.m12 - m.m02 * m.m11) / determinant;
@@ -347,8 +346,7 @@ GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInver
 /**
    @Status Interoperable
 */
-GLKIT_EXPORT GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, BOOL* isInvertible)
-{
+GLKIT_EXPORT GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, BOOL* isInvertible) {
     m = GLKMatrix3InvertAndTranspose(m, isInvertible);
     return GLKMatrix3Transpose(m);
 }
@@ -410,23 +408,39 @@ GLKIT_EXPORT void GLKMatrix4MultiplyVector4Array(GLKMatrix4 m, GLKVector4* vecs,
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, BOOL* isInvertible) {
     GLKMatrix4 a;
     GLKMatrix4 aNorm;
-    
-    a.m00 =  (m.m11 * m.m22 * m.m33) + (m.m12 * m.m23 * m.m31) + (m.m13 * m.m21 * m.m32) - (m.m11 * m.m23 * m.m32) - (m.m12 * m.m21 * m.m33) - (m.m13 * m.m22 * m.m31);
-    a.m01 =  (m.m01 * m.m23 * m.m32) + (m.m02 * m.m21 * m.m33) + (m.m03 * m.m22 * m.m31) - (m.m01 * m.m22 * m.m33) - (m.m02 * m.m31 * m.m23) - (m.m03 * m.m32 * m.m21);
-    a.m02 =  (m.m01 * m.m12 * m.m33) + (m.m02 * m.m13 * m.m31) + (m.m03 * m.m11 * m.m32) - (m.m01 * m.m13 * m.m32) - (m.m02 * m.m11 * m.m33) - (m.m03 * m.m12 * m.m31);
-    a.m03 =  (m.m01 * m.m13 * m.m22) + (m.m02 * m.m11 * m.m23) + (m.m03 * m.m12 * m.m21) - (m.m01 * m.m12 * m.m23) - (m.m03 * m.m11 * m.m22) - (m.m02 * m.m13 * m.m21);
-    a.m10 =  (m.m10 * m.m23 * m.m32) + (m.m13 * m.m22 * m.m30) + (m.m12 * m.m20 * m.m33) - (m.m10 * m.m22 * m.m33) - (m.m13 * m.m20 * m.m32) - (m.m12 * m.m23 * m.m30);
-    a.m11 =  (m.m00 * m.m22 * m.m33) + (m.m02 * m.m23 * m.m30) + (m.m03 * m.m20 * m.m32) - (m.m00 * m.m23 * m.m32) - (m.m02 * m.m20 * m.m33) - (m.m03 * m.m22 * m.m30);
-    a.m12 =  (m.m00 * m.m13 * m.m32) + (m.m02 * m.m10 * m.m33) + (m.m03 * m.m12 * m.m30) - (m.m00 * m.m12 * m.m33) - (m.m03 * m.m10 * m.m32) - (m.m02 * m.m13 * m.m30);
-    a.m13 =  (m.m00 * m.m12 * m.m23) + (m.m02 * m.m13 * m.m20) + (m.m03 * m.m10 * m.m22) - (m.m00 * m.m13 * m.m22) - (m.m02 * m.m10 * m.m23) - (m.m03 * m.m12 * m.m20);
-    a.m20 =  (m.m10 * m.m21 * m.m33) + (m.m11 * m.m23 * m.m30) + (m.m13 * m.m20 * m.m31) - (m.m10 * m.m23 * m.m31) - (m.m11 * m.m20 * m.m33) - (m.m13 * m.m21 * m.m30);
-    a.m21 =  (m.m00 * m.m23 * m.m31) + (m.m01 * m.m20 * m.m33) + (m.m03 * m.m21 * m.m30) - (m.m00 * m.m21 * m.m33) - (m.m03 * m.m20 * m.m31) - (m.m01 * m.m23 * m.m30);
-    a.m22 =  (m.m00 * m.m11 * m.m33) + (m.m01 * m.m13 * m.m30) + (m.m03 * m.m10 * m.m31) - (m.m00 * m.m13 * m.m31) - (m.m01 * m.m10 * m.m33) - (m.m03 * m.m11 * m.m30);
-    a.m23 =  (m.m00 * m.m13 * m.m21) + (m.m01 * m.m10 * m.m23) + (m.m03 * m.m11 * m.m20) - (m.m00 * m.m11 * m.m23) - (m.m01 * m.m13 * m.m20) - (m.m03 * m.m10 * m.m21);
-    a.m30 =  (m.m10 * m.m22 * m.m31) + (m.m11 * m.m20 * m.m32) + (m.m12 * m.m21 * m.m30) - (m.m10 * m.m21 * m.m32) - (m.m12 * m.m20 * m.m31) - (m.m11 * m.m22 * m.m30);
-    a.m31 =  (m.m00 * m.m21 * m.m32) + (m.m01 * m.m22 * m.m30) + (m.m02 * m.m20 * m.m31) - (m.m00 * m.m22 * m.m31) - (m.m01 * m.m20 * m.m32) - (m.m02 * m.m21 * m.m30);
-    a.m32 =  (m.m00 * m.m12 * m.m31) + (m.m01 * m.m10 * m.m32) + (m.m02 * m.m11 * m.m30) - (m.m00 * m.m11 * m.m32) - (m.m02 * m.m10 * m.m31) - (m.m01 * m.m12 * m.m30);
-    a.m33 =  (m.m00 * m.m11 * m.m22) + (m.m01 * m.m12 * m.m20) + (m.m02 * m.m10 * m.m21) - (m.m00 * m.m12 * m.m21) - (m.m01 * m.m10 * m.m22) - (m.m02 * m.m11 * m.m20);
+
+    a.m00 = (m.m11 * m.m22 * m.m33) + (m.m12 * m.m23 * m.m31) + (m.m13 * m.m21 * m.m32) - (m.m11 * m.m23 * m.m32) -
+            (m.m12 * m.m21 * m.m33) - (m.m13 * m.m22 * m.m31);
+    a.m01 = (m.m01 * m.m23 * m.m32) + (m.m02 * m.m21 * m.m33) + (m.m03 * m.m22 * m.m31) - (m.m01 * m.m22 * m.m33) -
+            (m.m02 * m.m31 * m.m23) - (m.m03 * m.m32 * m.m21);
+    a.m02 = (m.m01 * m.m12 * m.m33) + (m.m02 * m.m13 * m.m31) + (m.m03 * m.m11 * m.m32) - (m.m01 * m.m13 * m.m32) -
+            (m.m02 * m.m11 * m.m33) - (m.m03 * m.m12 * m.m31);
+    a.m03 = (m.m01 * m.m13 * m.m22) + (m.m02 * m.m11 * m.m23) + (m.m03 * m.m12 * m.m21) - (m.m01 * m.m12 * m.m23) -
+            (m.m03 * m.m11 * m.m22) - (m.m02 * m.m13 * m.m21);
+    a.m10 = (m.m10 * m.m23 * m.m32) + (m.m13 * m.m22 * m.m30) + (m.m12 * m.m20 * m.m33) - (m.m10 * m.m22 * m.m33) -
+            (m.m13 * m.m20 * m.m32) - (m.m12 * m.m23 * m.m30);
+    a.m11 = (m.m00 * m.m22 * m.m33) + (m.m02 * m.m23 * m.m30) + (m.m03 * m.m20 * m.m32) - (m.m00 * m.m23 * m.m32) -
+            (m.m02 * m.m20 * m.m33) - (m.m03 * m.m22 * m.m30);
+    a.m12 = (m.m00 * m.m13 * m.m32) + (m.m02 * m.m10 * m.m33) + (m.m03 * m.m12 * m.m30) - (m.m00 * m.m12 * m.m33) -
+            (m.m03 * m.m10 * m.m32) - (m.m02 * m.m13 * m.m30);
+    a.m13 = (m.m00 * m.m12 * m.m23) + (m.m02 * m.m13 * m.m20) + (m.m03 * m.m10 * m.m22) - (m.m00 * m.m13 * m.m22) -
+            (m.m02 * m.m10 * m.m23) - (m.m03 * m.m12 * m.m20);
+    a.m20 = (m.m10 * m.m21 * m.m33) + (m.m11 * m.m23 * m.m30) + (m.m13 * m.m20 * m.m31) - (m.m10 * m.m23 * m.m31) -
+            (m.m11 * m.m20 * m.m33) - (m.m13 * m.m21 * m.m30);
+    a.m21 = (m.m00 * m.m23 * m.m31) + (m.m01 * m.m20 * m.m33) + (m.m03 * m.m21 * m.m30) - (m.m00 * m.m21 * m.m33) -
+            (m.m03 * m.m20 * m.m31) - (m.m01 * m.m23 * m.m30);
+    a.m22 = (m.m00 * m.m11 * m.m33) + (m.m01 * m.m13 * m.m30) + (m.m03 * m.m10 * m.m31) - (m.m00 * m.m13 * m.m31) -
+            (m.m01 * m.m10 * m.m33) - (m.m03 * m.m11 * m.m30);
+    a.m23 = (m.m00 * m.m13 * m.m21) + (m.m01 * m.m10 * m.m23) + (m.m03 * m.m11 * m.m20) - (m.m00 * m.m11 * m.m23) -
+            (m.m01 * m.m13 * m.m20) - (m.m03 * m.m10 * m.m21);
+    a.m30 = (m.m10 * m.m22 * m.m31) + (m.m11 * m.m20 * m.m32) + (m.m12 * m.m21 * m.m30) - (m.m10 * m.m21 * m.m32) -
+            (m.m12 * m.m20 * m.m31) - (m.m11 * m.m22 * m.m30);
+    a.m31 = (m.m00 * m.m21 * m.m32) + (m.m01 * m.m22 * m.m30) + (m.m02 * m.m20 * m.m31) - (m.m00 * m.m22 * m.m31) -
+            (m.m01 * m.m20 * m.m32) - (m.m02 * m.m21 * m.m30);
+    a.m32 = (m.m00 * m.m12 * m.m31) + (m.m01 * m.m10 * m.m32) + (m.m02 * m.m11 * m.m30) - (m.m00 * m.m11 * m.m32) -
+            (m.m02 * m.m10 * m.m31) - (m.m01 * m.m12 * m.m30);
+    a.m33 = (m.m00 * m.m11 * m.m22) + (m.m01 * m.m12 * m.m20) + (m.m02 * m.m10 * m.m21) - (m.m00 * m.m12 * m.m21) -
+            (m.m01 * m.m10 * m.m22) - (m.m02 * m.m11 * m.m20);
 
     const float determinant = m.m00 * a.m00 + m.m01 * a.m10 + m.m02 * a.m20 + m.m03 * a.m30;
 
@@ -575,8 +589,7 @@ GLKIT_EXPORT GLKQuaternion GLKQuaternionMakeWithMatrix3(GLKMatrix3 mat) {
         res.y = (mat.m20 - mat.m02) * inv2SqrtTrace;
         res.z = (mat.m01 - mat.m10) * inv2SqrtTrace;
         res.w = trace * inv2SqrtTrace;
-    }
-    else if ((mat.m00 > mat.m11) && (mat.m00 > mat.m22)) {
+    } else if ((mat.m00 > mat.m11) && (mat.m00 > mat.m22)) {
         trace = 1.f + mat.m00 - mat.m11 - mat.m22;
         float inv2SqrtTrace = 0.5f / sqrtf(trace);
 
@@ -584,8 +597,7 @@ GLKIT_EXPORT GLKQuaternion GLKQuaternionMakeWithMatrix3(GLKMatrix3 mat) {
         res.y = (mat.m10 + mat.m01) * inv2SqrtTrace;
         res.z = (mat.m02 + mat.m20) * inv2SqrtTrace;
         res.w = (mat.m12 - mat.m21) * inv2SqrtTrace;
-    }
-    else if (mat.m11 > mat.m22) {
+    } else if (mat.m11 > mat.m22) {
         trace = 1.f + mat.m11 - mat.m00 - mat.m22;
         float inv2SqrtTrace = 0.5f / sqrtf(trace);
 
@@ -593,8 +605,7 @@ GLKIT_EXPORT GLKQuaternion GLKQuaternionMakeWithMatrix3(GLKMatrix3 mat) {
         res.y = trace * inv2SqrtTrace;
         res.z = (mat.m21 + mat.m12) * inv2SqrtTrace;
         res.w = (mat.m20 - mat.m02) * inv2SqrtTrace;
-    }
-    else {
+    } else {
         trace = 1.f + mat.m22 - mat.m00 - mat.m11;
         float inv2SqrtTrace = 0.5f / sqrtf(trace);
 
@@ -697,7 +708,7 @@ GLKMatrix4 GLKMatrix4Add(GLKMatrix4 matrixLeft, GLKMatrix4 matrixRight) {
         for (unsigned int j = 0; j < 4; j++) {
             res.m[rowOffset + j] = matrixLeft.m[rowOffset + j] + matrixRight.m[rowOffset + j];
         }
-        
+
         rowOffset += 4;
     }
 
@@ -716,7 +727,7 @@ GLKMatrix4 GLKMatrix4Subtract(GLKMatrix4 matrixLeft, GLKMatrix4 matrixRight) {
         for (unsigned int j = 0; j < 4; j++) {
             res.m[rowOffset + j] = matrixLeft.m[rowOffset + j] - matrixRight.m[rowOffset + j];
         }
-        
+
         rowOffset += 4;
     }
 
@@ -1135,54 +1146,51 @@ GLKIT_EXPORT GLKVector3 GLKMatrix3MultiplyVector3(GLKMatrix3 m, GLKVector3 vec) 
 /**
    @Status Interoperable
 */
-GLKIT_EXPORT GLKMatrix2 GLKMatrix3GetMatrix2(GLKMatrix3 m)
-{
+GLKIT_EXPORT GLKMatrix2 GLKMatrix3GetMatrix2(GLKMatrix3 m) {
     GLKMatrix2 res;
 
     res.m00 = m.m00;
     res.m01 = m.m01;
-    
+
     res.m10 = m.m10;
     res.m11 = m.m11;
-    
+
     return res;
 }
 
 /**
    @Status Interoperable
 */
-GLKIT_EXPORT GLKMatrix2 GLKMatrix4GetMatrix2(GLKMatrix4 m)
-{
+GLKIT_EXPORT GLKMatrix2 GLKMatrix4GetMatrix2(GLKMatrix4 m) {
     GLKMatrix2 res;
 
     res.m00 = m.m00;
     res.m01 = m.m01;
-    
+
     res.m10 = m.m10;
     res.m11 = m.m11;
-    
+
     return res;
 }
 
 /**
  @Status Interoperable
 */
-GLKIT_EXPORT GLKMatrix3 GLKMatrix4GetMatrix3(GLKMatrix4 m)
-{
+GLKIT_EXPORT GLKMatrix3 GLKMatrix4GetMatrix3(GLKMatrix4 m) {
     GLKMatrix3 res;
 
     res.m00 = m.m00;
     res.m01 = m.m01;
     res.m02 = m.m02;
-    
+
     res.m10 = m.m10;
     res.m11 = m.m11;
     res.m12 = m.m12;
-    
+
     res.m20 = m.m20;
     res.m21 = m.m21;
     res.m22 = m.m22;
-    
+
     return res;
 }
 

@@ -18,21 +18,20 @@
 #pragma once
 
 #include "GLKMath.h"
-#include <float.h>
 #include <assert.h>
-#include <memory.h>
+#include <float.h>
 #include <math.h>
-
+#include <memory.h>
 
 /// Matrix SSE Types
 __declspec(align(16)) struct GLKMatrixSSE {
-    __m128     row[4];
-    GLKMatrixSSE() {}
-    explicit GLKMatrixSSE(_In_reads_(16) const float *pArray);
+    __m128 row[4];
+    GLKMatrixSSE() {
+    }
+    explicit GLKMatrixSSE(_In_reads_(16) const float* pArray);
 };
 
-_Use_decl_annotations_
-inline GLKMatrixSSE::GLKMatrixSSE(const float* pArray) {
+_Use_decl_annotations_ inline GLKMatrixSSE::GLKMatrixSSE(const float* pArray) {
     assert(pArray != nullptr);
     row[0] = _mm_loadu_ps((const float*)pArray);
     row[1] = _mm_loadu_ps((const float*)(pArray + 4));
@@ -43,21 +42,30 @@ inline GLKMatrixSSE::GLKMatrixSSE(const float* pArray) {
 /// MatrixSSE aliased with GLKMatrix4, GLKMatrix3
 __declspec(align(16)) struct GLKMatrix4SSE {
     union {
-        __m128        row[4];
-        GLKMatrixSSE  vectors;
-        GLKMatrix4    matrix4;
-        GLKMatrix3    matrix3;
+        __m128 row[4];
+        GLKMatrixSSE vectors;
+        GLKMatrix4 matrix4;
+        GLKMatrix3 matrix3;
     };
 
-    GLKMatrix4SSE() {}
-    explicit GLKMatrix4SSE(_In_reads_(16) const float *pArray);
-    GLKMatrix4SSE(_In_reads_(4) const __m128& row0, _In_reads_(4) const __m128& row1, _In_reads_(4) const __m128& row2, _In_reads_(4) const __m128& row3);
+    GLKMatrix4SSE() {
+    }
+    explicit GLKMatrix4SSE(_In_reads_(16) const float* pArray);
+    GLKMatrix4SSE(_In_reads_(4) const __m128& row0,
+                  _In_reads_(4) const __m128& row1,
+                  _In_reads_(4) const __m128& row2,
+                  _In_reads_(4) const __m128& row3);
 
-    GLKMatrix4SSE&   operator= (const GLKMatrix4SSE& m) { row[0] = m.row[0]; row[1] = m.row[1]; row[2] = m.row[2]; row[3] = m.row[3]; return *this; }
+    GLKMatrix4SSE& operator=(const GLKMatrix4SSE& m) {
+        row[0] = m.row[0];
+        row[1] = m.row[1];
+        row[2] = m.row[2];
+        row[3] = m.row[3];
+        return *this;
+    }
 };
 
-_Use_decl_annotations_
-inline GLKMatrix4SSE::GLKMatrix4SSE(const float* pArray) {
+_Use_decl_annotations_ inline GLKMatrix4SSE::GLKMatrix4SSE(const float* pArray) {
     assert(pArray != nullptr);
     row[0] = _mm_loadu_ps((const float*)pArray);
     row[1] = _mm_loadu_ps((const float*)(pArray + 4));
@@ -65,8 +73,7 @@ inline GLKMatrix4SSE::GLKMatrix4SSE(const float* pArray) {
     row[3] = _mm_loadu_ps((const float*)(pArray + 12));
 }
 
-_Use_decl_annotations_
-inline GLKMatrix4SSE::GLKMatrix4SSE(const __m128& row0, const __m128& row1, const __m128& row2, const __m128& row3) {
+_Use_decl_annotations_ inline GLKMatrix4SSE::GLKMatrix4SSE(const __m128& row0, const __m128& row1, const __m128& row2, const __m128& row3) {
     row[0] = row0;
     row[1] = row1;
     row[2] = row2;
@@ -81,7 +88,9 @@ __declspec(align(16)) typedef struct _GLKVectorSSE {
         GLKVector3 glkVector3;
         GLKQuaternion glkQuaternion;
     };
-    inline operator __m128() const { return vectorM128; }
+    inline operator __m128() const {
+        return vectorM128;
+    }
 } GLKVectorSSE;
 
 /// VectorSSE UINT alias
@@ -92,25 +101,27 @@ __declspec(align(16)) typedef struct _GLKVectorSSEui {
         GLKVector4 glkVector4;
         GLKVector3 glkVector3;
     };
-    inline operator __m128() const { return vectorM128; }
+    inline operator __m128() const {
+        return vectorM128;
+    }
 } GLKVectorSSEui;
 
-GLK_GLOBALCONST __m128 vectorIdMatrixRow0 = { 1.0f,  0.0f,  0.0f,  0.0f };
-GLK_GLOBALCONST __m128 vectorIdMatrixRow1 = { 0.0f,  1.0f,  0.0f,  0.0f };
-GLK_GLOBALCONST __m128 vectorIdMatrixRow2 = { 0.0f,  0.0f,  1.0f,  0.0f };
-GLK_GLOBALCONST __m128 vectorIdMatrixRow3 = { 0.0f,  0.0f,  0.0f,  1.0f };
-GLK_GLOBALCONST __m128 vectorNegateIdMatrixRow0 = { -1.0f,  0.0f,  0.0f,  0.0f };
-GLK_GLOBALCONST __m128 vectorNegateIdMatrixRow1 = { 0.0f, -1.0f,  0.0f,  0.0f };
-GLK_GLOBALCONST __m128 vectorNegateIdMatrixRow2 = { 0.0f,  0.0f, -1.0f,  0.0f };
-GLK_GLOBALCONST __m128 vectorNegateIdMatrixRow3 = { 0.0f,  0.0f,  0.0f, -1.0f };
-GLK_GLOBALCONST __m128 vectorAllOnes = { 1.0f,  1.0f,  1.0f,  1.0f };
-GLK_GLOBALCONST __m128 vectorAllZeros = { 0.0f,  0.0f,  0.0f,  0.0f };
-GLK_GLOBALCONST __m128 vectorNegateX = { -1.0f,  1.0f,  1.0f,  1.0f };
-GLK_GLOBALCONST __m128 vectorNegateY = { 1.0f, -1.0f,  1.0f,  1.0f };
-GLK_GLOBALCONST __m128 vectorNegateZ = { 1.0f,  1.0f, -1.0f,  1.0f };
-GLK_GLOBALCONST __m128 vectorNegateW = { 1.0f,  1.0f,  1.0f, -1.0f };
-GLK_GLOBALCONST __m128 vectorNegateXYZ = { -1.0f, -1.0f, -1.0f,  1.0f };
-GLK_GLOBALCONST __m128 vectorIdMatrix3Row = { 1.0f,  0.0f,  0.0f,  0.0f };
+GLK_GLOBALCONST __m128 vectorIdMatrixRow0 = { 1.0f, 0.0f, 0.0f, 0.0f };
+GLK_GLOBALCONST __m128 vectorIdMatrixRow1 = { 0.0f, 1.0f, 0.0f, 0.0f };
+GLK_GLOBALCONST __m128 vectorIdMatrixRow2 = { 0.0f, 0.0f, 1.0f, 0.0f };
+GLK_GLOBALCONST __m128 vectorIdMatrixRow3 = { 0.0f, 0.0f, 0.0f, 1.0f };
+GLK_GLOBALCONST __m128 vectorNegateIdMatrixRow0 = { -1.0f, 0.0f, 0.0f, 0.0f };
+GLK_GLOBALCONST __m128 vectorNegateIdMatrixRow1 = { 0.0f, -1.0f, 0.0f, 0.0f };
+GLK_GLOBALCONST __m128 vectorNegateIdMatrixRow2 = { 0.0f, 0.0f, -1.0f, 0.0f };
+GLK_GLOBALCONST __m128 vectorNegateIdMatrixRow3 = { 0.0f, 0.0f, 0.0f, -1.0f };
+GLK_GLOBALCONST __m128 vectorAllOnes = { 1.0f, 1.0f, 1.0f, 1.0f };
+GLK_GLOBALCONST __m128 vectorAllZeros = { 0.0f, 0.0f, 0.0f, 0.0f };
+GLK_GLOBALCONST __m128 vectorNegateX = { -1.0f, 1.0f, 1.0f, 1.0f };
+GLK_GLOBALCONST __m128 vectorNegateY = { 1.0f, -1.0f, 1.0f, 1.0f };
+GLK_GLOBALCONST __m128 vectorNegateZ = { 1.0f, 1.0f, -1.0f, 1.0f };
+GLK_GLOBALCONST __m128 vectorNegateW = { 1.0f, 1.0f, 1.0f, -1.0f };
+GLK_GLOBALCONST __m128 vectorNegateXYZ = { -1.0f, -1.0f, -1.0f, 1.0f };
+GLK_GLOBALCONST __m128 vectorIdMatrix3Row = { 1.0f, 0.0f, 0.0f, 0.0f };
 
 GLK_GLOBALCONST GLKVectorSSEui vectorUiInfinity = { 0x7F800000, 0x7F800000, 0x7F800000, 0x7F800000 };
 GLK_GLOBALCONST GLKVectorSSEui vectorUiNan = { 0x7FC00000, 0x7FC00000, 0x7FC00000, 0x7FC00000 };
@@ -122,7 +133,7 @@ GLK_GLOBALCONST GLKVectorSSEui vectorUiMaskW = { 0x00000000, 0x00000000, 0x00000
 
 GLK_GLOBALCONST GLKMatrix4SSE matrix4Identity = { vectorIdMatrixRow0, vectorIdMatrixRow1, vectorIdMatrixRow2, vectorIdMatrixRow3 };
 GLK_GLOBALCONST GLKMatrix4SSE matrix3Identity = { vectorIdMatrix3Row, vectorIdMatrix3Row, vectorIdMatrix3Row, vectorAllZeros };
-GLK_GLOBALCONST GLKVectorSSE  quatIdentity = { vectorIdMatrixRow3 };
+GLK_GLOBALCONST GLKVectorSSE quatIdentity = { vectorIdMatrixRow3 };
 
 /// Inline function definitions
 inline GLKMatrixSSE GLK_CALLCONV GLKMatrixSseTranspose(GLKMatrixSSE m);
@@ -134,7 +145,7 @@ inline __m128 GLK_CALLCONV GLKSSE2DotVector3(__m128 v1, __m128 v2);
 inline __m128 GLK_CALLCONV GLKSSE2DotVector4(__m128 v1, __m128 v2);
 inline __m128 GLK_CALLCONV GLKSSE2Select(__m128 v1, __m128 v2, __m128 control);
 inline __m128 GLK_CALLCONV GLKSSE2Set(float x, float y, float z, float w);
-inline __m128 GLK_CALLCONV GLKSSE2QuaternionAxis(__m128 quat, const float &w);
+inline __m128 GLK_CALLCONV GLKSSE2QuaternionAxis(__m128 quat, const float& w);
 inline __m128 GLK_CALLCONV GLKSSE2MultiplyMatrix4Vector4(const GLKMatrixSSE m, const __m128 v);
 inline __m128 GLK_CALLCONV GLKSSE2MultiplyMatrix4Vector3(const GLKMatrixSSE m, const __m128 v);
 inline __m128 GLK_CALLCONV GLKSSE2MultiplyMatrix4Vector3Translate(const GLKMatrixSSE m, const __m128 v);
@@ -150,9 +161,8 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4MultiplyMatrix4(GLKMatrixSSE m1, 
 inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4Invert(GLKMatrixSSE mT, BOOL* isInvertible);
 inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrixSSE mT, BOOL* isInvertible);
 
-inline void GLK_CALLCONV GLKSSE2Matrix4TranslateVector4(GLKMatrixSSE &m, __m128 v);
+inline void GLK_CALLCONV GLKSSE2Matrix4TranslateVector4(GLKMatrixSSE& m, __m128 v);
 inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4ScaleVector4(GLKMatrixSSE m, __m128 scaleVector);
-
 
 inline GLKMatrixSSE GLK_CALLCONV GLKMatrixSseTranspose(GLKMatrixSSE m) {
     GLKMatrixSSE res;
@@ -166,7 +176,7 @@ inline GLKMatrixSSE GLK_CALLCONV GLKMatrixSseTranspose(GLKMatrixSSE m) {
     res.row[2] = _mm_shuffle_ps(tempVector3, tempVector4, _MM_SHUFFLE(2, 0, 2, 0));
     res.row[3] = _mm_shuffle_ps(tempVector3, tempVector4, _MM_SHUFFLE(3, 1, 3, 1));
 
-    //Note: This is an in-place transpose. Would need to be copied to result or M would have to be the input.
+    // Note: This is an in-place transpose. Would need to be copied to result or M would have to be the input.
     //_MM_TRANSPOSE4_PS(m.row[0], m.row[1], m.row[2], m.row[3]);
 
     return res;
@@ -264,12 +274,11 @@ inline __m128 GLK_CALLCONV GLKSSE2DotVector4(__m128 v1, __m128 v2) {
     __m128 tmpVector2 = v2;
     __m128 tmpVector = _mm_mul_ps(v1, tmpVector2);
     tmpVector2 = _mm_shuffle_ps(tmpVector2, tmpVector, _MM_SHUFFLE(1, 0, 0, 0)); // Copy X to the Z position and Y to the W position
-    tmpVector2 = _mm_add_ps(tmpVector2, tmpVector);          // Add Z = X+Z; W = Y+W;
-    tmpVector = _mm_shuffle_ps(tmpVector, tmpVector2, _MM_SHUFFLE(0, 3, 0, 0));  // Copy W to the Z position
-    tmpVector = _mm_add_ps(tmpVector, tmpVector2);           // Add Z and W together
-    return _mm_shuffle_ps(tmpVector, tmpVector, _MM_SHUFFLE(2, 2, 2, 2));    // Splat Z and return
+    tmpVector2 = _mm_add_ps(tmpVector2, tmpVector); // Add Z = X+Z; W = Y+W;
+    tmpVector = _mm_shuffle_ps(tmpVector, tmpVector2, _MM_SHUFFLE(0, 3, 0, 0)); // Copy W to the Z position
+    tmpVector = _mm_add_ps(tmpVector, tmpVector2); // Add Z and W together
+    return _mm_shuffle_ps(tmpVector, tmpVector, _MM_SHUFFLE(2, 2, 2, 2)); // Splat Z and return
 }
-
 
 inline __m128 GLK_CALLCONV GLKSSE2Select(__m128 v1, __m128 v2, __m128 control) {
     __m128 tmpVector1 = _mm_andnot_ps(control, v1);
@@ -281,7 +290,7 @@ inline __m128 GLK_CALLCONV GLKSSE2Set(float x, float y, float z, float w) {
     return _mm_set_ps(w, z, y, x);
 }
 
-inline __m128 GLK_CALLCONV GLKSSE2QuaternionAxis(__m128 quat, const float &w) {
+inline __m128 GLK_CALLCONV GLKSSE2QuaternionAxis(__m128 quat, const float& w) {
     __declspec(align(16)) const float mf = 1.f / sinf(acosf(w));
     __m128 mfVector = _mm_load_ps1(&mf);
 
@@ -289,7 +298,6 @@ inline __m128 GLK_CALLCONV GLKSSE2QuaternionAxis(__m128 quat, const float &w) {
 }
 
 inline __m128 GLK_CALLCONV GLKSSE2MultiplyMatrix4Vector4(const GLKMatrixSSE m, const __m128 v) {
-
     __m128 tmpVectorX = _mm_shuffle_ps(v, v, _MM_SHUFFLE(0, 0, 0, 0));
     __m128 tmpVectorY = _mm_shuffle_ps(v, v, _MM_SHUFFLE(1, 1, 1, 1));
     __m128 tmpVectorZ = _mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 2, 2, 2));
@@ -314,7 +322,7 @@ inline __m128 GLK_CALLCONV GLKSSE2MultiplyMatrix4Vector3(const GLKMatrixSSE m, c
     tmpVector = _mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 2, 2, 2));
     tmpVector = _mm_mul_ps(tmpVector, m.row[2]);
     res = _mm_add_ps(res, tmpVector);
-    //res = _mm_add_ps(res, m.row[3]);
+    // res = _mm_add_ps(res, m.row[3]);
     return res;
 }
 
@@ -333,13 +341,13 @@ inline __m128 GLK_CALLCONV GLKSSE2MultiplyMatrix4Vector3Translate(const GLKMatri
 
 inline void GLK_CALLCONV GLKSSE2Matrix4MultiplyVector3Array(GLKMatrixSSE m, GLKVector3* vecs, size_t numVecs) {
     __m128 vector;
-    //assert((uintptr_t(vecs) & 15) == 0);
+    // assert((uintptr_t(vecs) & 15) == 0);
     int i;
     int numVectors = static_cast<int>(numVecs);
 
     // Transform all but the last vector
     for (i = 0; i < (numVectors - 2); i++) {
-        vector = _mm_loadu_ps((const float *)vecs[i].v);
+        vector = _mm_loadu_ps((const float*)vecs[i].v);
         vector = GLKSSE2MultiplyMatrix4Vector3(m, vector);
         _mm_storeu_ps(vecs[i].v, vector);
     }
@@ -372,29 +380,28 @@ inline void GLK_CALLCONV GLKSSE2Matrix4MultiplyVector4Array(GLKMatrixSSE m, GLKV
     assert((uintptr_t(vecs) & 15) == 0);
 
     for (size_t i = 0; i < numVecs; i++) {
-        vector = _mm_loadu_ps((const float *)vecs[i].v);
+        vector = _mm_loadu_ps((const float*)vecs[i].v);
         vector = GLKSSE2MultiplyMatrix4Vector4(m, vector);
         _mm_storeu_ps(vecs[i].v, vector);
     }
 }
 
 inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4MakeXRotation(float rad) {
-
     GLKMatrixSSE res;
     float sinRad = sinf(rad);
     float cosRad = cosf(rad);
 
-    __m128 sinVector = _mm_set_ss(sinRad);       // <sinRad, 0, 0, 0>
-    __m128 cosVector = _mm_set_ss(cosRad);       // <cosRad, 0, 0, 0>
+    __m128 sinVector = _mm_set_ss(sinRad); // <sinRad, 0, 0, 0>
+    __m128 cosVector = _mm_set_ss(cosRad); // <cosRad, 0, 0, 0>
 
     res.row[0] = vectorIdMatrixRow0;
     // x = 0,y = cos,z = sin, w = 0
-    cosVector = _mm_shuffle_ps(cosVector, sinVector, _MM_SHUFFLE(1, 0, 0, 1));  
+    cosVector = _mm_shuffle_ps(cosVector, sinVector, _MM_SHUFFLE(1, 0, 0, 1));
 
     res.row[1] = cosVector;
     // x = 0,y = sin,z = cos, w = 0
-    cosVector = _mm_shuffle_ps(cosVector, cosVector, _MM_SHUFFLE(3, 1, 2, 0));  
-    cosVector = _mm_mul_ps(cosVector, vectorNegateY);                
+    cosVector = _mm_shuffle_ps(cosVector, cosVector, _MM_SHUFFLE(3, 1, 2, 0));
+    cosVector = _mm_mul_ps(cosVector, vectorNegateY);
 
     res.row[2] = cosVector;
 
@@ -407,8 +414,8 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4MakeYRotation(float rad) {
     GLKMatrixSSE matrix;
     float sinRad = sinf(rad);
     float cosRad = cosf(rad);
-    __m128 sinVector = _mm_set_ss(sinRad);       // <sinR, 0, 0, 0>
-    __m128 cosVector = _mm_set_ss(cosRad);       // <cosR, 0, 0, 0>
+    __m128 sinVector = _mm_set_ss(sinRad); // <sinR, 0, 0, 0>
+    __m128 cosVector = _mm_set_ss(cosRad); // <cosR, 0, 0, 0>
 
     // x = sin,y = 0,z = cos, w = 0
     sinVector = _mm_shuffle_ps(sinVector, cosVector, _MM_SHUFFLE(3, 0, 3, 0));
@@ -447,8 +454,8 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4MakeZRotation(float rad) {
 
 inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4MakeRotation(__m128 axisVector, float rad) {
     GLKMatrixSSE res;
-    float    sinRad = sinf(rad);
-    float    cosRad = cosf(rad);
+    float sinRad = sinf(rad);
+    float cosRad = cosf(rad);
 
     __m128 c2 = _mm_set_ps1(1.0f - cosRad);
     __m128 c1 = _mm_set_ps1(cosRad);
@@ -489,7 +496,6 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4MakeRotation(__m128 axisVector, f
     res.row[3] = vectorIdMatrixRow3;
     return res;
 }
-
 
 inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4MultiplyMatrix4(GLKMatrixSSE m1, GLKMatrixSSE& m2) {
     GLKMatrixSSE res;
@@ -555,7 +561,7 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4MultiplyMatrix4(GLKMatrixSSE m1, 
     return res;
 }
 
-// Note: If input matrix isn't transposed, output will be a transpose of the inverse. 
+// Note: If input matrix isn't transposed, output will be a transpose of the inverse.
 // Similarly, if input is transposed, output will be the inverse
 // Example:
 //    Input: M
@@ -696,7 +702,6 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix4Invert(GLKMatrixSSE mT, BOOL* isI
 }
 
 inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrixSSE mT, BOOL* isInvertible) {
-
     // Row1Sh1 = <m12, m10, m11, #>
     __m128 tmpVector1 = _mm_shuffle_ps(mT.row[1], mT.row[1], _MM_SHUFFLE(0, 1, 0, 2));
 
@@ -714,7 +719,7 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrixSSE mT, BOOL* isI
     // Row2Sh2 = <m21, m22, m20, #>
     __m128 tmpVector6 = tmpVector4;
 
-    // Generate all products and rotate vecs holding right side products so that they 
+    // Generate all products and rotate vecs holding right side products so that they
     // match with the left sided ones
 
     // V1 = <m00m12, m01m10, m02m11>
@@ -754,7 +759,7 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrixSSE mT, BOOL* isI
     tmpVector2 = _mm_shuffle_ps(tmpVector2, tmpVector2, _MM_SHUFFLE(0, 1, 0, 2));
     tmpVector3 = _mm_shuffle_ps(tmpVector3, tmpVector3, _MM_SHUFFLE(0, 0, 2, 1));
 
-    //Determinant
+    // Determinant
     tmpVector4 = GLKSSE2DotVector3(mT.row[0], tmpVector3);
 
     // Use union since vector writes must be in 16byte chunks and thus last row requires an additional 4 bytes
@@ -763,10 +768,8 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrixSSE mT, BOOL* isI
     __m128 comp = _mm_cmpeq_ps(tmpVector4, vectorAllZeros);
     int comparisonMask = _mm_movemask_ps(comp);
 
-
-    //if (tmpVector4.m128_f32[0] == 0.0f) {
+    // if (tmpVector4.m128_f32[0] == 0.0f) {
     if (comparisonMask == 0xf) {
-
         if (isInvertible != nullptr) {
             *isInvertible = false;
         }
@@ -779,15 +782,15 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrixSSE mT, BOOL* isI
             *isInvertible = true;
         }
 
-        //DeterminantInv
+        // DeterminantInv
         tmpVector5 = _mm_div_ps(vectorAllOnes, tmpVector4);
 
-        //Multiply by determinantInv
+        // Multiply by determinantInv
         tmpVector1 = _mm_mul_ps(tmpVector1, tmpVector5);
         tmpVector2 = _mm_mul_ps(tmpVector2, tmpVector5);
         tmpVector3 = _mm_mul_ps(tmpVector3, tmpVector5);
 
-        //Note: Use GLKMatrix4 union to store in order to avoid potential false positive of a buffer overflow
+        // Note: Use GLKMatrix4 union to store in order to avoid potential false positive of a buffer overflow
         //_mm_store_ps(&res.matrix4.m[0], tmpVector1);
         //_mm_store_ps(&res.matrix4.m[3], tmpVector2);
         //_mm_store_ps(&res.matrix4.m[6], tmpVector3);
@@ -799,7 +802,7 @@ inline GLKMatrixSSE GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrixSSE mT, BOOL* isI
     return res;
 }
 
-inline void GLK_CALLCONV GLK_CALLCONV GLKSSE2Matrix4TranslateVector4(GLKMatrixSSE &m, __m128 translateVector) {
+inline void GLK_CALLCONV GLK_CALLCONV GLKSSE2Matrix4TranslateVector4(GLKMatrixSSE& m, __m128 translateVector) {
     __m128 transXSplat = _mm_shuffle_ps(translateVector, translateVector, _MM_SHUFFLE(0, 0, 0, 0));
     __m128 transYSplat = _mm_shuffle_ps(translateVector, translateVector, _MM_SHUFFLE(1, 1, 1, 1));
     __m128 transZSplat = _mm_shuffle_ps(translateVector, translateVector, _MM_SHUFFLE(2, 2, 2, 2));

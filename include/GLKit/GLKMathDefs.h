@@ -19,7 +19,6 @@
 #include "GLKitExport.h"
 #include <math.h>
 
-
 #if (!defined(__clang__))
 #include <Windows.h>
 #else
@@ -44,14 +43,13 @@
 #endif
 #endif
 
-
 #if defined(USE_SSE)
-#include <intrin.h>
 #include "immintrin.h"
+#include <intrin.h>
 #endif
 
-
-#if defined(_MSC_VER) && !defined(_M_ARM) && (!_MANAGED) && (!_M_CEE) && (!defined(_M_IX86_FP) || (_M_IX86_FP > 1)) && defined(USE_SSE) && !defined(GLK_VECTORCALL)
+#if defined(_MSC_VER) && !defined(_M_ARM) && (!_MANAGED) && (!_M_CEE) && (!defined(_M_IX86_FP) || (_M_IX86_FP > 1)) && defined(USE_SSE) && \
+    !defined(GLK_VECTORCALL)
 #if ((_MSC_FULL_VER >= 170065501) && (_MSC_VER < 1800)) || (_MSC_FULL_VER >= 180020418)
 #define GLK_VECTORCALL 1
 #endif
@@ -174,7 +172,6 @@ typedef struct _IntOrFloat {
     };
 } IntOrFloat;
 
-
 inline GLKVector3 GLKQuaternionAxis(const GLKQuaternion quat) {
     GLKVector3 res;
 
@@ -188,13 +185,7 @@ inline GLKVector3 GLKQuaternionAxis(const GLKQuaternion quat) {
 
 GLKIT_EXPORT GLKVector3 GLKMathProject(GLKVector3 object, GLKMatrix4 model, GLKMatrix4 projection, int* viewport) STUB_METHOD;
 GLKIT_EXPORT GLKVector3 GLKMathUnproject(GLKVector3 window, GLKMatrix4 model, GLKMatrix4 projection, int* viewport, bool* success)
-STUB_METHOD;
-
-
-
-
-
-
+    STUB_METHOD;
 
 #if 0
 //#if (!defined(USE_SSE))
@@ -245,21 +236,21 @@ GLKIT_EXPORT const GLKQuaternion GLKQuaternionIdentity;
 /// Function definitions
 GLKIT_EXPORT GLKMatrix3 GLKMatrix3FromMatrix4(GLKMatrix4 m);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4Make(float m00,
-    float m01,
-    float m02,
-    float m03,
-    float m10,
-    float m11,
-    float m12,
-    float m13,
-    float m20,
-    float m21,
-    float m22,
-    float m23,
-    float m30,
-    float m31,
-    float m32,
-    float m33);
+                                       float m01,
+                                       float m02,
+                                       float m03,
+                                       float m10,
+                                       float m11,
+                                       float m12,
+                                       float m13,
+                                       float m20,
+                                       float m21,
+                                       float m22,
+                                       float m23,
+                                       float m30,
+                                       float m31,
+                                       float m32,
+                                       float m33);
 GLKIT_EXPORT GLKMatrix3 GLKMatrix3Make(float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22);
 GLKIT_EXPORT GLKMatrix3 GLKMatrix3Transpose(GLKMatrix3 mat);
 GLKIT_EXPORT GLKMatrix3 GLKMatrix3Multiply(GLKMatrix3 matrixLeft, GLKMatrix3 matrixRight) STUB_METHOD;
@@ -279,21 +270,21 @@ GLKIT_EXPORT void GLKMatrix3MultiplyVector3Array(GLKMatrix3 matrix, GLKVector3* 
 GLKIT_EXPORT GLKMatrix3
 GLKMatrix3MakeAndTranspose(float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeAndTranspose(float m00,
-    float m01,
-    float m02,
-    float m03,
-    float m10,
-    float m11,
-    float m12,
-    float m13,
-    float m20,
-    float m21,
-    float m22,
-    float m23,
-    float m30,
-    float m31,
-    float m32,
-    float m33);
+                                                   float m01,
+                                                   float m02,
+                                                   float m03,
+                                                   float m10,
+                                                   float m11,
+                                                   float m12,
+                                                   float m13,
+                                                   float m20,
+                                                   float m21,
+                                                   float m22,
+                                                   float m23,
+                                                   float m30,
+                                                   float m31,
+                                                   float m32,
+                                                   float m33);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeWithArray(float* values);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeWithArrayAndTranspose(float* values);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeWithColumns(GLKVector4 r0, GLKVector4 r1, GLKVector4 r2, GLKVector4 r3);
@@ -326,43 +317,44 @@ GLKIT_EXPORT GLKVector3 GLKMatrix4MultiplyAndProjectVector3(GLKMatrix4 matrixLef
 GLKIT_EXPORT void GLKMatrix4MultiplyAndProjectVector3Array(GLKMatrix4 matrix, GLKVector3* vectors, size_t vectorCount) STUB_METHOD;
 
 /// SSE Optimized functions
-GLKIT_EXPORT GLKMatrix3    GLKMatrix3MakeIdentity();
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakeIdentity();
+GLKIT_EXPORT GLKMatrix3 GLKMatrix3MakeIdentity();
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeIdentity();
 GLKIT_EXPORT GLKQuaternion GLKQuaternionMakeIdentity();
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakeLookAt(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, float upX, float upY, float upZ);
-GLKIT_EXPORT GLKVector4    GLKMatrix4MultiplyVector4(const GLKMatrix4 m, const GLKVector4 vec);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4Transpose(const GLKMatrix4 mat);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4InvertAndTranspose(const GLKMatrix4 matrix, BOOL* isInvertible);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4Invert(const GLKMatrix4 m, BOOL* isInvertible);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakeXRotation(float rad);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakeYRotation(float rad);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakeZRotation(float rad);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakeTranslation(float x, float y, float z);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4RotateX(const GLKMatrix4 m, float rad);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4RotateY(const GLKMatrix4 m, float rad);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4RotateZ(const GLKMatrix4 m, float rad);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4Rotate(const GLKMatrix4 m, float rad, float x, float y, float z);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakeOrtho(float left, float right, float bot, float top, float near, float far);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4RotateWithVector3(const GLKMatrix4 matrix, float radians, const GLKVector3 axisVector);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4RotateWithVector4(const GLKMatrix4 matrix, float radians, const GLKVector4 axisVector);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4Multiply(const GLKMatrix4 m2, const GLKMatrix4 m1);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakeFrustum(float left, float right, float bottom, float top, float near, float far);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakeRotation(float rad, float x, float y, float z);
-GLKIT_EXPORT GLKVector3    GLKMatrix4MultiplyVector3(const GLKMatrix4 m, const GLKVector3 vec);
-GLKIT_EXPORT GLKVector3    GLKMatrix4MultiplyVector3WithTranslation(const GLKMatrix4 m, const GLKVector3 vec);
-GLKIT_EXPORT void          GLKMatrix4MultiplyVector4Array(const GLKMatrix4 m, GLKVector4 * vecs, size_t numVecs);
-GLKIT_EXPORT void          GLKMatrix4MultiplyVector3ArrayWithTranslation(const GLKMatrix4 m, GLKVector3* vecs, size_t numVecs);
-GLKIT_EXPORT void          GLKMatrix4MultiplyVector3Array(const GLKMatrix4 m, GLKVector3* vecs, size_t numVecs);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4MakePerspective(float yrad, float aspect, float near, float far);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4TranslateWithVector3(const GLKMatrix4 matrix, const GLKVector3 translationVector);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4TranslateWithVector4(const GLKMatrix4 matrix, const GLKVector4 translationVector);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4Scale(const GLKMatrix4 m, float x, float y, float z);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4ScaleWithVector3(const GLKMatrix4 matrix, const GLKVector3 scaleVector);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4ScaleWithVector4(const GLKMatrix4 matrix, const GLKVector4 scaleVector);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4Add(const GLKMatrix4 matrixLeft, const GLKMatrix4 matrixRight);
-GLKIT_EXPORT GLKMatrix4    GLKMatrix4Subtract(const GLKMatrix4 matrixLeft, const GLKMatrix4 matrixRight);
-GLKIT_EXPORT GLKMatrix3    GLKMatrix3Invert(const GLKMatrix3 m, BOOL* isInvertible);
-GLKIT_EXPORT GLKMatrix3    GLKMatrix3InvertAndTranspose(const GLKMatrix3 m, BOOL* isInvertible);
+GLKIT_EXPORT GLKMatrix4
+GLKMatrix4MakeLookAt(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, float upX, float upY, float upZ);
+GLKIT_EXPORT GLKVector4 GLKMatrix4MultiplyVector4(const GLKMatrix4 m, const GLKVector4 vec);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4Transpose(const GLKMatrix4 mat);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4InvertAndTranspose(const GLKMatrix4 matrix, BOOL* isInvertible);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4Invert(const GLKMatrix4 m, BOOL* isInvertible);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeXRotation(float rad);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeYRotation(float rad);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeZRotation(float rad);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeTranslation(float x, float y, float z);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4RotateX(const GLKMatrix4 m, float rad);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4RotateY(const GLKMatrix4 m, float rad);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4RotateZ(const GLKMatrix4 m, float rad);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4Rotate(const GLKMatrix4 m, float rad, float x, float y, float z);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeOrtho(float left, float right, float bot, float top, float near, float far);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4RotateWithVector3(const GLKMatrix4 matrix, float radians, const GLKVector3 axisVector);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4RotateWithVector4(const GLKMatrix4 matrix, float radians, const GLKVector4 axisVector);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4Multiply(const GLKMatrix4 m2, const GLKMatrix4 m1);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeFrustum(float left, float right, float bottom, float top, float near, float far);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeRotation(float rad, float x, float y, float z);
+GLKIT_EXPORT GLKVector3 GLKMatrix4MultiplyVector3(const GLKMatrix4 m, const GLKVector3 vec);
+GLKIT_EXPORT GLKVector3 GLKMatrix4MultiplyVector3WithTranslation(const GLKMatrix4 m, const GLKVector3 vec);
+GLKIT_EXPORT void GLKMatrix4MultiplyVector4Array(const GLKMatrix4 m, GLKVector4* vecs, size_t numVecs);
+GLKIT_EXPORT void GLKMatrix4MultiplyVector3ArrayWithTranslation(const GLKMatrix4 m, GLKVector3* vecs, size_t numVecs);
+GLKIT_EXPORT void GLKMatrix4MultiplyVector3Array(const GLKMatrix4 m, GLKVector3* vecs, size_t numVecs);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakePerspective(float yrad, float aspect, float near, float far);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4TranslateWithVector3(const GLKMatrix4 matrix, const GLKVector3 translationVector);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4TranslateWithVector4(const GLKMatrix4 matrix, const GLKVector4 translationVector);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4Scale(const GLKMatrix4 m, float x, float y, float z);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4ScaleWithVector3(const GLKMatrix4 matrix, const GLKVector3 scaleVector);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4ScaleWithVector4(const GLKMatrix4 matrix, const GLKVector4 scaleVector);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4Add(const GLKMatrix4 matrixLeft, const GLKMatrix4 matrixRight);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4Subtract(const GLKMatrix4 matrixLeft, const GLKMatrix4 matrixRight);
+GLKIT_EXPORT GLKMatrix3 GLKMatrix3Invert(const GLKMatrix3 m, BOOL* isInvertible);
+GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(const GLKMatrix3 m, BOOL* isInvertible);
 
 GLKIT_EXPORT GLKVector3 GLKQuaternionRotateVector3(GLKQuaternion q, GLKVector3 v);
 GLKIT_EXPORT void GLKQuaternionRotateVector3Array(GLKQuaternion q, GLKVector3* vecs, size_t numVecs);
@@ -370,7 +362,6 @@ GLKIT_EXPORT void GLKQuaternionRotateVector4Array(GLKQuaternion q, GLKVector4* v
 GLKIT_EXPORT GLKQuaternion GLKQuaternionMakeWithMatrix3(GLKMatrix3 mat);
 GLKIT_EXPORT GLKQuaternion GLKQuaternionMakeWithMatrix4(GLKMatrix4 mat);
 #endif
-
 
 /// Objective C exports
 #if (defined(__clang__))
