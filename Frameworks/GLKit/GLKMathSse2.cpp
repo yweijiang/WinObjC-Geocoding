@@ -16,7 +16,6 @@
 //******************************************************************************
 
 #define _USE_MATH_DEFINES // for C++
-//#include "GLKit\GLKMathSse2.h"
 #include "GLKit\GLKMath.h"
 
 #if defined(USE_SSE)
