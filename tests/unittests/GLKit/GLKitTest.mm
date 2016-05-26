@@ -12,7 +12,7 @@
 
 using namespace GLKitShader;
 
-typedef struct _OutputData {
+struct OutputData {
     union {
         GLKQuaternion quat;
         GLKVector3 vec3;
@@ -20,7 +20,7 @@ typedef struct _OutputData {
         GLKMatrix3 mat3;
         GLKMatrix4 mat4;
     };
-} OutputData;
+};
 
 #define X_FUNCLIST                                                                                            \
     X(GLKFuncEnumMatrix4MakeIdentity,                        "GLKMatrix4MakeIdentity")                        \
@@ -680,19 +680,6 @@ TEST(GLKit, Performance) {
     unsigned int* pOutputBuffer = reinterpret_cast<unsigned int*>(outputBuffer);
     volatile int bufferIndex;
 
-    // Intermediates
-    bool isInvertible;
-    unsigned int invertibleCount = 0;
-    GLKMatrix4 matrix4LookAt;
-    GLKMatrix4 matrix4Rotate;
-    GLKMatrix4 matrix4RotateX;
-    GLKMatrix4 matrix4RotateY;
-    GLKMatrix4 matrix4RotateZ;
-    GLKMatrix4 matrix4Translate;
-    GLKMatrix4 matrix4Identity;
-    GLKMatrix4 matrix4Ortho;
-    GLKMatrix3 matrix3RotateX;
-
     // Start/Current values
     GLKVector3 rotation = { 0.0f, 0.0f, 0.0f };
     GLKVector3 eye = { 0.0f, 6.5f, -11.0f };
@@ -756,6 +743,19 @@ TEST(GLKit, Performance) {
     float rightDelta = (rightMax - right);
     float topDelta = (topMax - top);
     float botDelta = (botMax - bot);
+
+    // Intermediates
+    bool isInvertible;
+    unsigned int invertibleCount = 0;
+    GLKMatrix4 matrix4LookAt;
+    GLKMatrix4 matrix4Rotate;
+    GLKMatrix4 matrix4RotateX;
+    GLKMatrix4 matrix4RotateY;
+    GLKMatrix4 matrix4RotateZ;
+    GLKMatrix4 matrix4Translate;
+    GLKMatrix4 matrix4Identity;
+    GLKMatrix4 matrix4Ortho;
+    GLKMatrix3 matrix3RotateX;
 
     srand((unsigned)time(NULL));
 
