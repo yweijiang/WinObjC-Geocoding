@@ -282,7 +282,7 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4Scale(GLKMatrix4 m, float x, float y, float z)
 }
 
 /**
-   @Status Interoperable
+ @Status Interoperable
 */
 GLKIT_EXPORT GLKVector3 GLKMatrix4MultiplyVector3(GLKMatrix4 m, GLKVector3 vec) {
     GLKVector3 res;
@@ -295,7 +295,7 @@ GLKIT_EXPORT GLKVector3 GLKMatrix4MultiplyVector3(GLKMatrix4 m, GLKVector3 vec) 
 }
 
 /**
-   @Status Interoperable
+ @Status Interoperable
 */
 GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInvertible) {
     const float a1 = m.m[0];
@@ -345,7 +345,7 @@ GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInver
 }
 
 /**
-   @Status Interoperable
+ @Status Interoperable
 */
 GLKIT_EXPORT GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, BOOL* isInvertible) {
     m = GLKMatrix3InvertAndTranspose(m, isInvertible);
@@ -472,7 +472,7 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, BOOL* isInvertible) {
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeRotation(float rad, float x, float y, float z) {
     IntOrFloat magn = { sqrtf(x * x + y * y + z * z) };
     if (magn.fl32 < COMPARISON_EPSILON) {
-        magn.int32 = 0xffc00000;
+        magn.int32 = c_glkMathNan;
     }
 
     float invMagn = 1.f / magn.fl32;
@@ -1132,7 +1132,7 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeOrthonormalXform(GLKVector3 right, GLKVect
 }
 
 /**
-   @Status Interoperable
+ @Status Interoperable
 */
 GLKIT_EXPORT GLKVector3 GLKMatrix3MultiplyVector3(GLKMatrix3 m, GLKVector3 vec) {
     GLKVector3 res;
@@ -1145,7 +1145,7 @@ GLKIT_EXPORT GLKVector3 GLKMatrix3MultiplyVector3(GLKMatrix3 m, GLKVector3 vec) 
 }
 
 /**
-   @Status Interoperable
+ @Status Interoperable
 */
 GLKIT_EXPORT GLKMatrix2 GLKMatrix3GetMatrix2(GLKMatrix3 m) {
     GLKMatrix2 res;
@@ -1160,7 +1160,7 @@ GLKIT_EXPORT GLKMatrix2 GLKMatrix3GetMatrix2(GLKMatrix3 m) {
 }
 
 /**
-   @Status Interoperable
+ @Status Interoperable
 */
 GLKIT_EXPORT GLKMatrix2 GLKMatrix4GetMatrix2(GLKMatrix4 m) {
     GLKMatrix2 res;
@@ -1201,9 +1201,7 @@ GLKIT_EXPORT GLKMatrix3 GLKMatrix4GetMatrix3(GLKMatrix4 m) {
 GLKIT_EXPORT GLKMatrix3 GLKMatrix3MakeRotation(float rad, float x, float y, float z) {
     IntOrFloat magn = { sqrtf(x * x + y * y + z * z) };
     if (magn.fl32 < COMPARISON_EPSILON) {
-        magn.int32 = 0xffc00000;
-
-        float num = NAN;
+        magn.int32 = c_glkMathNan;
     }
 
     float invMagn = 1.f / magn.fl32;

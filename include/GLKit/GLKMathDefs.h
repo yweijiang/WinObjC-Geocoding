@@ -41,6 +41,8 @@
 #ifndef GLK_GLOBALCONST
 #define GLK_GLOBALCONST extern const __declspec(selectany)
 #endif
+#else
+#define GLK_GLOBALCONST extern const
 #endif
 
 #if defined(USE_SSE)
@@ -182,6 +184,8 @@ inline GLKVector3 GLKQuaternionAxis(const GLKQuaternion quat) {
 
     return res;
 }
+
+static const int c_glkMathNan = 0xFFC00000;
 
 GLKIT_EXPORT GLKVector3 GLKMathProject(GLKVector3 object, GLKMatrix4 model, GLKMatrix4 projection, int* viewport) STUB_METHOD;
 GLKIT_EXPORT GLKVector3 GLKMathUnproject(GLKVector3 window, GLKMatrix4 model, GLKMatrix4 projection, int* viewport, bool* success)
