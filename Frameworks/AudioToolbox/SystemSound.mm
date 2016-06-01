@@ -190,7 +190,8 @@ void vibrateDevice() {
         return;
     }
 
-    status = apiInformation->IsTypePresent(vibrationDeviceString.Get(), &vibrationCapable);
+    status = apiInformation->IsTypePresent(HStringReference(RuntimeClass_Windows_Foundation_Metadata_ApiInformation).Get(), 
+                                           &vibrationCapable);
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"VibrationDevice availability check failed");
         return;
