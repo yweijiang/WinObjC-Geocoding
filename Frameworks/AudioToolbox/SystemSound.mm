@@ -174,13 +174,6 @@ OSStatus AudioServicesDisposeSystemSoundID(SystemSoundID inSystemSoundID) {
 void vibrateDevice() {
     Boolean vibrationCapable = false;
     HRESULT status; 
-
-    HString vibrationDeviceString;
-    status = vibrationDeviceString.Set(L"Windows.Phone.Devices.Notification.VibrationDevice");
-    if (!SUCCEEDED(status)) {
-        NSTraceInfo(TAG, @"VibrationDevice string creation failed");
-        return;
-    }
     
     ComPtr<Metadata::IApiInformationStatics> apiInformation;
     status = GetActivationFactory(HStringReference(RuntimeClass_Windows_Foundation_Metadata_ApiInformation).Get(),
@@ -190,7 +183,7 @@ void vibrateDevice() {
         return;
     }
 
-    status = apiInformation->IsTypePresent(HStringReference(RuntimeClass_Windows_Foundation_Metadata_ApiInformation).Get(), 
+    status = apiInformation->IsTypePresent(HStringReference(RuntimeClass_Windows_Phone_Devices_Notification_VibrationDevice).Get(), 
                                            &vibrationCapable);
     if (!SUCCEEDED(status)) {
         NSTraceInfo(TAG, @"VibrationDevice availability check failed");
