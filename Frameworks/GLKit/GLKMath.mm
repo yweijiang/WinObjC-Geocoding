@@ -1076,38 +1076,43 @@ GLKIT_EXPORT GLKQuaternion GLKQuaternionMakeWithMatrix3(GLKMatrix3 mat) {
 
     float trace = mat.m00 + mat.m11 + mat.m22;
     if (trace > COMPARISON_EPSILON) {
-        trace = trace + 1.f;
-        float inv2SqrtTrace = 0.5f / sqrtf(trace);
+        float sqrtTrace = 2.f * sqrtf(trace + 1.f);
+        float invTrace = 1.f / sqrtTrace;
 
-        res.x = (mat.m12 - mat.m21) * inv2SqrtTrace;
-        res.y = (mat.m20 - mat.m02) * inv2SqrtTrace;
-        res.z = (mat.m01 - mat.m10) * inv2SqrtTrace;
-        res.w = trace * inv2SqrtTrace;
+        res.x = (mat.m21 - mat.m12) * invTrace;
+        res.y = (mat.m02 - mat.m20) * invTrace;
+        res.z = (mat.m10 - mat.m01) * invTrace;
+        res.w = 0.25f * sqrtTrace;
+
     } else if ((mat.m00 > mat.m11) && (mat.m00 > mat.m22)) {
-        trace = 1.f + mat.m00 - mat.m11 - mat.m22;
-        float inv2SqrtTrace = 0.5f / sqrtf(trace);
+        float sqrtTrace = 2.f * sqrtf(1.f + mat.m00 - mat.m11 - mat.m22);
+        float invTrace = 1.f / sqrtTrace;
 
-        res.x = trace * inv2SqrtTrace;
-        res.y = (mat.m10 + mat.m01) * inv2SqrtTrace;
-        res.z = (mat.m02 + mat.m20) * inv2SqrtTrace;
-        res.w = (mat.m12 - mat.m21) * inv2SqrtTrace;
+        res.x = 0.25f * sqrtTrace;
+        res.y = (mat.m10 + mat.m01) * invTrace;
+        res.z = (mat.m02 + mat.m20) * invTrace;
+        res.w = (mat.m21 - mat.m12) * invTrace;
+
     } else if (mat.m11 > mat.m22) {
-        trace = 1.f + mat.m11 - mat.m00 - mat.m22;
-        float inv2SqrtTrace = 0.5f / sqrtf(trace);
+        float sqrtTrace = 2.f * sqrtf(1.f + mat.m11 - mat.m00 - mat.m22);
+        float invTrace = 1.f / sqrtTrace;
 
-        res.x = (mat.m10 + mat.m01) * inv2SqrtTrace;
-        res.y = trace * inv2SqrtTrace;
-        res.z = (mat.m21 + mat.m12) * inv2SqrtTrace;
-        res.w = (mat.m20 - mat.m02) * inv2SqrtTrace;
+        res.x = (mat.m10 + mat.m01) * invTrace;
+        res.y = 0.25f * sqrtTrace;
+        res.z = (mat.m21 + mat.m12) * invTrace;
+        res.w = (mat.m02 - mat.m20) * invTrace;
+
     } else {
-        trace = 1.f + mat.m22 - mat.m00 - mat.m11;
-        float inv2SqrtTrace = 0.5f / sqrtf(trace);
+        float sqrtTrace = 2.f * sqrtf(1.f + mat.m22 - mat.m00 - mat.m11);
+        float invTrace = 1.f / sqrtTrace;
 
-        res.x = (mat.m02 + mat.m20) * inv2SqrtTrace;
-        res.y = (mat.m21 + mat.m12) * inv2SqrtTrace;
-        res.z = trace * inv2SqrtTrace;
-        res.w = (mat.m01 - mat.m10) * inv2SqrtTrace;
+        res.x = (mat.m02 + mat.m20) * invTrace;
+        res.y = (mat.m21 + mat.m12) * invTrace;
+        res.z = 0.25f * sqrtTrace;
+        res.w = (mat.m10 - mat.m01) * invTrace;
     }
+
+    return res;
 }
 
 /**
