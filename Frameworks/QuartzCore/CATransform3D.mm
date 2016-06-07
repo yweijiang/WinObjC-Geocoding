@@ -270,10 +270,11 @@ CATransform3D CATransform3DScale(CATransform3D cur, float x, float y, float z) {
 CATransform3D CATransform3DRotate(CATransform3D cur, float angle, float x, float y, float z) {
     CATransform3D rot;
 
-    rot.MakeRotation(angle, -x, -y, -z);
-    (*((CATransform3D*)&cur)).MultiplyBy(&rot);
+    rot.MakeRotation(angle, x, y, z);
 
-    return cur;
+    rot.MultiplyBy(&cur);
+
+    return rot;
 }
 
 /**
@@ -314,9 +315,9 @@ CATransform3D CATransform3DTranslate(CATransform3D cur, float x, float y, float 
  @Status Interoperable
 */
 CATransform3D CATransform3DConcat(CATransform3D a, CATransform3D b) {
-    (*((CATransform3D*)&a)).MultiplyBy(&b);
+    b.MultiplyBy(&a);
 
-    return a;
+    return b;
 }
 
 /**
