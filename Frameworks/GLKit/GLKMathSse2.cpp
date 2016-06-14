@@ -32,161 +32,149 @@ bool IsSseEnabled() {
 @Status Interoperable
 */
 GLKMatrix3 GLKMatrix3MakeIdentity() {
-    return matrix3Identity.matrix3;
+    return c_matrix3Identity.glkMatrix3;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4MakeIdentity() {
-    return matrix4Identity.matrix4;
+    return c_matrix4Identity.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKQuaternion GLKQuaternionMakeIdentity() {
-    return quatIdentity.glkQuaternion;
+    return c_vec4QuatIdentity.glkQuaternion;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4MakeRotation(float rad, float x, float y, float z) {
-    GLKMatrix4SSE result;
+    GLKUniversalMatrix result;
     __m128 axisVector = { x, y, z, 0.0f };
     __m128 normalizedAxis = GLKSSE2NormalizeVector3(axisVector);
 
-    result.vectors = GLKSSE2Matrix4MakeRotation(normalizedAxis, rad);
+    result.matrix4M128 = GLKSSE2Matrix4MakeRotation(normalizedAxis, rad);
 
-    return result.matrix4;
+    return result.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4MakeXRotation(float rad) {
-    GLKMatrix4SSE res;
-    res.vectors = GLKSSE2Matrix4MakeXRotation(rad);
+    GLKUniversalMatrix res;
+    res.matrix4M128 = GLKSSE2Matrix4MakeXRotation(rad);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4MakeYRotation(float rad) {
-    GLKMatrix4SSE res;
-    res.vectors = GLKSSE2Matrix4MakeYRotation(rad);
+    GLKUniversalMatrix res;
+    res.matrix4M128 = GLKSSE2Matrix4MakeYRotation(rad);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4MakeZRotation(float rad) {
-    GLKMatrix4SSE res;
+    GLKUniversalMatrix res;
 
-    res.vectors = GLKSSE2Matrix4MakeZRotation(rad);
+    res.matrix4M128 = GLKSSE2Matrix4MakeZRotation(rad);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4Rotate(GLKMatrix4 m, float rad, float x, float y, float z) {
-    GLKMatrixSSE originalMatrix = GLKMatrixSSE(m.m);
-    GLKMatrix4SSE result;
+    GLKMatrix4M128 originalMatrix = GLKMatrix4M128(m.m);
+    GLKUniversalMatrix result;
     __m128 axisVector = { x, y, z, 0.0f };
     __m128 normalizedAxis = GLKSSE2NormalizeVector3(axisVector);
 
-    GLKMatrixSSE rotMatrix = GLKSSE2Matrix4MakeRotation(normalizedAxis, rad);
+    GLKMatrix4M128 rotMatrix = GLKSSE2Matrix4MakeRotation(normalizedAxis, rad);
 
-    result.vectors = GLKSSE2Matrix4MultiplyMatrix4(rotMatrix, originalMatrix);
+    result.matrix4M128 = GLKSSE2Matrix4MultiplyMatrix4(rotMatrix, originalMatrix);
 
-    return result.matrix4;
+    return result.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4MakeTranslation(float x, float y, float z) {
-    GLKMatrix4SSE res;
+    GLKUniversalMatrix res;
 
-    res.row[0] = vectorIdMatrixRow0;
-    res.row[1] = vectorIdMatrixRow1;
-    res.row[2] = vectorIdMatrixRow2;
-    res.row[3] = GLKSSE2Set(x, y, z, 1.0f);
+    res.matrix4M128.row[0] = c_vec4IdMatrixRow0.vectorM128;
+    res.matrix4M128.row[1] = c_vec4IdMatrixRow1.vectorM128;
+    res.matrix4M128.row[2] = c_vec4IdMatrixRow2.vectorM128;
+    res.matrix4M128.row[3] = GLKSSE2Set(x, y, z, 1.0f);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4RotateX(GLKMatrix4 m, float rad) {
-    GLKMatrix4SSE result;
-    GLKMatrixSSE rot = GLKSSE2Matrix4MakeXRotation(rad);
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
-    result.vectors = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
+    GLKUniversalMatrix result;
+    GLKMatrix4M128 rot = GLKSSE2Matrix4MakeXRotation(rad);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    result.matrix4M128 = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
 
-    return result.matrix4;
+    return result.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4RotateY(GLKMatrix4 m, float rad) {
-    GLKMatrix4SSE result;
-    GLKMatrixSSE rot = GLKSSE2Matrix4MakeYRotation(rad);
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
-    result.vectors = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
+    GLKUniversalMatrix result;
+    GLKMatrix4M128 rot = GLKSSE2Matrix4MakeYRotation(rad);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    result.matrix4M128 = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
 
-    return result.matrix4;
+    return result.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4RotateZ(GLKMatrix4 m, float rad) {
-    GLKMatrix4SSE result;
-    GLKMatrixSSE rot = GLKSSE2Matrix4MakeZRotation(rad);
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
-    result.vectors = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
+    GLKUniversalMatrix result;
+    GLKMatrix4M128 rot = GLKSSE2Matrix4MakeZRotation(rad);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    result.matrix4M128 = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
 
-    return result.matrix4;
+    return result.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4Translate(GLKMatrix4 m, float x, float y, float z) {
-#if 0
-    GLKMatrixSSE translation;
-    translation.row[0] = vectorIdMatrixRow0;
-    translation.row[1] = vectorIdMatrixRow1;
-    translation.row[2] = vectorIdMatrixRow2;
-    translation.row[3] = GLKSSE2Set(x, y, z, 0.0f);
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
-    result.vectors = GLKSSE2Matrix4MultiplyMatrix4(translation, matrix);
-#else
-    GLKMatrix4SSE result = GLKMatrix4SSE(m.m);
+    GLKUniversalMatrix result = GLKUniversalMatrix(m.m);
     __m128 translateVector = { x, y, z, 1.0f };
-    GLKSSE2Matrix4TranslateVector4(result.vectors, translateVector);
-#endif
+    GLKSSE2Matrix4TranslateVector4(result.matrix4M128, translateVector);
 
-    return result.matrix4;
+    return result.glkMatrix4;
 }
 
-// Verify original and this one with iOS output
-// Based on XMMatrixPerspectiveOffCenterRH written by Chuck Walbourn.
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4MakeFrustum(float left, float right, float bottom, float top, float nearZ, float farZ) {
-    GLKMatrix4SSE m;
+    GLKUniversalMatrix m;
     const float TwoNearZ = nearZ + nearZ;
     const float FarPlusNear = nearZ + farZ;
     const float ReciprocalWidth = 1.0f / (right - left);
@@ -204,14 +192,14 @@ GLKMatrix4 GLKMatrix4MakeFrustum(float left, float right, float bottom, float to
     m.row[0] = tmpVector;
     // 0,TwoNearZ*ReciprocalHeight,0,0
     tmpVector = values;
-    tmpVector = _mm_and_ps(tmpVector, vectorUiMaskY);
+    tmpVector = _mm_and_ps(tmpVector, c_vec4MaskY.vectorM128);
     m.row[1] = tmpVector;
     // 0,0,fRange,1.0f
     m.row[2] = GLKSSE2Set((left + right) * ReciprocalWidth, (top + bottom) * ReciprocalHeight, (farZ + nearZ) * ReciprocalDepth, -1.0f);
     // 0,0,-fRange * NearZ,0.0f
-    values = _mm_and_ps(values, vectorUiMaskZ);
+    values = _mm_and_ps(values, c_vec4MaskZ.vectorM128);
     m.row[3] = values;
-    return m.matrix4;
+    return m.glkMatrix4;
 }
 
 /**
@@ -231,22 +219,22 @@ GLKMatrix4 GLKMatrix4MakePerspective(float yrad, float aspect, float nearZ, floa
     // Copy x only
     tmpVector = _mm_move_ss(tmpVector, values);
     // cosAngle / sinAngle,0,0,0
-    GLKMatrix4SSE m;
+    GLKUniversalMatrix m;
     m.row[0] = tmpVector;
     // 0,Height / AspectHByW,0,0
     tmpVector = values;
-    tmpVector = _mm_and_ps(tmpVector, vectorUiMaskY);
+    tmpVector = _mm_and_ps(tmpVector, c_vec4MaskY.vectorM128);
     m.row[1] = tmpVector;
     // x=fRange,y=fRange * NearZ,0,-1.0f
     tmpVector = _mm_setzero_ps();
-    values = _mm_shuffle_ps(values, vectorNegateIdMatrixRow3, _MM_SHUFFLE(3, 2, 3, 2));
+    values = _mm_shuffle_ps(values, c_vec4NegateIdMatrixRow3.vectorM128, _MM_SHUFFLE(3, 2, 3, 2));
     // 0,0,fRange,-1.0f
     tmpVector = _mm_shuffle_ps(tmpVector, values, _MM_SHUFFLE(3, 0, 0, 0));
     m.row[2] = tmpVector;
     // 0,0,fRange * NearZ,0.0f
     tmpVector = _mm_shuffle_ps(tmpVector, values, _MM_SHUFFLE(2, 1, 0, 0));
     m.row[3] = tmpVector;
-    return m.matrix4;
+    return m.glkMatrix4;
 }
 
 /**
@@ -254,7 +242,7 @@ GLKMatrix4 GLKMatrix4MakePerspective(float yrad, float aspect, float nearZ, floa
 */
 GLKMatrix4 GLKMatrix4MakeLookAt(
     float eyeX, float eyeY, float eyeZ, float centerX, float centerY, float centerZ, float upX, float upY, float upZ) {
-    GLKMatrix4SSE lookAtMatrix;
+    GLKUniversalMatrix lookAtMatrix;
 
     __m128 centerVector = { centerX, centerY, centerZ, 0.0f };
     __m128 upVector = { upX, upY, upZ, 0.0f };
@@ -278,44 +266,38 @@ GLKMatrix4 GLKMatrix4MakeLookAt(
     __m128 D1 = GLKSSE2DotVector3(r1, NegEyePosition);
     __m128 D2 = GLKSSE2DotVector3(r2, NegEyePosition);
 
-    GLKMatrixSSE m;
-    m.row[0] = GLKSSE2Select(D0, r0, vectorUiMaskXYZ.vectorM128);
-    m.row[1] = GLKSSE2Select(D1, r1, vectorUiMaskXYZ.vectorM128);
-    m.row[2] = GLKSSE2Select(D2, r2, vectorUiMaskXYZ.vectorM128);
-    m.row[3] = vectorIdMatrixRow3;
+    GLKMatrix4M128 m;
+    m.row[0] = GLKSSE2Select(D0, r0, c_vec4MaskXYZ.vectorM128);
+    m.row[1] = GLKSSE2Select(D1, r1, c_vec4MaskXYZ.vectorM128);
+    m.row[2] = GLKSSE2Select(D2, r2, c_vec4MaskXYZ.vectorM128);
+    m.row[3] = c_vec4IdMatrixRow3.vectorM128;
 
     m = GLKMatrixSseTranspose(m);
 
     // Todo: Use only one temp matrix
-    GLKMatrix4SSE mm;
+    GLKUniversalMatrix mm;
 
     mm.row[0] = m.row[0];
     mm.row[1] = m.row[1];
     mm.row[2] = m.row[2];
     mm.row[3] = m.row[3];
 
-    return mm.matrix4;
+    return mm.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 void GLKMatrix4MultiplyVector4Array(GLKMatrix4 m, GLKVector4* vecs, size_t numVecs) {
-    GLKMatrixSSE matrix;
-    __m128 vector;
-
-    // Load M
-    matrix.row[0] = _mm_loadu_ps((const float*)&m.m[0]);
-    matrix.row[1] = _mm_loadu_ps((const float*)&m.m[4]);
-    matrix.row[2] = _mm_loadu_ps((const float*)&m.m[8]);
-    matrix.row[3] = _mm_loadu_ps((const float*)&m.m[12]);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    __m128 vector4;
 
     assert((uintptr_t(vecs) & 15) == 0);
 
     for (size_t i = 0; i < numVecs; i++) {
-        vector = _mm_loadu_ps((const float*)vecs[i].v);
-        vector = GLKSSE2MultiplyMatrix4Vector4(matrix, vector);
-        _mm_storeu_ps(vecs[i].v, vector);
+        vector4 = _mm_loadu_ps((const float*)vecs[i].v);
+        vector4 = GLKSSE2MultiplyMatrix4Vector4(matrix, vector4);
+        _mm_storeu_ps(vecs[i].v, vector4);
     }
 }
 
@@ -323,18 +305,12 @@ void GLKMatrix4MultiplyVector4Array(GLKMatrix4 m, GLKVector4* vecs, size_t numVe
 @Status Interoperable
 */
 GLKVector4 GLKMatrix4MultiplyVector4(GLKMatrix4 m, GLKVector4 vec) {
-    const __m128 vector = _mm_loadu_ps((const float*)vec.v);
-    GLKMatrixSSE matrix;
-    GLKVectorSSE result;
-
-    // Load M
-    matrix.row[0] = _mm_loadu_ps((const float*)&m.m[0]);
-    matrix.row[1] = _mm_loadu_ps((const float*)&m.m[4]);
-    matrix.row[2] = _mm_loadu_ps((const float*)&m.m[8]);
-    matrix.row[3] = _mm_loadu_ps((const float*)&m.m[12]);
+    const __m128 vector4 = _mm_loadu_ps((const float*)vec.v);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    GLKUniversalVectorFl result;
 
     // TODO: Determine if there is a benefit of having helper function return GLKVector4 instead of __m128 portion of union struct
-    result.vectorM128 = GLKSSE2MultiplyMatrix4Vector4(matrix, vector);
+    result.vectorM128 = GLKSSE2MultiplyMatrix4Vector4(matrix, vector4);
     return result.glkVector4;
 }
 
@@ -342,18 +318,11 @@ GLKVector4 GLKMatrix4MultiplyVector4(GLKMatrix4 m, GLKVector4 vec) {
 @Status Interoperable
 */
 GLKVector3 GLKMatrix4MultiplyVector3(GLKMatrix4 m, GLKVector3 vec) {
-    const __m128 vector = GLKSSE2Set(vec.x, vec.y, vec.z, 0.0f);
-    GLKMatrixSSE matrix;
-    GLKVectorSSE result;
+    const __m128 vector4 = GLKSSE2Set(vec.x, vec.y, vec.z, 0.0f);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    GLKUniversalVectorFl result;
 
-    // Load M
-    matrix.row[0] = _mm_loadu_ps((const float*)&m.m[0]);
-    matrix.row[1] = _mm_loadu_ps((const float*)&m.m[4]);
-    matrix.row[2] = _mm_loadu_ps((const float*)&m.m[8]);
-    matrix.row[3] = _mm_loadu_ps((const float*)&m.m[12]);
-
-    // TODO: Determine if there is a benefit of having helper function return GLKVector3 instead of __m128 portion of union struct
-    result.vectorM128 = GLKSSE2MultiplyMatrix4Vector3(matrix, vector);
+    result.vectorM128 = GLKSSE2MultiplyMatrix4Vector3(matrix, vector4);
     return result.glkVector3;
 }
 
@@ -361,18 +330,12 @@ GLKVector3 GLKMatrix4MultiplyVector3(GLKMatrix4 m, GLKVector3 vec) {
 @Status Interoperable
 */
 GLKVector3 GLKMatrix4MultiplyVector3WithTranslation(GLKMatrix4 m, GLKVector3 vec) {
-    const __m128 vector = GLKSSE2Set(vec.x, vec.y, vec.z, 1.0f);
-    GLKMatrixSSE matrix;
-    GLKVectorSSE result;
-
-    // Load M
-    matrix.row[0] = _mm_loadu_ps((const float*)&m.m[0]);
-    matrix.row[1] = _mm_loadu_ps((const float*)&m.m[4]);
-    matrix.row[2] = _mm_loadu_ps((const float*)&m.m[8]);
-    matrix.row[3] = _mm_loadu_ps((const float*)&m.m[12]);
+    const __m128 vector4 = GLKSSE2Set(vec.x, vec.y, vec.z, 1.0f);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    GLKUniversalVectorFl result;
 
     // TODO: Determine if there is a benefit of having helper function return GLKVector3 instead of __m128 portion of union struct
-    result.vectorM128 = GLKSSE2MultiplyMatrix4Vector3Translate(matrix, vector);
+    result.vectorM128 = GLKSSE2MultiplyMatrix4Vector3Translate(matrix, vector4);
     return result.glkVector3;
 }
 
@@ -380,7 +343,7 @@ GLKVector3 GLKMatrix4MultiplyVector3WithTranslation(GLKMatrix4 m, GLKVector3 vec
 @Status Interoperable
 */
 void GLKMatrix4MultiplyVector3ArrayWithTranslation(GLKMatrix4 m, GLKVector3* vecs, size_t numVecs) {
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
     __m128 transFormedVector;
     __m128 originalVector;
     originalVector = _mm_loadu_ps((const float*)vecs[0].v);
@@ -404,7 +367,7 @@ void GLKMatrix4MultiplyVector3ArrayWithTranslation(GLKMatrix4 m, GLKVector3* vec
 @Status Interoperable
 */
 void GLKMatrix4MultiplyVector3Array(GLKMatrix4 m, GLKVector3* vecs, size_t numVecs) {
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
 
     GLKSSE2Matrix4MultiplyVector3Array(matrix, vecs, numVecs);
 }
@@ -413,10 +376,10 @@ void GLKMatrix4MultiplyVector3Array(GLKMatrix4 m, GLKVector3* vecs, size_t numVe
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4Multiply(GLKMatrix4 matrix2, GLKMatrix4 matrix1) {
-    GLKMatrixSSE m1 = GLKMatrixSSE(matrix1.m);
-    GLKMatrixSSE m2 = GLKMatrixSSE(matrix2.m);
+    GLKMatrix4M128 m1 = GLKMatrix4M128(matrix1.m);
+    GLKMatrix4M128 m2 = GLKMatrix4M128(matrix2.m);
 
-    GLKMatrix4SSE res;
+    GLKUniversalMatrix res;
     // Use wSplat to hold the original row
     __m128 tmpW = m1.row[0];
     // Splat the component X,Y,Z then W
@@ -475,63 +438,63 @@ GLKMatrix4 GLKMatrix4Multiply(GLKMatrix4 matrix2, GLKMatrix4 matrix1) {
     tmpX = _mm_add_ps(tmpX, tmpY);
     res.row[3] = tmpX;
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4Transpose(GLKMatrix4 mat) {
-    GLKMatrix4SSE res = GLKMatrix4SSE(mat.m);
+    GLKUniversalMatrix res = GLKUniversalMatrix(mat.m);
 
-    res.vectors = GLKMatrixSseTranspose(res.vectors);
+    res.matrix4M128 = GLKMatrixSseTranspose(res.matrix4M128);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4InvertAndTranspose(GLKMatrix4 m, BOOL* isInvertible) {
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
 
-    GLKMatrix4SSE res;
+    GLKUniversalMatrix res;
 
     // Output of GLKSSE2Matrix4Invert is already transposed so we are done
-    res.vectors = GLKSSE2Matrix4Invert(matrix, isInvertible);
+    res.matrix4M128 = GLKSSE2Matrix4Invert(matrix, isInvertible);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, BOOL* isInvertible) {
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
-    GLKMatrix4SSE res;
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    GLKUniversalMatrix res;
 
     // Get the transposed inverse
-    res.vectors = GLKSSE2Matrix4Invert(matrix, isInvertible);
+    res.matrix4M128 = GLKSSE2Matrix4Invert(matrix, isInvertible);
 
     // If invertible, transpose to get inverse
     if ((isInvertible != nullptr) && (*isInvertible == TRUE)) {
 #if 0
-        res.vectors = GLKMatrixSseTranspose(res.vectors);
+        res.matrix4M128 = GLKMatrixSseTranspose(res.matrix4M128);
 #else
         _MM_TRANSPOSE4_PS(res.row[0], res.row[1], res.row[2], res.row[3]);
 #endif
     }
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, BOOL* isInvertible) {
-    GLKMatrixSSE matrix;
-    GLKMatrixSSE matrixInv;
-    GLKMatrix4SSE res;
+    GLKMatrix4M128 matrix;
+    GLKMatrix4M128 matrixInv;
+    GLKUniversalMatrix res;
 
     // Unpack Matrix3 in Matrix4
     matrix.row[0] = _mm_loadu_ps(&m.m[0]);
@@ -545,20 +508,20 @@ GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, BOOL* isInvertible) {
     matrixInv = GLKMatrixSseTranspose(matrixInv);
 
     // Pack output into matrix3
-    _mm_storeu_ps(&res.matrix4.m[0], matrixInv.row[0]);
-    _mm_storeu_ps(&res.matrix4.m[3], matrixInv.row[1]);
-    _mm_storeu_ps(&res.matrix4.m[6], matrixInv.row[2]);
+    _mm_storeu_ps(&res.glkMatrix4.m[0], matrixInv.row[0]);
+    _mm_storeu_ps(&res.glkMatrix4.m[3], matrixInv.row[1]);
+    _mm_storeu_ps(&res.glkMatrix4.m[6], matrixInv.row[2]);
 
-    return res.matrix3;
+    return res.glkMatrix3;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInvertible) {
-    GLKMatrixSSE matrix;
-    GLKMatrixSSE matrixInv;
-    GLKMatrix4SSE res;
+    GLKMatrix4M128 matrix;
+    GLKMatrix4M128 matrixInv;
+    GLKUniversalMatrix res;
 
     // Unpack Matrix3 in Matrix4
     matrix.row[0] = _mm_loadu_ps(&m.m[0]);
@@ -569,18 +532,18 @@ GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInvertible) {
     matrixInv = GLKSSE2Matrix3Invert(matrix, isInvertible);
 
     // Pack output into matrix3
-    _mm_storeu_ps(&res.matrix4.m[0], matrixInv.row[0]);
-    _mm_storeu_ps(&res.matrix4.m[3], matrixInv.row[1]);
-    _mm_storeu_ps(&res.matrix4.m[6], matrixInv.row[2]);
+    _mm_storeu_ps(&res.glkMatrix4.m[0], matrixInv.row[0]);
+    _mm_storeu_ps(&res.glkMatrix4.m[3], matrixInv.row[1]);
+    _mm_storeu_ps(&res.glkMatrix4.m[6], matrixInv.row[2]);
 
-    return res.matrix3;
+    return res.glkMatrix3;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4MakeOrtho(float left, float right, float bot, float top, float nearZ, float farZ) {
-    GLKMatrix4SSE result;
+    GLKUniversalMatrix result;
     float fReciprocalWidth = 1.0f / (right - left);
     float fReciprocalHeight = 1.0f / (top - bot);
     float fRange = 1.0f / (farZ - nearZ);
@@ -597,26 +560,20 @@ GLKMatrix4 GLKMatrix4MakeOrtho(float left, float right, float bot, float top, fl
     result.row[0] = tmpVector;
     // 0,fReciprocalHeight*2,0,0
     tmpVector = values;
-    tmpVector = _mm_and_ps(tmpVector, vectorUiMaskY);
+    tmpVector = _mm_and_ps(tmpVector, c_vec4MaskY.vectorM128);
     tmpVector = _mm_add_ps(tmpVector, tmpVector);
     result.row[1] = tmpVector;
     // 0,0,fRange,0.0f
-    // Implementation1:
     tmpVector = GLKSSE2NegateVector4(values);
-    tmpVector = _mm_and_ps(tmpVector, vectorUiMaskZ);
+    tmpVector = _mm_and_ps(tmpVector, c_vec4MaskZ.vectorM128);
     tmpVector = _mm_add_ps(tmpVector, tmpVector);
-    // Implementation2:
-    // tmpVector = _mm_setzero_ps();
-    // tmpVector = _mm_sub_ps(tmpVector, values);
-    // tmpVector = _mm_and_ps(tmpVector, vectorUiMaskZ);
-    // tmpVector = _mm_add_ps(tmpVector, tmpVector);
 
     result.row[2] = tmpVector;
     // -(left + right)*fReciprocalWidth,-(top + bot)*fReciprocalHeight,fRange*-(near + far),1.0f
     values = _mm_mul_ps(values, rMem2);
     result.row[3] = values;
 
-    return result.matrix4;
+    return result.glkMatrix4;
 }
 
 /**
@@ -626,7 +583,7 @@ GLKVector3 GLKQuaternionRotateVector3(GLKQuaternion q, GLKVector3 v) {
     __m128 quatVector = _mm_loadu_ps(q.q);
     __m128 axisVector = GLKSSE2QuaternionAxis(quatVector, q.w);
     float angle = GLKQuaternionAngle(q);
-    GLKMatrixSSE m = GLKSSE2Matrix4MakeRotation(axisVector, angle);
+    GLKMatrix4M128 m = GLKSSE2Matrix4MakeRotation(axisVector, angle);
     GLKSSE2Matrix4MultiplyVector3Array(m, &v, 1);
 
     return v;
@@ -639,7 +596,7 @@ void GLKQuaternionRotateVector3Array(GLKQuaternion q, GLKVector3* vecs, size_t n
     __m128 quatVector = _mm_loadu_ps(q.q);
     __m128 axisVector = GLKSSE2QuaternionAxis(quatVector, q.w);
     float angle = GLKQuaternionAngle(q);
-    GLKMatrixSSE m = GLKSSE2Matrix4MakeRotation(axisVector, angle);
+    GLKMatrix4M128 m = GLKSSE2Matrix4MakeRotation(axisVector, angle);
     GLKSSE2Matrix4MultiplyVector3Array(m, vecs, numVecs);
 }
 
@@ -650,7 +607,7 @@ void GLKQuaternionRotateVector4Array(GLKQuaternion q, GLKVector4* vecs, size_t n
     __m128 quatVector = _mm_loadu_ps(q.q);
     __m128 axisVector = GLKSSE2QuaternionAxis(quatVector, q.w);
     float angle = GLKQuaternionAngle(q);
-    GLKMatrixSSE m = GLKSSE2Matrix4MakeRotation(axisVector, angle);
+    GLKMatrix4M128 m = GLKSSE2Matrix4MakeRotation(axisVector, angle);
     GLKSSE2Matrix4MultiplyVector4Array(m, vecs, numVecs);
 }
 
@@ -711,32 +668,32 @@ GLKQuaternion GLKQuaternionMakeWithMatrix4(GLKMatrix4 mat) {
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4RotateWithVector3(GLKMatrix4 m, float radians, GLKVector3 axis) {
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
-    GLKMatrix4SSE result;
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    GLKUniversalMatrix result;
     __m128 axisVector = { axis.x, axis.y, axis.z, 0.0f };
     __m128 normalizedAxis = GLKSSE2NormalizeVector3(axisVector);
 
-    GLKMatrixSSE rot = GLKSSE2Matrix4MakeRotation(normalizedAxis, radians);
+    GLKMatrix4M128 rot = GLKSSE2Matrix4MakeRotation(normalizedAxis, radians);
 
-    result.vectors = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
+    result.matrix4M128 = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
 
-    return result.matrix4;
+    return result.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4RotateWithVector4(GLKMatrix4 m, float radians, GLKVector4 axis) {
-    GLKMatrixSSE matrix = GLKMatrixSSE(m.m);
-    GLKMatrix4SSE result;
+    GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
+    GLKUniversalMatrix result;
     __m128 axisVector = _mm_loadu_ps(axis.v);
     __m128 normalizedAxis = GLKSSE2NormalizeVector3(axisVector);
 
-    GLKMatrixSSE rot = GLKSSE2Matrix4MakeRotation(normalizedAxis, radians);
+    GLKMatrix4M128 rot = GLKSSE2Matrix4MakeRotation(normalizedAxis, radians);
 
-    result.vectors = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
+    result.matrix4M128 = GLKSSE2Matrix4MultiplyMatrix4(rot, matrix);
 
-    return result.matrix4;
+    return result.glkMatrix4;
 }
 
 /**
@@ -744,12 +701,12 @@ GLKMatrix4 GLKMatrix4RotateWithVector4(GLKMatrix4 m, float radians, GLKVector4 a
 */
 GLKMatrix4 GLKMatrix4TranslateWithVector3(GLKMatrix4 m, GLKVector3 v) {
     // TODO: Consider using GLKSSE2MultiplyMatrix4Vector3Translate instead to generate row 4
-    GLKMatrix4SSE res = GLKMatrix4SSE(m.m);
+    GLKUniversalMatrix res = GLKUniversalMatrix(m.m);
     __m128 translateVector = { v.x, v.y, v.z, 1.0f };
 
-    GLKSSE2Matrix4TranslateVector4(res.vectors, translateVector);
+    GLKSSE2Matrix4TranslateVector4(res.matrix4M128, translateVector);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
@@ -757,77 +714,77 @@ GLKMatrix4 GLKMatrix4TranslateWithVector3(GLKMatrix4 m, GLKVector3 v) {
 */
 GLKMatrix4 GLKMatrix4TranslateWithVector4(GLKMatrix4 m, GLKVector4 v) {
     // TODO: Consider using something similar to GLKSSE2MultiplyMatrix4Vector3Translate but use a vec4 to generate row 4
-    GLKMatrix4SSE res = GLKMatrix4SSE(m.m);
+    GLKUniversalMatrix res = GLKUniversalMatrix(m.m);
     __m128 translateVector = _mm_load_ps1(v.v);
 
-    GLKSSE2Matrix4TranslateVector4(res.vectors, translateVector);
+    GLKSSE2Matrix4TranslateVector4(res.matrix4M128, translateVector);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4Scale(GLKMatrix4 m, float x, float y, float z) {
-    GLKMatrix4SSE res = GLKMatrix4SSE(m.m);
+    GLKUniversalMatrix res = GLKUniversalMatrix(m.m);
     __m128 scaleVector = { x, y, z, 1.0f };
 
-    res.vectors = GLKSSE2Matrix4ScaleVector4(res.vectors, scaleVector);
+    res.matrix4M128 = GLKSSE2Matrix4ScaleVector4(res.matrix4M128, scaleVector);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4ScaleWithVector3(GLKMatrix4 m, GLKVector3 v) {
-    GLKMatrix4SSE res = GLKMatrix4SSE(m.m);
+    GLKUniversalMatrix res = GLKUniversalMatrix(m.m);
     __m128 scaleVector = { v.x, v.y, v.z, 1.0f };
 
-    res.vectors = GLKSSE2Matrix4ScaleVector4(res.vectors, scaleVector);
+    res.matrix4M128 = GLKSSE2Matrix4ScaleVector4(res.matrix4M128, scaleVector);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4ScaleWithVector4(GLKMatrix4 m, GLKVector4 v) {
-    GLKMatrix4SSE res = GLKMatrix4SSE(m.m);
+    GLKUniversalMatrix res = GLKUniversalMatrix(m.m);
     __m128 scaleVector = _mm_loadu_ps(v.v);
 
-    res.vectors = GLKSSE2Matrix4ScaleVector4(res.vectors, scaleVector);
+    res.matrix4M128 = GLKSSE2Matrix4ScaleVector4(res.matrix4M128, scaleVector);
 
-    return res.matrix4;
+    return res.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4Add(GLKMatrix4 matrixLeft, GLKMatrix4 matrixRight) {
-    GLKMatrix4SSE m1 = GLKMatrix4SSE(matrixLeft.m);
-    GLKMatrix4SSE m2 = GLKMatrix4SSE(matrixRight.m);
+    GLKUniversalMatrix m1 = GLKUniversalMatrix(matrixLeft.m);
+    GLKUniversalMatrix m2 = GLKUniversalMatrix(matrixRight.m);
 
     m1.row[0] = _mm_add_ps(m1.row[0], m2.row[0]);
     m1.row[1] = _mm_add_ps(m1.row[1], m2.row[1]);
     m1.row[2] = _mm_add_ps(m1.row[2], m2.row[2]);
     m1.row[3] = _mm_add_ps(m1.row[3], m2.row[3]);
 
-    return m1.matrix4;
+    return m1.glkMatrix4;
 }
 
 /**
 @Status Interoperable
 */
 GLKMatrix4 GLKMatrix4Subtract(GLKMatrix4 matrixLeft, GLKMatrix4 matrixRight) {
-    GLKMatrix4SSE m1 = GLKMatrix4SSE(matrixLeft.m);
-    GLKMatrix4SSE m2 = GLKMatrix4SSE(matrixRight.m);
+    GLKUniversalMatrix m1 = GLKUniversalMatrix(matrixLeft.m);
+    GLKUniversalMatrix m2 = GLKUniversalMatrix(matrixRight.m);
 
     m1.row[0] = _mm_sub_ps(m1.row[0], m2.row[0]);
     m1.row[1] = _mm_sub_ps(m1.row[1], m2.row[1]);
     m1.row[2] = _mm_sub_ps(m1.row[2], m2.row[2]);
     m1.row[3] = _mm_sub_ps(m1.row[3], m2.row[3]);
 
-    return m1.matrix4;
+    return m1.glkMatrix4;
 }
 #endif

@@ -95,17 +95,19 @@ static const char* glkFunctionNames[GLKFuncEnumMax] = {
 
 NSString* stripSource(NSString* s, NSString* searchStr) {
     NSRange r;
-    while ((r = [s rangeOfString:searchStr]).location != NSNotFound) {
+    while ((r = [s rangeOfString : searchStr]).location != NSNotFound) {
         NSRange searchRange;
         searchRange.location = r.location + r.length;
-        searchRange.length = s.length;
-        NSRange endRange = [s rangeOfString:@"\n" options:0 range:searchRange];
+        searchRange.length = s.length - searchRange.location;
+        NSRange endRange = [s rangeOfString : @"\n" options : static_cast<NSStringCompareOptions>(0) range : searchRange];
+
         if (endRange.location != NSNotFound) {
             r.length = endRange.location - r.location;
-        } else {
+        }
+        else {
             r.length = s.length - r.location;
         }
-        s = [s stringByReplacingCharactersInRange:r withString:@""];
+        s = [s stringByReplacingCharactersInRange : r withString : @""];
     }
 
     return s;
@@ -118,7 +120,7 @@ int countOccurrences(NSString* s, NSString* searchStr) {
     r.location = 0;
     r.length = s.length;
 
-    while ((r = [s rangeOfString:searchStr options:0 range:r]).location != NSNotFound) {
+    while ((r = [s rangeOfString : searchStr options : static_cast<NSStringCompareOptions>(0) range : r]).location != NSNotFound) {
         count++;
 
         r.location = r.location + r.length;
@@ -474,7 +476,7 @@ TEST(GLKit, TemporaryShaderNodes) {
 }
 
 TEST(GLKit, BasicMath) {
-    bool invertible = false;
+    BOOL invertible = false;
 
     GLKVector4 v = GLKVector4Make(3.f, 2.f, 1.f, 1.f);
 
@@ -761,7 +763,7 @@ TEST(GLKit, Performance) {
     float botDelta = (botMax - bot);
 
     // Intermediates
-    bool isInvertible;
+    BOOL isInvertible;
     unsigned int invertibleCount = 0;
     GLKMatrix4 matrix4LookAt;
     GLKMatrix4 matrix4Rotate;
