@@ -1,6 +1,5 @@
 //******************************************************************************
 //
-// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -269,13 +268,12 @@ CATransform3D CATransform3DScale(CATransform3D cur, float x, float y, float z) {
  @Status Interoperable
 */
 CATransform3D CATransform3DRotate(CATransform3D cur, float angle, float x, float y, float z) {
-    CATransform3D rot;
+    CATransform3D res;
 
-    rot.MakeRotation(angle, x, y, z);
+    res.MakeRotation(angle, x, y, z);
+    res.MultiplyBy(&cur);
 
-    rot.MultiplyBy(&cur);
-
-    return rot;
+    return res;
 }
 
 /**
@@ -316,9 +314,9 @@ CATransform3D CATransform3DTranslate(CATransform3D cur, float x, float y, float 
  @Status Interoperable
 */
 CATransform3D CATransform3DConcat(CATransform3D a, CATransform3D b) {
-    b.MultiplyBy(&a);
-
-    return b;
+    a.MultiplyBy(&b);
+    
+    return a;
 }
 
 /**
