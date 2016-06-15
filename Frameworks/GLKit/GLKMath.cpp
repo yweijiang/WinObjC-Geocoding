@@ -478,11 +478,8 @@ GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, BOOL* isInvertible) {
 
     // If invertible, transpose to get inverse
     if ((isInvertible != nullptr) && (*isInvertible == TRUE)) {
-#if 0
-        res.matrix4M128 = GLKMatrixSseTranspose(res.matrix4M128);
-#else
+        // In place transpose
         _MM_TRANSPOSE4_PS(res.row[0], res.row[1], res.row[2], res.row[3]);
-#endif
     }
 
     return res.glkMatrix4;

@@ -697,6 +697,8 @@ TEST(GLKit, Performance) {
     OutputData outputBuffer[numOutputBufferEntries];
     unsigned int* pOutputBuffer = reinterpret_cast<unsigned int*>(outputBuffer);
     volatile int bufferIndex;
+    volatile int vecArrayIndex;
+    const int numVecsInVecArray = 32;
 
     // Start/Current values
     GLKVector3 rotation = { 0.0f, 0.0f, 0.0f };
@@ -705,10 +707,25 @@ TEST(GLKit, Performance) {
     GLKVector3 up = { 0.0f, 1.0f, 0.0f };
     GLKVector3 scale = { 1.0f, 1.0f, 1.0f };
     GLKVector3 translate = { 0.0f, 0.0f, 0.0f };
+    GLKVector3 rotationAxis = { 0.0f, 0.0f, 0.0f };
     GLKVector4 scale4 = { 1.0f, 1.0f, 1.0f, 1.0f };
     GLKVector4 translate4 = { 0.0f, 0.0f, 0.0f, 1.0f };
-    GLKVector3 rotationAxis = { 0.0f, 0.0f, 0.0f };
     GLKVector4 rotation4Axis = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+    GLKVector3 vec3Array[numVecsInVecArray] = { 0 };
+    GLKVector4 vec4Array[numVecsInVecArray] = { 0 };
+
+    // Update vector arrays with random values between -1.0f and 1.0f
+    for (unsigned int i = 0; i < numVecsInVecArray; i++) {
+        for (unsigned int j = 0; j < 3; j++) {
+            vec3Array[i].v[j] = (double)rand() / (RAND_MAX + 1) * 2.0f - 1.0f;
+            vec4Array[i].v[j] = (double)rand() / (RAND_MAX + 1) * 2.0f - 1.0f;
+        }
+
+        vec4Array[i].v[3] = (double)rand() / (RAND_MAX + 1) * 2.0f - 1.0f;
+    }
+
+
     float yrad = M_PI / 3.0f;
     float left = -200.0f;
     float right = 200.0f;
@@ -725,9 +742,9 @@ TEST(GLKit, Performance) {
     const GLKVector3 upMax = { 0.0f, 1.0f, 0.0f };
     const GLKVector3 scaleMax = { 10.0f, 10.0f, 10.0f };
     const GLKVector3 translateMax = { 10.0f, 10.0f, 10.0f };
+    const GLKVector3 rotationAxisMax = { 3.0f, 2.0f, 1.0f };
     const GLKVector4 scale4Max = { 10.0f, 10.0f, 10.0f, 1.0f };
     const GLKVector4 translate4Max = { 10.0f, 10.0f, 10.0f, 1.0f };
-    const GLKVector3 rotationAxisMax = { 3.0f, 2.0f, 1.0f };
     const GLKVector4 rotation4AxisMax = { 3.0f, 2.0f, 1.0f, 1.0f };
     const float yradMax = M_PI / 2.0f;
     const float aspectMax = 16.0f / 9.0f;
@@ -749,9 +766,9 @@ TEST(GLKit, Performance) {
     GLKVector3 upDelta = GLKVector3DivideScalar(GLKVector3Subtract(upMax, up), numSamplesF32);
     GLKVector3 scaleDelta = GLKVector3DivideScalar(GLKVector3Subtract(scaleMax, scale), numSamplesF32);
     GLKVector3 translateDelta = GLKVector3DivideScalar(GLKVector3Subtract(translateMax, translate), numSamplesF32);
+    GLKVector3 rotationAxisDelta = GLKVector3DivideScalar(GLKVector3Subtract(rotationAxisMax, rotationAxis), numSamplesF32);
     GLKVector4 scale4Delta = GLKVector4DivideScalar(GLKVector4Subtract(scale4Max, scale4), numSamplesF32);
     GLKVector4 translate4Delta = GLKVector4DivideScalar(GLKVector4Subtract(translate4Max, translate4), numSamplesF32);
-    GLKVector3 rotationAxisDelta = GLKVector3DivideScalar(GLKVector3Subtract(rotationAxisMax, rotationAxis), numSamplesF32);
     GLKVector4 rotation4AxisDelta = GLKVector4DivideScalar(GLKVector4Subtract(rotation4AxisMax, rotation4Axis), numSamplesF32);
     float yradDelta = (yradMax - yrad) / numSamplesF32;
     float aspectDelta = (aspectMax - aspect) / numSamplesF32;
@@ -774,6 +791,7 @@ TEST(GLKit, Performance) {
     GLKMatrix4 matrix4Identity;
     GLKMatrix4 matrix4Ortho;
     GLKMatrix3 matrix3RotateX;
+    GLKQuaternion quatRotateX;
 
     srand((unsigned)time(NULL));
 
@@ -982,6 +1000,20 @@ TEST(GLKit, Performance) {
         endTick = mach_absolute_time();
         totalTicks[GLKFuncEnumMatrix3InvertAndTranspose] += endTick - beginTick;
 
+        // Quaternion
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].quat = GLKQuaternionMakeWithMatrix3(matrix3RotateX);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumQuaternionMakeWithMatrix3] += endTick - beginTick;
+        quatRotateX = outputBuffer[bufferIndex].quat;
+
+        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        beginTick = mach_absolute_time();
+        outputBuffer[bufferIndex].quat = GLKQuaternionMakeWithMatrix4(matrix4Rotate);
+        endTick = mach_absolute_time();
+        totalTicks[GLKFuncEnumQuaternionMakeWithMatrix4] += endTick - beginTick;
+
         // Vector Transforms
         bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
         beginTick = mach_absolute_time();
@@ -989,40 +1021,45 @@ TEST(GLKit, Performance) {
         endTick = mach_absolute_time();
         totalTicks[GLKFuncEnumMatrix4MultiplyVector4] += endTick - beginTick;
 
-        /*
         bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        vecArrayIndex = (double)rand() / (RAND_MAX + 1) * (numVecsInVecArray);
         beginTick = mach_absolute_time();
-        outputBuffer[bufferIndex].quat = GLKQuaternionRotateVector3Array(GLKQuaternion q, GLKVector3* vecs, size_t numVecs);
+        GLKQuaternionRotateVector3Array(quatRotateX, vec3Array, numVecsInVecArray);
+        outputBuffer[bufferIndex].vec3 = vec3Array[vecArrayIndex];
         endTick = mach_absolute_time();
         totalTicks[GLKFuncEnumQuaternionRotateVector3Array] += endTick - beginTick;
 
         bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        vecArrayIndex = (double)rand() / (RAND_MAX + 1) * (numVecsInVecArray);
         beginTick = mach_absolute_time();
-        outputBuffer[bufferIndex].mat4 = GLKMatrix4MultiplyVector4Array(GLKMatrix4 m, GLKVector4* vecs, size_t numVecs);
+        GLKMatrix4MultiplyVector4Array(matrix4LookAt, vec4Array, numVecsInVecArray);
+        outputBuffer[bufferIndex].vec4 = vec4Array[vecArrayIndex];
         endTick = mach_absolute_time();
         totalTicks[GLKFuncEnumMatrix4MultiplyVector4Array] += endTick - beginTick;
 
-
         bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        vecArrayIndex = (double)rand() / (RAND_MAX + 1) * (numVecsInVecArray);
         beginTick = mach_absolute_time();
-        outputBuffer[bufferIndex].mat4 = GLKMatrix4MultiplyVector3ArrayWithTranslation(matrix4LookAt, GLKVector3* vecs, size_t numVecs);
+        GLKMatrix4MultiplyVector3ArrayWithTranslation(matrix4LookAt, vec3Array, numVecsInVecArray);
+        outputBuffer[bufferIndex].vec3 = vec3Array[vecArrayIndex];
         endTick = mach_absolute_time();
         totalTicks[GLKFuncEnumMatrix4MultiplyVector3ArrayWithTranslation] += endTick - beginTick;
 
-
         bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        vecArrayIndex = (double)rand() / (RAND_MAX + 1) * (numVecsInVecArray);
         beginTick = mach_absolute_time();
-        outputBuffer[bufferIndex].mat4 = GLKMatrix4MultiplyVector3Array(matrix4LookAt, GLKVector3* vecs, size_t numVecs);
+        GLKMatrix4MultiplyVector3Array(matrix4LookAt, vec3Array, numVecsInVecArray);
+        outputBuffer[bufferIndex].vec3 = vec3Array[vecArrayIndex];
         endTick = mach_absolute_time();
         totalTicks[GLKFuncEnumMatrix4MultiplyVector3Array] += endTick - beginTick;
-
+        
         bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
+        vecArrayIndex = (double)rand() / (RAND_MAX + 1) * (numVecsInVecArray);
         beginTick = mach_absolute_time();
-        outputBuffer[bufferIndex].quat = GLKQuaternionRotateVector4Array(GLKQuaternion q, GLKVector4* vecs, size_t numVecs);
+        GLKQuaternionRotateVector4Array(quatRotateX, vec4Array, numVecsInVecArray);
+        outputBuffer[bufferIndex].vec4 = vec4Array[vecArrayIndex];
         endTick = mach_absolute_time();
         totalTicks[GLKFuncEnumQuaternionRotateVector4Array] += endTick - beginTick;
-
-        */
 
         bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
         beginTick = mach_absolute_time();
@@ -1035,19 +1072,6 @@ TEST(GLKit, Performance) {
         outputBuffer[bufferIndex].vec3 = GLKMatrix4MultiplyVector3WithTranslation(matrix4LookAt, vector3Ones);
         endTick = mach_absolute_time();
         totalTicks[GLKFuncEnumMatrix4MultiplyVector3WithTranslation] += endTick - beginTick;
-
-        // Quaternion
-        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
-        beginTick = mach_absolute_time();
-        outputBuffer[bufferIndex].quat = GLKQuaternionMakeWithMatrix3(matrix3RotateX);
-        endTick = mach_absolute_time();
-        totalTicks[GLKFuncEnumQuaternionMakeWithMatrix3] += endTick - beginTick;
-
-        bufferIndex = (double)rand() / (RAND_MAX + 1) * (numOutputBufferEntries);
-        beginTick = mach_absolute_time();
-        outputBuffer[bufferIndex].quat = GLKQuaternionMakeWithMatrix4(matrix4Rotate);
-        endTick = mach_absolute_time();
-        totalTicks[GLKFuncEnumQuaternionMakeWithMatrix4] += endTick - beginTick;
 
         // Increment varying values
         eye = GLKVector3Add(eye, eyeDelta);
@@ -1067,6 +1091,16 @@ TEST(GLKit, Performance) {
         bot += botDelta;
         nearZ += nearZDelta;
         farZ += farZDelta;
+
+        // Update vector arrays with random values between -1.0f and 1.0f
+        for (unsigned int i = 0; i < numVecsInVecArray; i++) {
+            for (unsigned int j = 0; j < 3; j++) {
+                vec3Array[i].v[j] = (double)rand() / (RAND_MAX + 1) * 2.0f - 1.0f;
+                vec4Array[i].v[j] = (double)rand() / (RAND_MAX + 1) * 2.0f - 1.0f;
+            }
+            
+            vec4Array[i].v[3] = (double)rand() / (RAND_MAX + 1) * 2.0f - 1.0f;
+        }
 
         // Recalculate aspect with incremented base values
         aspect = (left - right) / (bot - top);
