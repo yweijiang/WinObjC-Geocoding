@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Starboard", "Starboard", "{ADFDC5D9-3048-4E53-A9B7-41731D7AD8CF}"
 EndProject
@@ -689,6 +689,11 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QuartzCore.UnitTests", "Tests\UnitTests\QuartzCore\QuartzCore.UnitTests.vcxproj", "{1090389B-D4C2-49B9-8AE5-B889821AFD49}"
 EndProject
 Global
+    GlobalSection(SharedMSBuildProjectFiles) = preSolution
+        Headers\Headers.Shared\Internal.Shared.vcxitems*{c0db71aa-0f89-41ac-bb7d-c0cb5458f4f9}*SharedItemsImports = 9
+        Headers\Headers.Shared\Public.Shared.vcxitems*{45d41acc-2c3c-43d2-bc10-02aa73ffc7c7}*SharedItemsImports = 9
+        Tests\Tests.Shared\Tests.Shared.vcxitems*{ee68a240-536d-4557-ab96-d164e93059a1}*SharedItemsImports = 9
+    EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
 		Debug|x86 = Debug|x86
