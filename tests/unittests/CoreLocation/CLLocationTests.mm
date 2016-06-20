@@ -66,3 +66,47 @@ TEST(CoreLocation, CLLocation_CopyTest) {
     [location1 release];
     [location2 release];
 }
+
+TEST(CoreLocation, GeocodingTest) {
+    LOG_INFO("Geocoding test: ");
+
+    CLLocation* location1 = [[CLLocation alloc] initWithLatitude:47.6062 longitude : -122.3321];
+    CLLocationCoordinate2D coordinate = { 245.2309, 90.124 };
+    
+
+    //dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+    //dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(void) {
+
+        //dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^ (void) {
+            CLLocation* location2 = [[CLLocation alloc] initWithCoordinate:coordinate
+                altitude : 0
+                horizontalAccuracy : 0
+                verticalAccuracy : 0
+                course : 0
+                speed : 0
+                timestamp : nil];
+            CLGeocoder* geocoder = [[CLGeocoder alloc] init];
+
+            [geocoder reverseGeocodeLocation:location1
+                           completionHandler:^(NSArray* placemarks, NSError* error) {
+                               LOG_INFO("Made it to completion handler");
+                               for (CLPlacemark* aPlacemark in placemarks) {
+                                   // Process the placemark.
+                                   LOG_INFO("Placemark %@: %@", [aPlacemark name], [aPlacemark location]);
+                               }
+
+                               //dispatch_semaphore_signal(semaphore);
+                           }];
+            //});
+
+            //dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+        //});
+
+        
+
+
+
+    //while (1);
+    LOG_INFO("end");
+}
