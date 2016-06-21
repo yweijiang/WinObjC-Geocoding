@@ -137,22 +137,21 @@
     CIImage* ciImage = [CIImage imageWithCGImage:photo.CGImage];
     CGImageRef cgImage = [context createCGImage:ciImage fromRect:CGRectMake(300, 600, 200, 200)];
 
-
     UIImage* filteredImage = [ImagesViewController filterImage : photo.CGImage];
 
     imagesView.animationImages = [NSArray arrayWithObjects:
-                            /*scaledPhotoHighInterpolation,
+                            scaledPhotoHighInterpolation,
                             scaledPhotoNoInterpolation,
                             [UIImage imageNamed:@"photo1.jpg"],
                             [UIImage imageNamed:@"photo2.jpg"],
-                            [UIImage imageWithCGImage:cgImage],*/
-                            filteredImage,/*
+                            filteredImage,
+                            [UIImage imageWithCGImage:cgImage],
                             [UIImage imageNamed:@"photo3.jpg"],
                             [UIImage imageNamed:@"photo4.jpg"],
                             [UIImage imageNamed:@"photo5.jpg"],
                             [UIImage imageNamed:@"photo6.jpg"],
                             [UIImage imageNamed:@"photo7.gif"],
-                            [UIImage imageNamed:@"photo8.tif"],*/
+                            [UIImage imageNamed:@"photo8.tif"],
                             nil];
 
     imagesView.animationDuration = 10.0;
