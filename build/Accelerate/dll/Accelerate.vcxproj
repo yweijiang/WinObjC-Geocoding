@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|ARM">
@@ -21,6 +21,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Accelerate\lib\AccelerateLib.vcxproj">
       <Project>{05EB0ADE-A598-42BA-BA3D-960AEEAA3C95}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CoreGraphics\dll\CoreGraphics.vcxproj">
+      <Project>{26da08da-d0b9-4579-b168-e7f0a5f20e57}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -53,7 +56,7 @@
       <AdditionalDependencies>ObjCUWP.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClangCompile>
-      <IncludePaths>$(StarboardBasePath)\deps\prebuilt\include;$(StarboardBasePath)\Frameworks\include</IncludePaths>
+      <IncludePaths>$(StarboardBasePath)\include;$(StarboardBasePath)\deps\prebuilt\include;$(StarboardBasePath)\Frameworks\include</IncludePaths>
       <AdditionalOptions>-DSTARBOARD_PORT=1 %(AdditionalOptions)</AdditionalOptions>
     </ClangCompile>
   </ItemDefinitionGroup>
@@ -68,7 +71,7 @@
       <AdditionalDependencies>ObjCUWP.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClangCompile>
-      <IncludePaths>$(StarboardBasePath)\deps\prebuilt\include;$(StarboardBasePath)\Frameworks\include</IncludePaths>
+      <IncludePaths>$(StarboardBasePath)\include;$(StarboardBasePath)\deps\prebuilt\include;$(StarboardBasePath)\Frameworks\include</IncludePaths>
       <AdditionalOptions>-DSTARBOARD_PORT=1 %(AdditionalOptions)</AdditionalOptions>
     </ClangCompile>
   </ItemDefinitionGroup>
@@ -83,7 +86,7 @@
       <AdditionalDependencies>ObjCUWP.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClangCompile>
-      <IncludePaths>$(StarboardBasePath)\deps\prebuilt\include;$(StarboardBasePath)\Frameworks\include</IncludePaths>
+      <IncludePaths>$(StarboardBasePath)\include;$(StarboardBasePath)\deps\prebuilt\include;$(StarboardBasePath)\Frameworks\include</IncludePaths>
       <AdditionalOptions>-DSTARBOARD_PORT=1 %(AdditionalOptions)</AdditionalOptions>
     </ClangCompile>
   </ItemDefinitionGroup>
@@ -98,7 +101,7 @@
       <AdditionalDependencies>ObjCUWP.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClangCompile>
-      <IncludePaths>$(StarboardBasePath)\deps\prebuilt\include;$(StarboardBasePath)\Frameworks\include</IncludePaths>
+      <IncludePaths>$(StarboardBasePath)\include;$(StarboardBasePath)\deps\prebuilt\include;$(StarboardBasePath)\Frameworks\include;</IncludePaths>
       <AdditionalOptions>-DSTARBOARD_PORT=1 %(AdditionalOptions)</AdditionalOptions>
     </ClangCompile>
   </ItemDefinitionGroup>
