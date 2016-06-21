@@ -18,6 +18,10 @@
 #pragma once
 
 #import <CoreLocation/CoreLocationExport.h>
+#import <CoreLocation/CoreLocationConstants.h>
+#import <CoreLocation/CoreLocationFunctions.h>
+#import <CoreLocation/CLRegion.h>
+#import <CoreLocation/CLCircularRegion.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSError.h>
 

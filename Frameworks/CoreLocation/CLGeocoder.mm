@@ -40,17 +40,23 @@
 }
 
 /**
-@Status Caveat
-@Notes This has not been tested yet as the projections do not work.
+ @Status Interoperable
 */
 -(void)reverseGeocodeLocation:(CLLocation*)location completionHandler:(CLGeocodeCompletionHandler)completionHandler {
     @synchronized(self) {
-        if (self.isGeocoding) {
+        if (!CLLocationCoordinate2DIsValid(location.coordinate)) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                completionHandler(nullptr, nullptr); // TODO: Need appropriate error code
+                completionHandler(nullptr, [NSError errorWithDomain:@"kCLErrorDomain" 
+                                                               code:kCLErrorGeocodeFoundNoResult
+                                                           userInfo:nullptr]);
             });
-        }
-        else {
+        } else if (self.isGeocoding) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(nullptr, [NSError errorWithDomain:@"kCLErrorDomain"
+                                                               code:kCLErrorGeocodeCanceled
+                                                           userInfo:nullptr]);
+            });
+        } else {
             self.geocoding = true;
 
             WDGBasicGeoposition* geoposition = [[WDGBasicGeoposition alloc] init];
@@ -60,7 +66,7 @@
             WDGGeopoint* geopoint = [WDGGeopoint make:geoposition];
 
             [WSMMapLocationFinder findLocationsAtAsync:geopoint
-                success:^void(WSMMapLocationFinderResult* results) {
+                                               success:^void(WSMMapLocationFinderResult* results) {
                     self.geocoding = false;
                     NSMutableArray* reverseGeocodeResult = [[NSMutableArray alloc] init];
 
@@ -70,7 +76,7 @@
 
                         NSString* resultName = [[currentResult address] formattedAddress];
                         CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
-                            longitude:[[[currentResult point] position] longitude]];
+                                                                                longitude:[[[currentResult point] position] longitude]];
 
                         CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithName:resultName location:resultLocation];
                         [reverseGeocodeResult addObject:currentPlacemark];
@@ -91,14 +97,15 @@
 }
 
 /**
-@Status Caveat
-@Notes This has not been tested yet as the projections do not work.
+ @Status Interoperable
 */
 - (void)geocodeAddressDictionary:(NSDictionary*)addressDictionary completionHandler:(CLGeocodeCompletionHandler)completionHandler {
     @synchronized(self) {
         if (self.isGeocoding) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                completionHandler(nullptr, nullptr); // TODO: Need appropriate error code
+                completionHandler(nullptr, [NSError errorWithDomain:@"kCLErrorDomain"
+                                                               code:kCLErrorGeocodeCanceled
+                                                           userInfo:nullptr]);
             });
         } else {
             self.geocoding = true;
@@ -135,8 +142,8 @@
             }
 
             [WSMMapLocationFinder findLocationsAsync:fullAddress
-                referencePoint:nullptr
-                success:^void(WSMMapLocationFinderResult* results) {
+                                      referencePoint:nullptr
+                                             success:^void(WSMMapLocationFinderResult* results) {
                     self.geocoding = false;
                     NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
 
@@ -167,20 +174,21 @@
 }
 
 /**
-@Status Caveat
-@Notes This has not been tested yet as the projections do not work.
+ @Status Interoperable
 */
 - (void)geocodeAddressString:(NSString*)addressString completionHandler:(CLGeocodeCompletionHandler)completionHandler {
     @synchronized(self) {
         if (self.isGeocoding) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                completionHandler(nullptr, nullptr); // // TODO: Need appropriate error code
+                completionHandler(nullptr, [NSError errorWithDomain:@"kCLErrorDomain"
+                                                               code:kCLErrorGeocodeCanceled
+                                                           userInfo:nullptr]);
             });
         } else {
             self.geocoding = true;
             [WSMMapLocationFinder findLocationsAsync:addressString
-                referencePoint:nullptr
-                success:^void(WSMMapLocationFinderResult* results) {
+                                      referencePoint:nullptr
+                                             success:^void(WSMMapLocationFinderResult* results) {
                     self.geocoding = false;
                     NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
 
@@ -211,8 +219,9 @@
 }
 
 /**
-@Status Caveat
-@Notes This has not been tested yet as the projections do not work.
+ @Status Caveat
+ @Notes There is no direct Windows API mapping to geocode within a region.
+        Therefore, this API currently just uses the center of the region as a hint for Geocoding.
 */
 - (void)geocodeAddressString:(NSString*)addressString
                     inRegion:(CLRegion*)region
@@ -220,19 +229,21 @@
     @synchronized(self) {
         if (self.isGeocoding) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                completionHandler(nullptr, nullptr); // // TODO: Need appropriate error code
+                completionHandler(nullptr, [NSError errorWithDomain:@"kCLErrorDomain"
+                                                               code:kCLErrorGeocodeCanceled
+                                                           userInfo:nullptr]);
             });
         } else {
             self.geocoding = true;
-            // Create a geoposition using the CLRegion specified.
-            // TODO: Implement reading the CLRegion now that it has been added.
             WDGBasicGeoposition* geoposition = [[WDGBasicGeoposition alloc] init];
+            geoposition.latitude = region.center.latitude;
+            geoposition.longitude = region.center.longitude;
 
             WDGGeopoint* geopoint = [WDGGeopoint make:geoposition];
 
             [WSMMapLocationFinder findLocationsAsync:addressString
-                referencePoint:geopoint
-                success:^void(WSMMapLocationFinderResult* results) {
+                                      referencePoint:geopoint
+                                             success:^void(WSMMapLocationFinderResult* results) {
                     self.geocoding = false;
                     NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
 
