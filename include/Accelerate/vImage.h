@@ -60,9 +60,9 @@ typedef enum {
 
 
 #if (VIMAGE_PAD_ALLOCS == 1)
-static const bool padAllocs = true;
+static const bool c_padAllocs = true;
 #else
-static const bool padAllocs = false;
+static const bool c_padAllocs = false;
 #endif
 
 
@@ -190,16 +190,7 @@ ACCELERATE_EXPORT vImage_Error vImageUnpremultiplyData_RGBA8888(const vImage_Buf
 
 ACCELERATE_EXPORT vImage_Error vImageBuffer_Init(vImage_Buffer* buffer, vImagePixelCount height, vImagePixelCount width, uint32_t bitsPerFragment, vImage_Flags flags);
 
-
-static inline float vImageMaxFloat(Pixel_F a, Pixel_F b) {
-    return ((a >= b) ? a : b);
-}
-
-static inline float vImageMinFloat(Pixel_F a, Pixel_F b) {
-    return ((a <= b) ? a : b);
-}
-
-static inline unsigned char vImageClipConvertAndSaturateFloatToUint8(Pixel_F inValue, Pixel_F minFloat, Pixel_F maxFloat) {
+static inline unsigned char _vImageClipConvertAndSaturateFloatToUint8(Pixel_F inValue, Pixel_F minFloat, Pixel_F maxFloat) {
     if (inValue < minFloat) {
         return 0;
     } else if (inValue < maxFloat) {
@@ -209,15 +200,15 @@ static inline unsigned char vImageClipConvertAndSaturateFloatToUint8(Pixel_F inV
     }
 }
 
-static inline Pixel_F vImageConvertAndClampUint8ToFloat(unsigned char inValue, Pixel_F minFloat, Pixel_F maxFloat) {
+static inline Pixel_F _vImageConvertAndClampUint8ToFloat(unsigned char inValue, Pixel_F minFloat, Pixel_F maxFloat) {
     return ((Pixel_F)(inValue) * (maxFloat - minFloat) / 255.0f + minFloat);
 }
 
-static inline size_t vImageAlignSizeT(size_t inValue, size_t alignment) {
+static inline size_t _vImageAlignSizeT(size_t inValue, size_t alignment) {
     return ((inValue + alignment - 1) & (~(alignment - 1)));
 }
 
-static inline uint32_t vImageAlignUInt(uint32_t inValue, uint32_t alignment) {
+static inline uint32_t _vImageAlignUInt(uint32_t inValue, uint32_t alignment) {
     return ((inValue + alignment - 1) & (~(alignment - 1)));
 }
 

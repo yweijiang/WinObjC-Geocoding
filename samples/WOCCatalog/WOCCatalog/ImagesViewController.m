@@ -64,7 +64,7 @@
     vImageBuffer_Init(&imageBufferB, imageBufferR.height, imageBufferR.width, bitsPerComponent, 0);
     vImageBuffer_Init(&imageBufferA, imageBufferR.height, imageBufferR.width, bitsPerComponent, 0);
 
-	// Note: Although the function calls for an ARGB input, RGBA input can be used if the output planes are swizzled
+    // Note: Although the function calls for an ARGB input, RGBA input can be used if the output planes are swizzled
     vImageConvert_ARGB8888toPlanar8(&imageBufferRGBA, &imageBufferR, &imageBufferG, &imageBufferB, &imageBufferA, 0);
 
     const uint32_t height = imageBufferRGBA.height;
