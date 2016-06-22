@@ -1,5 +1,6 @@
 ﻿//******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -149,6 +150,7 @@ public:
 // ****************************************************************************************************************************************
 //
 
+/*
 //
 // NSURL Tests
 //
@@ -224,7 +226,7 @@ public:
     TEST_METHOD(NSURLSession_DownloadTaskWithURL_WithCancelResume) {
         NSURLSessionDownloadTaskWithURL_WithCancelResume();
     }
-}; /* class NSURL */
+}; */ /* class NSURL */
 
 //
 // NSUserDefaults Tests
@@ -251,3 +253,30 @@ public:
         NSUserDefaultsKVCArray();
     }
 }; /* class NSUserDefaults */
+
+   //
+   // Geocoding Tests
+   //
+
+extern void GeocodingTestBaseTests();
+
+class GeocodingTest {
+public:
+    BEGIN_TEST_CLASS(GeocodingTest)
+    TEST_CLASS_PROPERTY(L"RunAs", L"UAP")
+    TEST_CLASS_PROPERTY(L"UAP:Host", L"Xaml")
+    // Note: TAEF automatically generates a default manifest with no capabilities at runtime. If your test
+    // requires special capabilities, add your own custom manifest with the required capabilities.
+    // TEST_CLASS_PROPERTY(L"UAP:AppXManifest", L"xyz.AppxManifest.xml")
+    TEST_CLASS_PROPERTY(L"Ignore", L"false")
+    END_TEST_CLASS()
+
+    TEST_CLASS_SETUP(GeocodingTestClassSetup) {
+        return SUCCEEDED(FrameworkHelper::RunOnUIThread(&UIApplicationMainTest));
+    }
+
+    TEST_METHOD(GeocodingTest_BaseTests) {
+        // Call the actual test function.
+        GeocodingTestBaseTests();
+    }
+}; /* class GeocodingTest */
