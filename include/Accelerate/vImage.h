@@ -136,9 +136,6 @@ struct Pixel_888_s {
     uint8_t val[3];
 };
 
-ACCELERATE_EXPORT vImage_Error vImageHistogramCalculation_ARGB8888(const vImage_Buffer *src, vImagePixelCount *histogram[4], vImage_Flags flags);
-ACCELERATE_EXPORT vImage_Error vImageHistogramSpecification_ARGB8888(const vImage_Buffer *src, const vImage_Buffer *dest, const vImagePixelCount *desired_histogram[4], vImage_Flags flags);
-
 ACCELERATE_EXPORT vImage_Error vImageBoxConvolve_ARGB8888(const vImage_Buffer* src,
                                                           const vImage_Buffer* dest,
                                                           void* tempBuffer,
