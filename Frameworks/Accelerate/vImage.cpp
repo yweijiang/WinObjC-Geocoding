@@ -959,7 +959,7 @@ vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buffer* srcARGB,
     assert(dstRowPitch >= width * bytesPerChannel);
 
 #if (VIMAGE_USE_SSE == 1)
-    if (width > 16) {
+    if (width >= 16) {
         const unsigned int pixelsPerIteration = 16;
         const unsigned int pixelsPerIteration_2 = pixelsPerIteration >> 1;
         const unsigned int iterationsPerRow = width / pixelsPerIteration + ((width % pixelsPerIteration != 0) ? 1 : 0);
@@ -1086,7 +1086,7 @@ vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
     assert(dstRowPixelPitch >= width);
 
 #if (VIMAGE_USE_SSE == 1)
-    if (width > 16) {
+    if (width >= 16) {
         const unsigned int pixelsPerIteration = 16;
         const unsigned int pixelsPerIteration_2 = pixelsPerIteration >> 1;
         const unsigned int iterationsPerRow = width / pixelsPerIteration + ((width % pixelsPerIteration != 0) ? 1 : 0);
@@ -1316,54 +1316,17 @@ vImage_Error vImageUnpremultiplyData_RGBA8888(const vImage_Buffer* src, const vI
     return kvImageNoError;
 }
 
-vImage_Error vImageHistogramCalculation_ARGB8888(const vImage_Buffer* src, vImagePixelCount* histogram[4], vImage_Flags flags) {
-    return kvImageNoError;
-}
-
-vImage_Error vImageHistogramSpecification_ARGB8888(const vImage_Buffer* src,
-                                                   const vImage_Buffer* dest,
-                                                   const vImagePixelCount* desired_histogram[4],
-                                                   vImage_Flags flags) {
-    assert((src != nullptr) && (dest != nullptr));
-    assert(src->width == dest->width);
-    assert(src->height == dest->height);
-
-    // Debug: Until implemented, just copy input buffer to output buffer
-
-    // ensure source bpp equals dest bpp
-    assert((src->rowBytes / src->width) == (dest->rowBytes / dest->width));
-
-    const unsigned int width = src->width;
-    const unsigned int height = src->height;
-    const unsigned int srcPitch = src->rowBytes;
-    const unsigned int dstPitch = dest->rowBytes;
-    const unsigned int bpp = src->rowBytes / src->width;
-    const unsigned int usedBytesPerRow = bpp * src->rowBytes;
-    unsigned char* pSrc = reinterpret_cast<unsigned char*>(src->data);
-    unsigned char* pDst = reinterpret_cast<unsigned char*>(dest->data);
-
-    for (unsigned int i = 0; i < height; i++) {
-        memcpy(pDst, pSrc, usedBytesPerRow);
-
-        pDst += dstPitch;
-        pSrc += srcPitch;
-    }
-
-    return kvImageNoError;
-}
-
 vImage_Error vImageBuffer_Init(
     vImage_Buffer* buffer, vImagePixelCount height, vImagePixelCount width, uint32_t bitsPerFragment, vImage_Flags flags) {
     assert(flags == kvImageNoFlags);
 
-    vImage_Error returnCode = kvImageNoError;
-
     buffer->height = height;
     buffer->width = width;
 
-    uint32_t bpp = bitsPerFragment / 8;
+    const uint32_t bpp = bitsPerFragment / 8;
+    vImage_Error returnCode = kvImageNoError;
 
-    if (padAllocs == true && width > 15 && height > 1 && bpp < 8) {
+    if ((padAllocs == true) && (width >= 16) && (height > 1) && (bpp < 8)) {
         // For 4bpp pixels, SSE2 instructions operate on 16 pixels at a time
         const uint32_t pixelPitchAlignment = 16;
         const uint32_t idealMemAlignmentBytes = 16;
