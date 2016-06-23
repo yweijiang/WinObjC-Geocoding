@@ -43,31 +43,35 @@
     const CGColorSpaceRef colorSpace = CGImageGetColorSpace(imageRef);
     const CGBitmapInfo bitmapInfo = CGImageGetBitmapInfo(imageRef);
     const uint32_t version = 0;
-    const CGFloat decode = 0.0f;
     const CGColorRenderingIntent renderingIntent = CGImageGetRenderingIntent(imageRef);
     const uint32_t bitsPerComponent = (uint32_t)CGImageGetBitsPerComponent(imageRef);
     const uint32_t bitsPerPixel =
         bitsPerComponent * (uint32_t)(CGColorSpaceGetNumberOfComponents(colorSpace) + (kCGImageAlphaNone != CGImageGetAlphaInfo(imageRef)));
 
-    vImage_CGImageFormat imageFormatStruct = { bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo, version, &decode, renderingIntent };
+    vImage_CGImageFormat imageFormatStruct = { bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo, version, NULL, renderingIntent };
 
-    vImage_Buffer imageBufferRGBA;
-    vImageBuffer_InitWithCGImage(&imageBufferRGBA, &imageFormatStruct, nil, imageRef, 0);
+    vImage_Buffer imageBuffer8888;
+    vImageBuffer_InitWithCGImage(&imageBuffer8888, &imageFormatStruct, nil, imageRef, 0);
 
     vImage_Buffer imageBufferR;
     vImage_Buffer imageBufferG;
     vImage_Buffer imageBufferB;
     vImage_Buffer imageBufferA;
 
-    vImageBuffer_Init(&imageBufferR, imageBufferRGBA.height, imageBufferRGBA.width, bitsPerComponent, 0);
+    vImageBuffer_Init(&imageBufferR, imageBuffer8888.height, imageBuffer8888.width, bitsPerComponent, 0);
     vImageBuffer_Init(&imageBufferG, imageBufferR.height, imageBufferR.width, bitsPerComponent, 0);
     vImageBuffer_Init(&imageBufferB, imageBufferR.height, imageBufferR.width, bitsPerComponent, 0);
     vImageBuffer_Init(&imageBufferA, imageBufferR.height, imageBufferR.width, bitsPerComponent, 0);
 
-    // Note: Although the function calls for an ARGB input, RGBA input can be used if the output planes are swizzled
-    vImageConvert_ARGB8888toPlanar8(&imageBufferRGBA, &imageBufferR, &imageBufferG, &imageBufferB, &imageBufferA, 0);
+    if ((bitmapInfo & kCGBitmapAlphaInfoMask) == kCGImageAlphaFirst) {
+        vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &imageBufferA, &imageBufferR, &imageBufferG, &imageBufferB, 0);
+    } else {
+        // Note: Although the function calls for an ARGB input, RGBA input can be used if the output planes are swizzled
+        vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &imageBufferR, &imageBufferG, &imageBufferB, &imageBufferA, 0);
+    }
 
-    const uint32_t height = imageBufferRGBA.height;
+
+    const uint32_t height = imageBuffer8888.height;
     const uint32_t endOfFirstSlice = height / 3;
     const uint32_t endOfSecondSlice = endOfFirstSlice * 2;
     const uint32_t endOfThirdSlice = height;
@@ -75,11 +79,11 @@
     // Divide the image into three slices and remove components to produce strips with different colors
     
     // Slice 0: Remove Red to produce Cyan output
-    char* colorData;
+    unsigned char* colorData;
     uint32_t rowPitch;
 
     rowPitch = imageBufferR.rowBytes;
-    colorData = (char*)(imageBufferR.data);
+    colorData = (unsigned char*)(imageBufferR.data);
     for (uint32_t i = 0; i < endOfFirstSlice; i++) {
         memset(colorData, 0, rowPitch);
         colorData += rowPitch;
@@ -87,7 +91,7 @@
 
     // Slice 1: Remove Green to produce Magenta output
     rowPitch = imageBufferG.rowBytes;
-    colorData = (char*)(imageBufferG.data) + endOfFirstSlice * rowPitch;
+    colorData = (unsigned char*)(imageBufferG.data) + endOfFirstSlice * rowPitch;
     for (uint32_t i = endOfFirstSlice; i < endOfSecondSlice; i++) {
         memset(colorData, 0, rowPitch);
         colorData += rowPitch;
@@ -95,20 +99,24 @@
 
     // Slice 2: Remove Blue to produce Yellow output
     rowPitch = imageBufferB.rowBytes;
-    colorData = (char*)(imageBufferB.data) + endOfSecondSlice * rowPitch;
+    colorData = (unsigned char*)(imageBufferB.data) + endOfSecondSlice * rowPitch;
     for (uint32_t i = endOfSecondSlice; i < endOfThirdSlice; i++) {
         memset(colorData, 0, rowPitch);
         colorData += rowPitch;
     }
 
-    // Note: To get RGBA output, input planes need to be swizzled
-    vImageConvert_Planar8toARGB8888(&imageBufferR, &imageBufferG, &imageBufferB, &imageBufferA, &imageBufferRGBA, 0);
+    if ((bitmapInfo & kCGBitmapAlphaInfoMask) == kCGImageAlphaFirst) {
+        vImageConvert_Planar8toARGB8888(&imageBufferA, &imageBufferR, &imageBufferG, &imageBufferB, &imageBuffer8888, 0);
+    } else {
+        // Note: To get RGBA output, input planes need to be swizzled
+        vImageConvert_Planar8toARGB8888(&imageBufferR, &imageBufferG, &imageBufferB, &imageBufferA, &imageBuffer8888, 0);
+    }
 
-    CGImageRef cgImageFromBuffer = vImageCreateCGImageFromBuffer(&imageBufferRGBA, &imageFormatStruct, nil, nil, 0, nil);
+    CGImageRef cgImageFromBuffer = vImageCreateCGImageFromBuffer(&imageBuffer8888, &imageFormatStruct, nil, nil, 0, nil);
     UIImage* uiImageFromBuffer = [UIImage imageWithCGImage:cgImageFromBuffer];
     CGImageRelease(cgImageFromBuffer);
 
-    free(imageBufferRGBA.data);
+    free(imageBuffer8888.data);
     free(imageBufferA.data);
     free(imageBufferR.data);
     free(imageBufferG.data);
