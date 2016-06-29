@@ -70,6 +70,25 @@
                     self.geocoding = false;
                     NSMutableArray* reverseGeocodeResult = [[NSMutableArray alloc] init];
 
+                    // Unknown Error and Status Not Supported don't map to any iOS error codes
+                    WSMMapLocationFinderStatus status = results.status;
+                    NSError* geocodeStatus;
+                    if (status == WSMMapLocationFinderStatusSuccess) {
+                        geocodeStatus = nullptr;
+                    } else if (status == WSMMapLocationFinderStatusUnknownError) {
+                        geocodeStatus = nullptr;
+                    } else if (status == WSMMapLocationFinderStatusInvalidCredentials) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorDenied userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusBadLocation) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorLocationUnknown userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusIndexFailure) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorGeocodeFoundNoResult userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusNetworkFailure) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorNetwork userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusNotSupported) {
+                        geocodeStatus = nullptr;
+                    }
+
                     int reverseGeocodeResultCount = [results.locations count];
                     for (int i = 0; i < reverseGeocodeResultCount; i++) {
                         WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
@@ -83,7 +102,7 @@
                     }
 
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        completionHandler(reverseGeocodeResult, nullptr);
+                        completionHandler(reverseGeocodeResult, geocodeStatus);
                     });
                 }
                 failure:^void(NSError* error) {
@@ -147,6 +166,25 @@
                     self.geocoding = false;
                     NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
 
+                    // Unknown Error and Status Not Supported don't map to any iOS error codes
+                    WSMMapLocationFinderStatus status = results.status;
+                    NSError* geocodeStatus;
+                    if (status == WSMMapLocationFinderStatusSuccess) {
+                        geocodeStatus = nullptr;
+                    } else if (status == WSMMapLocationFinderStatusUnknownError) {
+                        geocodeStatus = nullptr;
+                    } else if (status == WSMMapLocationFinderStatusInvalidCredentials) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorDenied userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusBadLocation) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorLocationUnknown userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusIndexFailure) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorGeocodeFoundNoResult userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusNetworkFailure) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorNetwork userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusNotSupported) {
+                        geocodeStatus = nullptr;
+                    }
+
                     int geocodeResultCount = [results.locations count];
                     for (int i = 0; i < geocodeResultCount; i++) {
                         WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
@@ -160,7 +198,7 @@
                     }
 
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        completionHandler(geocodeResult, nullptr);
+                        completionHandler(geocodeResult, geocodeStatus);
                     });
                 }
                 failure:^void(NSError* error) {
@@ -192,6 +230,25 @@
                     self.geocoding = false;
                     NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
 
+                    // Unknown Error and Status Not Supported don't map to any iOS error codes
+                    WSMMapLocationFinderStatus status = results.status;
+                    NSError* geocodeStatus;
+                    if (status == WSMMapLocationFinderStatusSuccess) {
+                        geocodeStatus = nullptr;
+                    } else if (status == WSMMapLocationFinderStatusUnknownError) {
+                        geocodeStatus = nullptr;
+                    } else if (status == WSMMapLocationFinderStatusInvalidCredentials) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorDenied userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusBadLocation) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorLocationUnknown userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusIndexFailure) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorGeocodeFoundNoResult userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusNetworkFailure) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorNetwork userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusNotSupported) {
+                        geocodeStatus = nullptr;
+                    }
+
                     int geocodeResultCount = [results.locations count];
                     for (int i = 0; i < geocodeResultCount; i++) {
                         WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
@@ -205,7 +262,7 @@
                     }
 
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        completionHandler(geocodeResult, nullptr);
+                        completionHandler(geocodeResult, geocodeStatus);
                     });
                 }
                 failure:^void(NSError* error) {
@@ -247,6 +304,25 @@
                     self.geocoding = false;
                     NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
 
+                    // Unknown Error and Status Not Supported don't map to any iOS error codes
+                    WSMMapLocationFinderStatus status = results.status;
+                    NSError* geocodeStatus;
+                    if (status == WSMMapLocationFinderStatusSuccess) {
+                        geocodeStatus = nullptr;
+                    } else if (status == WSMMapLocationFinderStatusUnknownError) {
+                        geocodeStatus = nullptr;
+                    } else if (status == WSMMapLocationFinderStatusInvalidCredentials) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorDenied userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusBadLocation) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorLocationUnknown userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusIndexFailure) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorGeocodeFoundNoResult userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusNetworkFailure) {
+                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorNetwork userInfo:nullptr];
+                    } else if (status == WSMMapLocationFinderStatusNotSupported) {
+                        geocodeStatus = nullptr;
+                    }
+
                     int geocodeResultCount = [results.locations count];
                     for (int i = 0; i < geocodeResultCount; i++) {
                         WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
@@ -260,7 +336,7 @@
                     }
 
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        completionHandler(geocodeResult, nullptr);
+                        completionHandler(geocodeResult, geocodeStatus);
                     });
                 }
                 failure:^void(NSError* error) {
