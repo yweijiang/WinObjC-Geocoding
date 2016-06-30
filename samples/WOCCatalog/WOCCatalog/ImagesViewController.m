@@ -53,13 +53,14 @@
     const bool imageIsXRGB =
         (alphaInfo == kCGImageAlphaNoneSkipFirst) && ((byteOrder == kCGBitmapByteOrderDefault) || byteOrder == kCGBitmapByteOrder32Big);
     const bool imageIsXBGR = (alphaInfo == kCGImageAlphaNoneSkipLast) && (byteOrder == kCGBitmapByteOrder32Little);
+    const bool imageIsRGBX = (alphaInfo == kCGImageAlphaNoneSkipLast) && ((byteOrder == kCGBitmapByteOrderDefault) || byteOrder == kCGBitmapByteOrder32Big);
 
     assert(bitsPerComponent == 8);
     assert(CGColorSpaceGetModel(colorSpace) == kCGColorSpaceModelRGB);
     assert(alphaInfo == (bitmapInfo & kCGBitmapAlphaInfoMask));
     assert((numColorComponents == 3) && (numAlphaOrPaddingComponents == 1));
     assert((byteOrder != kCGBitmapByteOrder16Little) && (byteOrder != kCGBitmapByteOrder16Big));
-    assert(imageIsARGB || imageIsABGR || imageIsXRGB || imageIsXBGR);
+    assert(imageIsARGB || imageIsABGR || imageIsXRGB || imageIsXBGR || imageIsRGBX);
 
     vImage_CGImageFormat format = {
         .bitsPerComponent = bitsPerComponent,
@@ -94,6 +95,8 @@
     } else if ((imageIsABGR == true) || (imageIsXBGR == true)) {
         // Note: Although the function calls for ARGB input, ABGR or XBGR input can be used if the output planes are swizzled
         result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &imageBufferA, &imageBufferB, &imageBufferG, &imageBufferR, 0);
+    } else if (imageIsRGBX == true) {
+        result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &imageBufferR, &imageBufferG, &imageBufferB, &imageBufferA, 0);
     }
 
     assert(result == kvImageNoError);
@@ -142,6 +145,8 @@
     } else if ((imageIsABGR == true) || (imageIsXBGR == true)) {
         // Note: To get ABGR or XBGR output, input planes are swizzled
         result = vImageConvert_Planar8toARGB8888(&imageBufferA, &imageBufferB, &imageBufferG, &imageBufferR, &imageBuffer8888, 0);
+    } else if (imageIsRGBX == true) {
+        result = vImageConvert_Planar8toARGB8888(&imageBufferR, &imageBufferG, &imageBufferB, &imageBufferA, &imageBuffer8888, 0);
     }
 
     assert(result == kvImageNoError);
