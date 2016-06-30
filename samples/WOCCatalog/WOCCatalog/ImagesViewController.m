@@ -75,6 +75,7 @@
         (alphaInfo == kCGImageAlphaNoneSkipFirst) && ((byteOrder == kCGBitmapByteOrderDefault) || byteOrder == kCGBitmapByteOrder32Big);
     const bool imageIsXBGR = (alphaInfo == kCGImageAlphaNoneSkipLast) && (byteOrder == kCGBitmapByteOrder32Little);
     const bool imageIsRGBX = (alphaInfo == kCGImageAlphaNoneSkipLast) && ((byteOrder == kCGBitmapByteOrderDefault) || byteOrder == kCGBitmapByteOrder32Big);
+    const bool alphaIs4thByte = (imageIsARGB || imageIsABGR || imageIsXRGB || imageIsXBGR);
 
     assert(imageIsARGB || imageIsABGR || imageIsXRGB || imageIsXBGR || imageIsRGBX);
 
@@ -160,8 +161,14 @@
     vImage_Buffer imageBufferUnPremultiplied8888;
     result = vImageBuffer_Init(&imageBufferUnPremultiplied8888, imageBuffer8888.height, imageBuffer8888.width, 32, 0);
     assert(result == kvImageNoError);
-    vImageUnpremultiplyData_ARGB8888(&imageBuffer8888, &imageBufferUnPremultiplied8888, 0);
-    assert(result == kvImageNoError);
+
+    if (alphaIs4thByte) {
+        vImageUnpremultiplyData_ARGB8888(&imageBuffer8888, &imageBufferUnPremultiplied8888, 0);
+        assert(result == kvImageNoError);
+    } else {
+        vImageUnpremultiplyData_RGBA8888(&imageBuffer8888, &imageBufferUnPremultiplied8888, 0);
+    }
+
 
     assert(result == kvImageNoError);
     CGImageRef cgImageFromBuffer = vImageCreateCGImageFromBuffer(&imageBufferUnPremultiplied8888, &format, nil, nil, 0, nil);
