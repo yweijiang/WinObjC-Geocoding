@@ -39,14 +39,33 @@
     return scaledImage;
 }
 
-+ (UIImage*)filterImage:(CGImageRef)imageRef {
++ (void)initCGImageFormat:(CGImageRef)imageRef formatInfo:(vImage_CGImageFormat*)formatInfo {
     const CGColorSpaceRef colorSpace = CGImageGetColorSpace(imageRef);
     const uint32_t bitmapInfo = CGImageGetBitmapInfo(imageRef);
-    const uint32_t alphaInfo = CGImageGetAlphaInfo(imageRef);
     const uint32_t byteOrder = bitmapInfo & kCGBitmapByteOrderMask;
     const uint32_t bitsPerComponent = (uint32_t)CGImageGetBitsPerComponent(imageRef);
     const uint32_t numColorComponents = CGColorSpaceGetNumberOfComponents(colorSpace);
-    const uint32_t numAlphaOrPaddingComponents = (kCGImageAlphaNone != alphaInfo) ? 1 : 0;
+    const uint32_t numAlphaOrPaddingComponents = (kCGImageAlphaNone != CGImageGetAlphaInfo(imageRef)) ? 1 : 0;
+
+    assert(bitsPerComponent == 8);
+    assert(CGColorSpaceGetModel(colorSpace) == kCGColorSpaceModelRGB);
+    assert(CGImageGetAlphaInfo(imageRef) == (bitmapInfo & kCGBitmapAlphaInfoMask));
+    assert((numColorComponents == 3) && (numAlphaOrPaddingComponents == 1));
+    assert((byteOrder != kCGBitmapByteOrder16Little) && (byteOrder != kCGBitmapByteOrder16Big));
+    
+    formatInfo->bitsPerComponent = bitsPerComponent;
+    formatInfo->bitsPerPixel = bitsPerComponent * (numColorComponents + numAlphaOrPaddingComponents);
+    formatInfo->bitmapInfo = bitmapInfo;
+    formatInfo->colorSpace = colorSpace;
+}
+
++ (UIImage*)applyCMYStripes:(CGImageRef)imageRef {
+
+    vImage_CGImageFormat format;
+    [ImagesViewController initCGImageFormat:imageRef formatInfo:&format];
+
+    const uint32_t alphaInfo = format.bitmapInfo & kCGBitmapAlphaInfoMask;
+    const uint32_t byteOrder = format.bitmapInfo & kCGBitmapByteOrderMask;
     const bool imageIsARGB =
         (alphaInfo == kCGImageAlphaFirst) && ((byteOrder == kCGBitmapByteOrderDefault) || byteOrder == kCGBitmapByteOrder32Big);
     const bool imageIsABGR = (alphaInfo == kCGImageAlphaLast) && (byteOrder == kCGBitmapByteOrder32Little);
@@ -55,19 +74,7 @@
     const bool imageIsXBGR = (alphaInfo == kCGImageAlphaNoneSkipLast) && (byteOrder == kCGBitmapByteOrder32Little);
     const bool imageIsRGBX = (alphaInfo == kCGImageAlphaNoneSkipLast) && ((byteOrder == kCGBitmapByteOrderDefault) || byteOrder == kCGBitmapByteOrder32Big);
 
-    assert(bitsPerComponent == 8);
-    assert(CGColorSpaceGetModel(colorSpace) == kCGColorSpaceModelRGB);
-    assert(alphaInfo == (bitmapInfo & kCGBitmapAlphaInfoMask));
-    assert((numColorComponents == 3) && (numAlphaOrPaddingComponents == 1));
-    assert((byteOrder != kCGBitmapByteOrder16Little) && (byteOrder != kCGBitmapByteOrder16Big));
     assert(imageIsARGB || imageIsABGR || imageIsXRGB || imageIsXBGR || imageIsRGBX);
-
-    vImage_CGImageFormat format = {
-        .bitsPerComponent = bitsPerComponent,
-        .bitsPerPixel = bitsPerComponent * (numColorComponents + numAlphaOrPaddingComponents),
-        .bitmapInfo = bitmapInfo,
-        .colorSpace = colorSpace,
-    };
 
     vImage_Error result;
     vImage_Buffer imageBuffer8888;
@@ -75,28 +82,26 @@
 
     assert(result == kvImageNoError);
 
-    vImage_Buffer imageBufferR;
-    vImage_Buffer imageBufferG;
-    vImage_Buffer imageBufferB;
-    vImage_Buffer imageBufferA;
+    // Plane Order: { A, R, G, B}
+    vImage_Buffer planeBuffer[4];
 
-    result = vImageBuffer_Init(&imageBufferR, imageBuffer8888.height, imageBuffer8888.width, bitsPerComponent, 0);
+    result = vImageBuffer_Init(&planeBuffer[0], imageBuffer8888.height, imageBuffer8888.width, format.bitsPerComponent, 0);
     assert(result == kvImageNoError);
-    result = vImageBuffer_Init(&imageBufferG, imageBufferR.height, imageBufferR.width, bitsPerComponent, 0);
+    result = vImageBuffer_Init(&planeBuffer[1], planeBuffer[0].height, planeBuffer[0].width, format.bitsPerComponent, 0);
     assert(result == kvImageNoError);
-    result = vImageBuffer_Init(&imageBufferB, imageBufferR.height, imageBufferR.width, bitsPerComponent, 0);
+    result = vImageBuffer_Init(&planeBuffer[2], planeBuffer[0].height, planeBuffer[0].width, format.bitsPerComponent, 0);
     assert(result == kvImageNoError);
-    result = vImageBuffer_Init(&imageBufferA, imageBufferR.height, imageBufferR.width, bitsPerComponent, 0);
+    result = vImageBuffer_Init(&planeBuffer[3], planeBuffer[0].height, planeBuffer[0].width, format.bitsPerComponent, 0);
     assert(result == kvImageNoError);
 
-    // Note: 16byte aligned formats with no alpha component (ex: XRGB and XBGR) pass in an alpha buffer even though it is ignored
+    // Note: 16byte aligned formats with no alpha component (ex: XRGB and XBGR) still pass in an alpha buffer
     if ((imageIsARGB == true) || (imageIsXRGB == true)) {
-        result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &imageBufferA, &imageBufferR, &imageBufferG, &imageBufferB, 0);
+        result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &planeBuffer[0], &planeBuffer[1], &planeBuffer[2], &planeBuffer[3], 0);
     } else if ((imageIsABGR == true) || (imageIsXBGR == true)) {
         // Note: Although the function calls for ARGB input, ABGR or XBGR input can be used if the output planes are swizzled
-        result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &imageBufferA, &imageBufferB, &imageBufferG, &imageBufferR, 0);
+        result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &planeBuffer[0], &planeBuffer[3], &planeBuffer[2], &planeBuffer[1], 0);
     } else if (imageIsRGBX == true) {
-        result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &imageBufferR, &imageBufferG, &imageBufferB, &imageBufferA, 0);
+        result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &planeBuffer[1], &planeBuffer[2], &planeBuffer[3], &planeBuffer[0], 0);
     }
 
     assert(result == kvImageNoError);
@@ -110,57 +115,64 @@
     unsigned char* colorData;
     uint32_t rowPitch;
 
-    rowPitch = imageBufferR.rowBytes;
-    colorData = (unsigned char*)(imageBufferR.data);
+    rowPitch = planeBuffer[1].rowBytes;
+    colorData = (unsigned char*)(planeBuffer[1].data);
     for (uint32_t i = 0; i < endOfFirstSlice; i++) {
         memset(colorData, 0, rowPitch);
         colorData += rowPitch;
     }
 
     // Slice 1: Remove Green to produce Magenta output
-    rowPitch = imageBufferG.rowBytes;
-    colorData = (unsigned char*)(imageBufferG.data) + endOfFirstSlice * rowPitch;
+    rowPitch = planeBuffer[2].rowBytes;
+    colorData = (unsigned char*)(planeBuffer[2].data) + endOfFirstSlice * rowPitch;
     for (uint32_t i = endOfFirstSlice; i < endOfSecondSlice; i++) {
         memset(colorData, 0, rowPitch);
         colorData += rowPitch;
     }
 
     // Slice 2: Remove Blue to produce Yellow output
-    rowPitch = imageBufferB.rowBytes;
-    colorData = (unsigned char*)(imageBufferB.data) + endOfSecondSlice * rowPitch;
+    rowPitch = planeBuffer[3].rowBytes;
+    colorData = (unsigned char*)(planeBuffer[3].data) + endOfSecondSlice * rowPitch;
     for (uint32_t i = endOfSecondSlice; i < endOfThirdSlice; i++) {
         memset(colorData, 0, rowPitch);
         colorData += rowPitch;
     }
 
+    // All slices: Set alpha value to 128 (effectively 0.5f) to make image more saturated when unpremultiplied
+    rowPitch = planeBuffer[0].rowBytes;
+    colorData = (unsigned char*)(planeBuffer[0].data);
+    for (uint32_t i = 0; i < height; i++) {
+        memset(colorData, -128, rowPitch);
+        colorData += rowPitch;
+    }
+
+    if ((imageIsARGB == true) || (imageIsXRGB == true)) {
+        result = vImageConvert_Planar8toARGB8888(&planeBuffer[0], &planeBuffer[1], &planeBuffer[2], &planeBuffer[3], &imageBuffer8888, 0);
+    } else if ((imageIsABGR == true) || (imageIsXBGR == true)) {
+        // Note: To get ABGR or XBGR output, input planes are swizzled
+        result = vImageConvert_Planar8toARGB8888(&planeBuffer[0], &planeBuffer[3], &planeBuffer[2], &planeBuffer[1], &imageBuffer8888, 0);
+    } else if (imageIsRGBX == true) {
+        result = vImageConvert_Planar8toARGB8888(&planeBuffer[1], &planeBuffer[2], &planeBuffer[3], &planeBuffer[0], &imageBuffer8888, 0);
+    }
+
     vImage_Buffer imageBufferUnPremultiplied8888;
     result = vImageBuffer_Init(&imageBufferUnPremultiplied8888, imageBuffer8888.height, imageBuffer8888.width, 32, 0);
     assert(result == kvImageNoError);
-
     vImageUnpremultiplyData_ARGB8888(&imageBuffer8888, &imageBufferUnPremultiplied8888, 0);
     assert(result == kvImageNoError);
 
-    if ((imageIsARGB == true) || (imageIsXRGB == true)) {
-        result = vImageConvert_Planar8toARGB8888(&imageBufferA, &imageBufferR, &imageBufferG, &imageBufferB, &imageBuffer8888, 0);
-    } else if ((imageIsABGR == true) || (imageIsXBGR == true)) {
-        // Note: To get ABGR or XBGR output, input planes are swizzled
-        result = vImageConvert_Planar8toARGB8888(&imageBufferA, &imageBufferB, &imageBufferG, &imageBufferR, &imageBuffer8888, 0);
-    } else if (imageIsRGBX == true) {
-        result = vImageConvert_Planar8toARGB8888(&imageBufferR, &imageBufferG, &imageBufferB, &imageBufferA, &imageBuffer8888, 0);
-    }
-
     assert(result == kvImageNoError);
-    CGImageRef cgImageFromBuffer = vImageCreateCGImageFromBuffer(&imageBuffer8888, &format, nil, nil, 0, nil);
+    CGImageRef cgImageFromBuffer = vImageCreateCGImageFromBuffer(&imageBufferUnPremultiplied8888, &format, nil, nil, 0, nil);
     UIImage* uiImageFromBuffer = [UIImage imageWithCGImage:cgImageFromBuffer];
 
-    CGColorSpaceRelease(colorSpace);
+    CGColorSpaceRelease(format.colorSpace);
     CGImageRelease(cgImageFromBuffer);
 
     free(imageBuffer8888.data);
-    free(imageBufferA.data);
-    free(imageBufferR.data);
-    free(imageBufferG.data);
-    free(imageBufferB.data);
+    free(planeBuffer[0].data);
+    free(planeBuffer[1].data);
+    free(planeBuffer[2].data);
+    free(planeBuffer[3].data);
     free(imageBufferUnPremultiplied8888.data);
 
     return uiImageFromBuffer;
@@ -186,14 +198,14 @@
     CIImage* ciImage = [CIImage imageWithCGImage:photo.CGImage];
     CGImageRef cgImage = [context createCGImage:ciImage fromRect:CGRectMake(300, 600, 200, 200)];
 
-    UIImage* filteredImage = [ImagesViewController filterImage : photo.CGImage];
+    UIImage* cmyStripedAndBrightenedPhoto = [ImagesViewController applyCMYStripes : photo.CGImage];
 
     imagesView.animationImages = [NSArray arrayWithObjects:
                             scaledPhotoHighInterpolation,
                             scaledPhotoNoInterpolation,
                             [UIImage imageNamed:@"photo1.jpg"],
                             [UIImage imageNamed:@"photo2.jpg"],
-                            filteredImage,
+                            cmyStripedAndBrightenedPhoto,
                             [UIImage imageWithCGImage:cgImage],
                             [UIImage imageNamed:@"photo3.jpg"],
                             [UIImage imageNamed:@"photo4.jpg"],
