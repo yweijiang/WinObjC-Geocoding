@@ -40,23 +40,25 @@
 }
 
 + (void)initCGImageFormat:(CGImageRef)imageRef formatInfo:(vImage_CGImageFormat*)formatInfo {
-    const CGColorSpaceRef colorSpace = CGImageGetColorSpace(imageRef);
-    const uint32_t bitmapInfo = CGImageGetBitmapInfo(imageRef);
-    const uint32_t byteOrder = bitmapInfo & kCGBitmapByteOrderMask;
-    const uint32_t bitsPerComponent = (uint32_t)CGImageGetBitsPerComponent(imageRef);
-    const uint32_t numColorComponents = CGColorSpaceGetNumberOfComponents(colorSpace);
-    const uint32_t numAlphaOrPaddingComponents = (kCGImageAlphaNone != CGImageGetAlphaInfo(imageRef)) ? 1 : 0;
 
+    formatInfo->bitmapInfo = CGImageGetBitmapInfo(imageRef);
+    formatInfo->colorSpace = CGImageGetColorSpace(imageRef);
+    formatInfo->bitsPerComponent = (uint32_t)CGImageGetBitsPerComponent(imageRef);
+    
+    const uint32_t numColorComponents = CGColorSpaceGetNumberOfComponents(formatInfo->colorSpace);
+    const uint32_t numAlphaOrPaddingComponents = (kCGImageAlphaNone != CGImageGetAlphaInfo(imageRef)) ? 1 : 0;
+    
+    formatInfo->bitsPerPixel = formatInfo->bitsPerComponent * (numColorComponents + numAlphaOrPaddingComponents);
+    formatInfo->decode = NULL;
+    formatInfo->version = 0;
+    formatInfo->renderingIntent = 0;
+
+    const uint32_t byteOrder = bitmapInfo & kCGBitmapByteOrderMask;
     assert(bitsPerComponent == 8);
     assert(CGColorSpaceGetModel(colorSpace) == kCGColorSpaceModelRGB);
     assert(CGImageGetAlphaInfo(imageRef) == (bitmapInfo & kCGBitmapAlphaInfoMask));
     assert((numColorComponents == 3) && (numAlphaOrPaddingComponents == 1));
     assert((byteOrder != kCGBitmapByteOrder16Little) && (byteOrder != kCGBitmapByteOrder16Big));
-    
-    formatInfo->bitsPerComponent = bitsPerComponent;
-    formatInfo->bitsPerPixel = bitsPerComponent * (numColorComponents + numAlphaOrPaddingComponents);
-    formatInfo->bitmapInfo = bitmapInfo;
-    formatInfo->colorSpace = colorSpace;
 }
 
 + (UIImage*)applyCMYStripes:(CGImageRef)imageRef {
