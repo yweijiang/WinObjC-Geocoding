@@ -53,10 +53,10 @@
     formatInfo->version = 0;
     formatInfo->renderingIntent = 0;
 
-    const uint32_t byteOrder = bitmapInfo & kCGBitmapByteOrderMask;
-    assert(bitsPerComponent == 8);
-    assert(CGColorSpaceGetModel(colorSpace) == kCGColorSpaceModelRGB);
-    assert(CGImageGetAlphaInfo(imageRef) == (bitmapInfo & kCGBitmapAlphaInfoMask));
+    const uint32_t byteOrder = formatInfo->bitmapInfo & kCGBitmapByteOrderMask;
+    assert(formatInfo->bitsPerComponent == 8);
+    assert(CGColorSpaceGetModel(formatInfo->colorSpace) == kCGColorSpaceModelRGB);
+    assert(CGImageGetAlphaInfo(imageRef) == (formatInfo->bitmapInfo & kCGBitmapAlphaInfoMask));
     assert((numColorComponents == 3) && (numAlphaOrPaddingComponents == 1));
     assert((byteOrder != kCGBitmapByteOrder16Little) && (byteOrder != kCGBitmapByteOrder16Big));
 }
