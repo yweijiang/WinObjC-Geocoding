@@ -327,8 +327,10 @@ static const double meanDivisor = 100;
     // create CGImageRef from vImage_Buffer output
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
 
+    CGBitmapInfo bitmapInfo = kCGImageAlphaNoneSkipLast | kCGBitmapByteOrder32Little;
+
     CGContextRef ctx = CGBitmapContextCreate(
-        outBuffer.data, outBuffer.width, outBuffer.height, 8, outBuffer.rowBytes, colorSpace, (CGBitmapInfo)kCGImageAlphaNoneSkipLast);
+        outBuffer.data, outBuffer.width, outBuffer.height, 8, outBuffer.rowBytes, colorSpace, bitmapInfo);
 
     CGImageRef imageRef = CGBitmapContextCreateImage(ctx);
 
