@@ -26,12 +26,12 @@
 
     scrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, bounds.size.width, bounds.size.height)];
     scrollView.backgroundColor = [UIColor whiteColor];
-    scrollView.contentSize = CGSizeMake(450, 1200);
+    scrollView.contentSize = CGSizeMake(450.0f, 1200.0f);
     scrollView.autoresizingMask = (UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight);
 
-    buttonLength = 72;
-    locHeight = 80;
-    headingHeight = 280;
+    buttonLength = 72.0f;
+    locHeight = 80.0f;
+    headingHeight = 280.0f;
 
     locationManager = [[CLLocationManager alloc] init];
     [locationManager requestWhenInUseAuthorization];
@@ -40,15 +40,15 @@
     locationManager.desiredAccuracy = kCLLocationAccuracyBest;
 
     // Set movement threshold for location data at 10 meters and heading data at 5 degrees.
-    locationManager.distanceFilter = 10;
-    locationManager.headingFilter = 5;
+    locationManager.distanceFilter = 10.0;
+    locationManager.headingFilter = 5.0;
 
     [self setupLocation];
 
     if ([CLLocationManager headingAvailable]) {
         [self setupHeading];
     } else {
-        headingLabel = [[UILabel alloc] initWithFrame:CGRectMake(30, headingHeight, 300, 50)];
+        headingLabel = [[UILabel alloc] initWithFrame:CGRectMake(30, headingHeight, 300.0f, 50.0f)];
         [headingLabel setText:@"Heading Not Available!"];
         [headingLabel setTextAlignment:NSTextAlignmentLeft];
         [scrollView addSubview:headingLabel];
@@ -74,7 +74,7 @@
 
 // Methods for Location
 - (void)setupLocation {
-    locLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, locHeight - 5, 150, 50)];
+    locLabel = [[UILabel alloc] initWithFrame:CGRectMake(10.0f, locHeight - 5.0f, 150.0f, 50.0f)];
     [locLabel setBackgroundColor:[UIColor whiteColor]];
     [locLabel setText:@"Location"];
     [locLabel setTextAlignment:NSTextAlignmentLeft];
@@ -82,25 +82,25 @@
 
     locStartButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
     [locStartButton setTitle:@"Start" forState:UIControlStateNormal];
-    locStartButton.frame = CGRectMake(100, locHeight, buttonLength, 40);
+    locStartButton.frame = CGRectMake(100.0f, locHeight, buttonLength, 40.0f);
     [locStartButton addTarget:self action:@selector(locStartButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
     [scrollView addSubview:locStartButton];
 
     locStopButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
     [locStopButton setTitle:@"Stop" forState:UIControlStateNormal];
-    locStopButton.frame = CGRectMake(180, locHeight, buttonLength, 40);
+    locStopButton.frame = CGRectMake(180.0f, locHeight, buttonLength, 40.0f);
     locStopButton.enabled = NO;
     [locStopButton addTarget:self action:@selector(locStopButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
     [scrollView addSubview:locStopButton];
 
     locUpdateButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
     [locUpdateButton setTitle:@"Poll Values" forState:UIControlStateNormal];
-    locUpdateButton.frame = CGRectMake(270, locHeight, buttonLength * 1.3f, 40);
+    locUpdateButton.frame = CGRectMake(270.0f, locHeight, buttonLength * 1.3f, 40.0f);
     [locUpdateButton addTarget:self action:@selector(locUpdateButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
     locUpdateButton.enabled = YES;
     [scrollView addSubview:locUpdateButton];
 
-    locVal = [[UILabel alloc] initWithFrame:CGRectMake(0, locHeight + 50, 350, 40)];
+    locVal = [[UILabel alloc] initWithFrame:CGRectMake(0, locHeight + 50.0f, 350.0f, 40.0f)];
     [locVal setBackgroundColor:[UIColor whiteColor]];
     [locVal setText:@"Longitude: 0.000        Latitude: 0.000        "];
     [locVal setTextAlignment:NSTextAlignmentRight];
@@ -135,7 +135,7 @@
 
 // Methods for Heading
 - (void)setupHeading {
-    headingLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, headingHeight - 5, 150, 50)];
+    headingLabel = [[UILabel alloc] initWithFrame:CGRectMake(10.0f, headingHeight - 5.0f, 150.0f, 50.0f)];
     [headingLabel setBackgroundColor:[UIColor whiteColor]];
     [headingLabel setText:@"Heading"];
     [headingLabel setTextAlignment:NSTextAlignmentLeft];
@@ -143,18 +143,18 @@
 
     headingStartButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
     [headingStartButton setTitle:@"Start" forState:UIControlStateNormal];
-    headingStartButton.frame = CGRectMake(100, headingHeight, buttonLength, 40);
+    headingStartButton.frame = CGRectMake(100.0f, headingHeight, buttonLength, 40.0f);
     [headingStartButton addTarget:self action:@selector(headingStartButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
     [scrollView addSubview:headingStartButton];
 
     headingStopButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
     [headingStopButton setTitle:@"Stop" forState:UIControlStateNormal];
-    headingStopButton.frame = CGRectMake(180, headingHeight, buttonLength, 40);
+    headingStopButton.frame = CGRectMake(180.0f, headingHeight, buttonLength, 40.0f);
     headingStopButton.enabled = NO;
     [headingStopButton addTarget:self action:@selector(headingStopButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
     [scrollView addSubview:headingStopButton];
 
-    headingVal = [[UILabel alloc] initWithFrame:CGRectMake(0, headingHeight + 50, 350, 40)];
+    headingVal = [[UILabel alloc] initWithFrame:CGRectMake(0, headingHeight + 50.0f, 350.0f, 40.0f)];
     [headingVal setBackgroundColor:[UIColor whiteColor]];
     [headingVal setText:@"Mag Heading: 0.000 True Heading: 0.000 Acc: 0.000 "];
     [headingVal setTextAlignment:NSTextAlignmentRight];

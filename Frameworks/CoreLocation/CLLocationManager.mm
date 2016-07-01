@@ -454,14 +454,17 @@ static const int64_t c_timeoutInSeconds = 15LL;
         // states that a negative number is returned when the heading is invalid, so 180 degree error gives -1 and
         // an unknown accuracy gives -2.
         CLLocationDirection accuracy = 0.0;
-        if (compassReading.headingAccuracy == WDSMagnetometerAccuracyUnknown) {
-            accuracy = -2.0;
-        } else if (compassReading.headingAccuracy == WDSMagnetometerAccuracyUnreliable) {
-            accuracy = -1.0;
-        } else if (compassReading.headingAccuracy == WDSMagnetometerAccuracyApproximate) {
-            accuracy = 25.0;
-        } else if (compassReading.headingAccuracy == WDSMagnetometerAccuracyHigh) {
-            accuracy = 10.0;
+        switch (compassReading.headingAccuracy) {
+            case WDSMagnetometerAccuracyUnknown:
+                accuracy = -2.0;
+            case WDSMagnetometerAccuracyUnreliable:
+                accuracy = -1.0;
+            case WDSMagnetometerAccuracyApproximate:
+                accuracy = 25.0;
+            case WDSMagnetometerAccuracyHigh:
+                accuracy = 10.0;
+            default:
+                accuracy = 0;
         }
 
         // Calculate angular change from previous heading and make sure it is larger than headingFilter
@@ -682,10 +685,12 @@ static const int64_t c_timeoutInSeconds = 15LL;
         if (_periodicLocationUpdateRequested) {
             NSTraceInfo(TAG, @"Stopped periodic location update");
             [_uwpGeolocator removePositionChangedEvent:_uwpPeriodicPositionChangeToken];
+            
             if (_extendedExecutionSessionRequested) {
                 _removeExtendedExecutionSession();
                 _extendedExecutionSessionRequested = NO;
             }
+
             _periodicLocationUpdateRequested = NO;
         }
     }
@@ -763,9 +768,6 @@ static const int64_t c_timeoutInSeconds = 15LL;
                 }];
             _periodicHeadingUpdateRequested = YES;
         }
-
-        // This does not actually update the location information, so no need to make a separate heading function for this
-        [self performSelectorOnMainThread:@selector(_getGeopositionAsync) withObject:nil waitUntilDone:NO];
     }
 }
 
@@ -777,10 +779,12 @@ static const int64_t c_timeoutInSeconds = 15LL;
         if (_periodicHeadingUpdateRequested) {
             NSTraceInfo(TAG, @"Stopped periodic heading update");
             [_uwpCompass removeReadingChangedEvent:_uwpPeriodicHeadingChangeToken];
+            
             if (_extendedExecutionSessionRequested) {
                 _removeExtendedExecutionSession();
                 _extendedExecutionSessionRequested = NO;
             }
+
             _periodicHeadingUpdateRequested = NO;
         }
     }

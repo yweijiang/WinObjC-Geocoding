@@ -87,4 +87,10 @@ TEST(CoreLocation, LocationDistanceTests) {
     ASSERT_NEAR_MSG(distance2, 559296, 2000, "FAILED: Distance: %f\n", distance2);
     ASSERT_NEAR_MSG(distance3, 2789733, 2000, "FAILED: Distance: %f\n", distance3);
     ASSERT_NEAR_MSG(distance4, 3936990, 2000, "FAILED: Distance: %f\n", distance4);
+
+    [locationSeattle release];
+    [locationLosAngeles release];
+    [locationSanFrancisco release];
+    [locationChicago release];
+    [locationNewYork release];
 }

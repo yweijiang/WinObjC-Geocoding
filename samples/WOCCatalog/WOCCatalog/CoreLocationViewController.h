@@ -26,17 +26,17 @@
     UIButton* locStartButton;
     UIButton* locUpdateButton;
     UIActivityIndicatorView* progressInd;
-    int locHeight;
 
     UILabel* headingLabel;
     UILabel* headingVal;
     UIButton* headingStopButton;
     UIButton* headingStartButton;
-    int headingHeight;
 
     CLLocationManager* locationManager;
     CMMotionManager* motionManager;
     UIScrollView* scrollView;
-    int buttonLength;
+    CGFloat locHeight;
+    CGFloat headingHeight;
+    CGFloat buttonLength;
 }
 @end
