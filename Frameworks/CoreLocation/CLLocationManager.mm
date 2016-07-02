@@ -457,12 +457,16 @@ static const int64_t c_timeoutInSeconds = 15LL;
         switch (compassReading.headingAccuracy) {
             case WDSMagnetometerAccuracyUnknown:
                 accuracy = -2.0;
+                break;
             case WDSMagnetometerAccuracyUnreliable:
                 accuracy = -1.0;
+                break;
             case WDSMagnetometerAccuracyApproximate:
                 accuracy = 25.0;
+                break;
             case WDSMagnetometerAccuracyHigh:
                 accuracy = 10.0;
+                break;
             default:
                 accuracy = 0;
         }

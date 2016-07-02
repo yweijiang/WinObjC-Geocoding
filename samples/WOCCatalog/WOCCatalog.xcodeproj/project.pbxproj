@@ -180,8 +180,6 @@
 		C14942D31C77E1EE00C2B67E /* AccelerateViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AccelerateViewController.m; sourceTree = "<group>"; };
 		C1BA9A051D27222C004D9E6E /* CoreLocationViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreLocationViewController.h; sourceTree = "<group>"; };
 		C1BA9A061D27222C004D9E6E /* CoreLocationViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CoreLocationViewController.mm; sourceTree = "<group>"; };
-		C1BA9A071D27222C004D9E6E /* URLDownloadCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = URLDownloadCell.h; sourceTree = "<group>"; };
-		C1BA9A081D27222C004D9E6E /* URLSessionViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = URLSessionViewController.h; sourceTree = "<group>"; };
 		D27357F11C6AD0E200CA31C4 /* CoreImage.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreImage.framework; path = System/Library/Frameworks/CoreImage.framework; sourceTree = SDKROOT; };
 		D2AC202E1C69729C00D54717 /* BasicAnimationViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BasicAnimationViewController.h; sourceTree = "<group>"; };
 		D2AC202F1C6972A600D54717 /* BasicAnimationViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BasicAnimationViewController.m; sourceTree = "<group>"; };
@@ -255,8 +253,6 @@
 			children = (
 				C1BA9A051D27222C004D9E6E /* CoreLocationViewController.h */,
 				C1BA9A061D27222C004D9E6E /* CoreLocationViewController.mm */,
-				C1BA9A071D27222C004D9E6E /* URLDownloadCell.h */,
-				C1BA9A081D27222C004D9E6E /* URLSessionViewController.h */,
 				143EAE4C1D075DD50068D90F /* UserDefaultsViewController.h */,
 				143EAE4D1D075DD50068D90F /* UserDefaultsViewController.m */,
 				4FAF43071CF67047009F29E8 /* UIPasteboardViewController.h */,
