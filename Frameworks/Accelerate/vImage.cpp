@@ -934,6 +934,7 @@ vImage_Error vImageMatrixMultiply_ARGB8888(const vImage_Buffer* src,
 
 /**
 @Status Interoperable
+@Notes
 */
 vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buffer* srcARGB,
                                              const vImage_Buffer* destA,
@@ -970,7 +971,7 @@ vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buffer* srcARGB,
 
         __m128i *pixelRowM128Ptr, *alphaRowM128Ptr, *redRowM128Ptr, *greenRowM128Ptr, *blueRowM128Ptr;
         __m128i vPixelBlocks[4], vBlocks02[2], vBlocks13[2], vBlocks_02A_13A[2], vBlocks_02B_13B[2];
-        __m128i vAlphaRedEven, vAlphaRedOdd, vGreenBlueEven, vGreenBlueOdd;
+        __m128i vBlueGreenEven, vBlueGreenOdd, vRedAlphaEven, vRedAlphaOdd;
         __m128i vAlpha, vRed, vGreen, vBlue;
 
         for (unsigned int i = 0; i < height; i++) {
@@ -1002,17 +1003,17 @@ vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buffer* srcARGB,
                 vBlocks_02B_13B[0] = _mm_unpacklo_epi8(vBlocks02[1], vBlocks13[1]);
                 vBlocks_02B_13B[1] = _mm_unpackhi_epi8(vBlocks02[1], vBlocks13[1]);
 
-                vAlphaRedEven = _mm_unpacklo_epi8(vBlocks_02A_13A[0], vBlocks_02B_13B[0]);
-                vGreenBlueEven = _mm_unpackhi_epi8(vBlocks_02A_13A[0], vBlocks_02B_13B[0]);
+                vBlueGreenEven = _mm_unpacklo_epi8(vBlocks_02A_13A[0], vBlocks_02B_13B[0]);
+                vRedAlphaEven = _mm_unpackhi_epi8(vBlocks_02A_13A[0], vBlocks_02B_13B[0]);
 
-                vAlphaRedOdd = _mm_unpacklo_epi8(vBlocks_02A_13A[1], vBlocks_02B_13B[1]);
-                vGreenBlueOdd = _mm_unpackhi_epi8(vBlocks_02A_13A[1], vBlocks_02B_13B[1]);
+                vBlueGreenOdd = _mm_unpacklo_epi8(vBlocks_02A_13A[1], vBlocks_02B_13B[1]);
+                vRedAlphaOdd = _mm_unpackhi_epi8(vBlocks_02A_13A[1], vBlocks_02B_13B[1]);
 
-                vAlpha = _mm_unpacklo_epi8(vAlphaRedEven, vAlphaRedOdd);
-                vRed = _mm_unpackhi_epi8(vAlphaRedEven, vAlphaRedOdd);
+                vBlue = _mm_unpacklo_epi8(vBlueGreenEven, vBlueGreenOdd);
+                vGreen = _mm_unpackhi_epi8(vBlueGreenEven, vBlueGreenOdd);
 
-                vGreen = _mm_unpacklo_epi8(vGreenBlueEven, vGreenBlueOdd);
-                vBlue = _mm_unpackhi_epi8(vGreenBlueEven, vGreenBlueOdd);
+                vRed = _mm_unpacklo_epi8(vRedAlphaEven, vRedAlphaOdd);
+                vAlpha = _mm_unpackhi_epi8(vRedAlphaEven, vRedAlphaOdd);
 
                 _mm_store_si128(&alphaRowM128Ptr[j], vAlpha);
                 _mm_store_si128(&redRowM128Ptr[j], vRed);
@@ -1057,6 +1058,7 @@ vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buffer* srcARGB,
 
 /**
 @Status Interoperable
+@Notes
 */
 vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
                                              const vImage_Buffer* srcR,
@@ -1091,7 +1093,7 @@ vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
         const unsigned int iterationsPerRow = width / pixelsPerIteration + ((width % pixelsPerIteration != 0) ? 1 : 0);
 
         __m128i *pixelRowM128Ptr, *alphaRowM128Ptr, *redRowM128Ptr, *greenRowM128Ptr, *blueRowM128Ptr;
-        __m128i vA, vR, vG, vB, vAG, vRB, vARGB;
+        __m128i vA, vR, vG, vB, vRB, vAG, vARGB;
 
         for (unsigned int i = 0; i < height; i++) {
             alphaRowM128Ptr = reinterpret_cast<__m128i*>(alphaRowBytePtr);
@@ -1109,27 +1111,27 @@ vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
 
                 /// First 8 pixels
                 // Generate first half of AG and RB vectors
-                vAG = _mm_unpacklo_epi8(vA, vG);
-                vRB = _mm_unpacklo_epi8(vR, vB);
+                vRB = _mm_unpacklo_epi8(vB, vR);
+                vAG = _mm_unpacklo_epi8(vG, vA);
 
                 // Interleave AG & RB vectors to get groups of ARGB pixels
-                vARGB = _mm_unpacklo_epi8(vAG, vRB);
+                vARGB = _mm_unpacklo_epi8(vRB, vAG);
                 _mm_store_si128(pixelRowM128Ptr, vARGB);
                 pixelRowM128Ptr++;
-                vARGB = _mm_unpackhi_epi8(vAG, vRB);
+                vARGB = _mm_unpackhi_epi8(vRB, vAG);
                 _mm_store_si128(pixelRowM128Ptr, vARGB);
                 pixelRowM128Ptr++;
 
                 /// Second 8 pixels
                 // Generate second half of AG and RB vectors
-                vAG = _mm_unpackhi_epi8(vA, vG);
-                vRB = _mm_unpackhi_epi8(vR, vB);
+                vRB = _mm_unpackhi_epi8(vB, vR);
+                vAG = _mm_unpackhi_epi8(vG, vA);
 
                 // Interleave AG & RB vectors to get groups of ARGB pixels
-                vARGB = _mm_unpacklo_epi8(vAG, vRB);
+                vARGB = _mm_unpacklo_epi8(vRB, vAG);
                 _mm_store_si128(pixelRowM128Ptr, vARGB);
                 pixelRowM128Ptr++;
-                vARGB = _mm_unpackhi_epi8(vAG, vRB);
+                vARGB = _mm_unpackhi_epi8(vRB, vAG);
                 _mm_store_si128(pixelRowM128Ptr, vARGB);
                 pixelRowM128Ptr++;
             }
@@ -1199,7 +1201,10 @@ vImage_Error vImageConvert_Planar8toPlanarF(
     return kvImageNoError;
 }
 
-/// Combines three Planar8 images into one RGB888 image.
+/**
+@Status Interoperable
+@Notes
+*/
 vImage_Error vImageConvert_Planar8toRGB888(const vImage_Buffer* planarRed,
                                            const vImage_Buffer* planarGreen,
                                            const vImage_Buffer* planarBlue,
@@ -1226,9 +1231,9 @@ vImage_Error vImageConvert_Planar8toRGB888(const vImage_Buffer* planarRed,
     for (unsigned int i = 0; i < height; i++) {
         pixelRowPixelPtr = reinterpret_cast<Pixel_888_s*>(pixelRowBytePtr);
         for (unsigned int j = 0; j < width; j++) {
-            pixelRowPixelPtr[j].val[0] = redRowBytePtr[j];
+            pixelRowPixelPtr[j].val[0] = blueRowBytePtr[j];
             pixelRowPixelPtr[j].val[1] = greenRowBytePtr[j];
-            pixelRowPixelPtr[j].val[2] = blueRowBytePtr[j];
+            pixelRowPixelPtr[j].val[2] = redRowBytePtr[j];
         }
 
         redRowBytePtr += planarRed->rowBytes;
@@ -1277,6 +1282,7 @@ vImage_Error vImageConvert_PlanarFtoPlanar8(
 
 /**
 @Status Interoperable
+@Notes
 */
 vImage_Error vImageUnpremultiplyData_RGBA8888(const vImage_Buffer* src, const vImage_Buffer* dest, vImage_Flags flags) {
     assert((src != nullptr) && (dest != nullptr));
@@ -1301,9 +1307,49 @@ vImage_Error vImageUnpremultiplyData_RGBA8888(const vImage_Buffer* src, const vI
         dstRowPixelPtr = reinterpret_cast<Pixel_8888_s*>(dstRowBytePtr);
 
         for (unsigned int j = 0; j < width; j++) {
-            dstRowPixelPtr[j].val[0] = srcRowPixelPtr[j].val[0] / srcRowPixelPtr[j].val[3];
-            dstRowPixelPtr[j].val[1] = srcRowPixelPtr[j].val[1] / srcRowPixelPtr[j].val[3];
-            dstRowPixelPtr[j].val[2] = srcRowPixelPtr[j].val[2] / srcRowPixelPtr[j].val[3];
+            dstRowPixelPtr[j].val[0] = srcRowPixelPtr[j].val[0];
+            dstRowPixelPtr[j].val[1] = _vImageDivideAndSaturateUint8(srcRowPixelPtr[j].val[0], srcRowPixelPtr[j].val[1]);
+            dstRowPixelPtr[j].val[2] = _vImageDivideAndSaturateUint8(srcRowPixelPtr[j].val[1], srcRowPixelPtr[j].val[2]);
+            dstRowPixelPtr[j].val[3] = _vImageDivideAndSaturateUint8(srcRowPixelPtr[j].val[2], srcRowPixelPtr[j].val[3]);
+        }
+
+        srcRowBytePtr += srcRowPitch;
+        dstRowBytePtr += dstRowPitch;
+    }
+
+    return kvImageNoError;
+}
+
+/**
+@Status Interoperable
+@Notes
+*/
+vImage_Error vImageUnpremultiplyData_ARGB8888(const vImage_Buffer* src, const vImage_Buffer* dest, vImage_Flags flags) {
+    assert((src != nullptr) && (dest != nullptr));
+    assert(src->width == dest->width);
+    assert(src->height == dest->height);
+
+    const size_t srcRowPitch = src->rowBytes;
+    const size_t dstRowPitch = dest->rowBytes;
+    const unsigned int width = src->width;
+    const unsigned int height = src->height;
+
+    assert(srcRowPitch >= width * sizeof(Pixel_8888_s));
+    assert(dstRowPitch >= width * sizeof(Pixel_8888_s));
+
+    Pixel_8888_s* srcRowPixelPtr = reinterpret_cast<Pixel_8888_s*>(src->data);
+    Pixel_8888_s* dstRowPixelPtr = reinterpret_cast<Pixel_8888_s*>(dest->data);
+    unsigned char* srcRowBytePtr = reinterpret_cast<unsigned char*>(src->data);
+    unsigned char* dstRowBytePtr = reinterpret_cast<unsigned char*>(dest->data);
+
+    for (unsigned int i = 0; i < height; i++) {
+        srcRowPixelPtr = reinterpret_cast<Pixel_8888_s*>(srcRowBytePtr);
+        dstRowPixelPtr = reinterpret_cast<Pixel_8888_s*>(dstRowBytePtr);
+
+        for (unsigned int j = 0; j < width; j++) {
+            dstRowPixelPtr[j].val[0] = _vImageDivideAndSaturateUint8(srcRowPixelPtr[j].val[0], srcRowPixelPtr[j].val[3]);
+            dstRowPixelPtr[j].val[1] = _vImageDivideAndSaturateUint8(srcRowPixelPtr[j].val[1], srcRowPixelPtr[j].val[3]);
+            dstRowPixelPtr[j].val[2] = _vImageDivideAndSaturateUint8(srcRowPixelPtr[j].val[2], srcRowPixelPtr[j].val[3]);
             dstRowPixelPtr[j].val[3] = srcRowPixelPtr[j].val[3];
         }
 
@@ -1324,7 +1370,7 @@ vImage_Error vImageBuffer_Init(
     buffer->height = height;
     buffer->width = width;
 
-    const uint32_t bytesPerFragment = bitsPerFragment / 8;
+    const uint32_t bytesPerFragment = bitsPerFragment >> 3;
     vImage_Error returnCode = kvImageNoError;
 
     if ((c_padAllocs == true) && (width >= 16) && (height > 1) && (bytesPerFragment < 8)) {

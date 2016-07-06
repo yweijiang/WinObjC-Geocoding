@@ -248,6 +248,7 @@ LIBRARY Accelerate
           vImageConvert_Planar8toRGB888
           vImageConvert_PlanarFtoPlanar8
           vImageUnpremultiplyData_RGBA8888
+          vImageUnpremultiplyData_ARGB8888
           vImageBuffer_Init
           vImageBuffer_InitWithCGImage
           vImageCreateCGImageFromBuffer
