@@ -230,8 +230,17 @@ static bool loadImageFromWICFrame(UIImage* dest, IWICImagingFactory* pFactory, I
 
     if (SUCCEEDED(hr)) {
         CGColorSpaceRef clrRgb = CGColorSpaceCreateDeviceRGB();
-        dest->m_pImage =
-            CGImageCreate(width, height, 8, 32, width * 4, clrRgb, (kCGImageAlphaLast | kCGBitmapByteOrder32Little), nil, NULL, false, kCGRenderingIntentDefault);
+        dest->m_pImage = CGImageCreate(width,
+                                       height,
+                                       8,
+                                       32,
+                                       width * 4,
+                                       clrRgb,
+                                       (kCGImageAlphaLast | kCGBitmapByteOrder32Little),
+                                       nil,
+                                       NULL,
+                                       false,
+                                       kCGRenderingIntentDefault);
         CGColorSpaceRelease(clrRgb);
 
         hr = pFactory->CreateFormatConverter(&pFormatConverter);

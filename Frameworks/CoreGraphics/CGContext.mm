@@ -772,7 +772,7 @@ void CGContextEndTransparencyLayer(CGContextRef ctx) {
  @Status Interoperable
 */
 CGColorSpaceRef CGBitmapContextGetColorSpace(CGContextRef ctx) {
-    //TODO: Consider caching colorspaceRef in CGImageRef
+    // TODO: Consider caching colorspaceRef in CGImageRef
     return (CGColorSpaceRef) new __CGColorSpace(ctx->Backing()->DestImage()->Backing()->ColorSpaceModel());
 }
 
@@ -794,9 +794,8 @@ CGContextRef CGBitmapContextCreate(void* data,
     bool colorSpaceAllocated = false;
 
     if (colorSpace == NULL) {
-
         TraceWarning(TAG, L"Warning: colorSpace = NULL, assuming colorspace relative to RGB.");
-        
+
         if (bytesPerRow >= (width * 3)) {
             colorSpace = CGColorSpaceCreateDeviceRGB();
         } else {
@@ -812,17 +811,15 @@ CGContextRef CGBitmapContextCreate(void* data,
 
     surfaceFormat format = _CGImageGetFormat(bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo);
 
-    _CGSurfaceInfo createParams = {
-        .width = width,
-        .height = height,
-        .bitsPerComponent = bitsPerComponent,
-        .bytesPerPixel = bitsPerPixel >> 3,
-        .bytesPerRow = bytesPerRow,
-        .surfaceData = data,
-        .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
-        .bitmapInfo = bitmapInfo,
-        .format = format
-    };
+    _CGSurfaceInfo createParams = {.width = width,
+                                   .height = height,
+                                   .bitsPerComponent = bitsPerComponent,
+                                   .bytesPerPixel = bitsPerPixel >> 3,
+                                   .bytesPerRow = bytesPerRow,
+                                   .surfaceData = data,
+                                   .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
+                                   .bitmapInfo = bitmapInfo,
+                                   .format = format };
 
     newImage = new CGBitmapImage(&createParams);
 
@@ -1008,8 +1005,7 @@ CGBitmapInfo CGBitmapContextGetBitmapInfo(CGContextRef ctx) {
 
     if (ctx) {
         ret = ctx->Backing()->DestImage()->Backing()->BitmapInfo();
-    }
-    else {
+    } else {
         TraceWarning(TAG, L"CGBitmapContextGetBitmapInfo: Null context!");
         ret = 0;
     }

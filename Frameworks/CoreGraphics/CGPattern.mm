@@ -84,8 +84,7 @@
     if (isColored) {
         bitmapInfo = kCGImageAlphaFirst;
         colorSpace = CGColorSpaceCreateDeviceRGB();
-    }
-    else {
+    } else {
         bitmapInfo = kCGImageAlphaNone;
         colorSpace = CGColorSpaceCreateDeviceGray();
     }

@@ -46,7 +46,9 @@ CGGraphicBufferImage::CGGraphicBufferImage(_CGSurfaceInfo* surfaceInfo, DisplayT
     _img->_parent = this;
 }
 
-CGGraphicBufferImageBacking::CGGraphicBufferImageBacking(_CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking) {
+CGGraphicBufferImageBacking::CGGraphicBufferImageBacking(_CGSurfaceInfo* surfaceInfo,
+                                                         DisplayTexture* nativeTexture,
+                                                         DisplayTextureLocking* locking) {
     EbrIncrement((volatile int*)&imgDataCount);
     TraceVerbose(TAG, L"Number of images: %d", imgDataCount);
 

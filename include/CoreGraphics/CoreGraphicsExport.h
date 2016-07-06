@@ -114,7 +114,17 @@ typedef enum {
     kCGColorSpaceModelPattern,
 } CGColorSpaceModel;
 
-typedef enum { _Color565, _ColorARGB, _ColorABGR, _ColorBGRX, _ColorXBGR, _ColorGrayscale, _ColorBGR, _ColorA8, _ColorIndexed } surfaceFormat;
+typedef enum {
+    _Color565,
+    _ColorARGB,
+    _ColorABGR,
+    _ColorBGRX,
+    _ColorXBGR,
+    _ColorGrayscale,
+    _ColorBGR,
+    _ColorA8,
+    _ColorIndexed
+} surfaceFormat;
 
 struct _CGSurfaceInfo {
     size_t width;

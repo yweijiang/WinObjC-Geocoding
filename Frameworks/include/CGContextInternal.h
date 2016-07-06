@@ -46,7 +46,7 @@ COREGRAPHICS_EXPORT CGImageRef CGPNGImageCreateFromData(NSData* data);
 COREGRAPHICS_EXPORT CGImageRef CGJPEGImageCreateFromFile(NSString* path);
 COREGRAPHICS_EXPORT CGImageRef CGJPEGImageCreateFromData(NSData* data);
 
-class __CGContext: private objc_object {
+class __CGContext : private objc_object {
 public:
     float scale;
     CGContextImpl* _backing;

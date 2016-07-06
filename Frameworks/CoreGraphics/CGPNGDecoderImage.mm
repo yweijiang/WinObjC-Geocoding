@@ -182,7 +182,6 @@ CGImageBacking* CGPNGImageBacking::ConstructBacking() {
         _CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(_cachedWidth, _cachedHeight, _cachedSurfaceFormat, NULL, 0, _cachedBitmapInfo);
         newImage = new CGGraphicBufferImage(&surfaceInfo);
 
-
         retBacking = newImage->DetachBacking(_parent);
         CGImageRelease(newImage);
 

@@ -356,11 +356,10 @@ public:
 
     void Completed() {
         id animHandler = _animHandler; // Save in a local for the block to retain.
-        dispatch_async(dispatch_get_main_queue(),
-                       ^{
-                           [animHandler animationDidStop:TRUE];
-                           [animHandler _removeAnimationsFromLayer];
-                       });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [animHandler animationDidStop:TRUE];
+            [animHandler _removeAnimationsFromLayer];
+        });
     }
 
     DisplayAnimationTransition(id animHandler, NSString* type, NSString* subType) {
@@ -723,11 +722,10 @@ public:
 
     void Completed() {
         id animHandler = _animHandler; // Save in a local for the block to retain.
-        dispatch_async(dispatch_get_main_queue(),
-                       ^{
-                           [animHandler animationDidStop:TRUE];
-                           [animHandler _removeAnimationsFromLayer];
-                       });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [animHandler animationDidStop:TRUE];
+            [animHandler _removeAnimationsFromLayer];
+        });
     }
 
     DisplayAnimationBasic(id animHandler,

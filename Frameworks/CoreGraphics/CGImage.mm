@@ -178,7 +178,7 @@ CGImageRef CGImageCreateWithImageInRect(CGImageRef ref, CGRect rect) {
     // Override width and height with the rect
     surfaceInfo.width = rect.size.width;
     surfaceInfo.height = rect.size.height;
-    
+
     assert(surfaceInfo.surfaceData == NULL);
 
     CGImageRef newImage = new CGBitmapImage(&surfaceInfo);
@@ -214,11 +214,11 @@ CGImageRef CGImageCreateCopy(CGImageRef ref) {
     if (!ref)
         return nullptr;
 
-    _CGSurfaceInfo surfaceInfo; 
+    _CGSurfaceInfo surfaceInfo;
     ref->Backing()->GetSurfaceInfoWithoutPixelPtr(&surfaceInfo);
 
     assert(surfaceInfo.surfaceData == NULL);
-    
+
     CGImageRef newImage = new CGBitmapImage(&surfaceInfo);
 
     int startX = 0;
@@ -252,7 +252,7 @@ CGImageRef CGImageCreateCopy(CGImageRef ref) {
  @Notes No actual conversion between colorspaces, simply copies and reinterprets data in new colorspace
 */
 CGImageRef CGImageCreateCopyWithColorSpace(CGImageRef ref, CGColorSpaceRef colorSpace) {
-    _CGSurfaceInfo surfaceInfo; 
+    _CGSurfaceInfo surfaceInfo;
     ref->Backing()->GetSurfaceInfoWithoutPixelPtr(&surfaceInfo);
 
     // Override colorSpaceModel
@@ -303,7 +303,8 @@ CGImageRef CGImageCreateWithMask(CGImageRef image, CGImageRef mask) {
         DWORD incX = ((mask->Backing()->Width()) << 16) / image->Backing()->Width();
         DWORD incY = ((mask->Backing()->Height()) << 16) / image->Backing()->Height();
 
-        _CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(image->Backing()->Width(), image->Backing()->Height(), _ColorABGR, newImageData, bytesPerRow);
+        _CGSurfaceInfo surfaceInfo =
+            _CGSurfaceInfoInit(image->Backing()->Width(), image->Backing()->Height(), _ColorABGR, newImageData, bytesPerRow);
 
         newImage = new CGBitmapImage(&surfaceInfo);
         newImage->Backing()->SetFreeWhenDone(TRUE);
@@ -504,9 +505,6 @@ CGDataProviderRef CGImageGetDataProvider(CGImageRef img) {
     return ret;
 }
 
-/**
-@Status Internal
-*/
 void* _CGImageGetData(CGImageRef img) {
     return img->Backing()->StaticImageData();
 }
@@ -515,7 +513,7 @@ void* _CGImageGetData(CGImageRef img) {
  @Status Interoperable
 */
 CGColorSpaceRef CGImageGetColorSpace(CGImageRef img) {
-    //TODO: Consider caching colorspaceRef in CGImageRef
+    // TODO: Consider caching colorspaceRef in CGImageRef
     CGColorSpaceRef ret = (CGColorSpaceRef) new __CGColorSpace(img->Backing()->ColorSpaceModel());
 
     return ret;
@@ -645,17 +643,15 @@ CGImageRef CGImageCreate(size_t width,
     surfaceFormat format = _CGImageGetFormat(bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo);
 
     if (format != _ColorIndexed) {
-        _CGSurfaceInfo surfaceInfo = {
-            .width = width,
-            .height = height,
-            .bitsPerComponent = bitsPerComponent,
-            .bytesPerPixel = bitsPerPixel >> 3,
-            .bytesPerRow = bytesPerRow,
-            .surfaceData = data,
-            .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
-            .bitmapInfo = bitmapInfo,
-            .format = format
-        };
+        _CGSurfaceInfo surfaceInfo = {.width = width,
+                                      .height = height,
+                                      .bitsPerComponent = bitsPerComponent,
+                                      .bytesPerPixel = bitsPerPixel >> 3,
+                                      .bytesPerRow = bytesPerRow,
+                                      .surfaceData = data,
+                                      .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
+                                      .bitmapInfo = bitmapInfo,
+                                      .format = format };
 
         newImage = new CGBitmapImage(&surfaceInfo);
     } else {
@@ -861,13 +857,11 @@ NSData* _CGImagePNGRepresentation(UIImage* img) {
                     break;
 
                 // PIXMAN_b8g8r8
-                case _ColorBGR:
-                    {
-                        outSwizzle->r = pixelSwizzle->b;
-                        outSwizzle->g = pixelSwizzle->g;
-                        outSwizzle->b = pixelSwizzle->r;
-                    }
-                    break;
+                case _ColorBGR: {
+                    outSwizzle->r = pixelSwizzle->b;
+                    outSwizzle->g = pixelSwizzle->g;
+                    outSwizzle->b = pixelSwizzle->r;
+                } break;
 
                 // PIXMAN_r5g6b5
                 case _Color565: {
@@ -894,25 +888,21 @@ NSData* _CGImagePNGRepresentation(UIImage* img) {
 
                 // PIXMAN_x8b8g8r8 | PIXMAN_a8b8g8r8
                 case _ColorXBGR:
-                case _ColorABGR:
-                    {
-                        outSwizzle->r = pixelSwizzle->b;
-                        outSwizzle->g = pixelSwizzle->g;
-                        outSwizzle->b = pixelSwizzle->r;
-                        outSwizzle->a = pixelSwizzle->a;
-                    }
-                    break;
+                case _ColorABGR: {
+                    outSwizzle->r = pixelSwizzle->b;
+                    outSwizzle->g = pixelSwizzle->g;
+                    outSwizzle->b = pixelSwizzle->r;
+                    outSwizzle->a = pixelSwizzle->a;
+                } break;
 
                 // PIXMAN_b8g8r8x8
-                case _ColorBGRX:
-                    {
-                        outSwizzle->r = pixelSwizzle->b;
-                        outSwizzle->g = pixelSwizzle->g;
-                        outSwizzle->b = pixelSwizzle->r;
-                        outSwizzle->a = pixelSwizzle->a;
-                    }
-                    break;
-                
+                case _ColorBGRX: {
+                    outSwizzle->r = pixelSwizzle->b;
+                    outSwizzle->g = pixelSwizzle->g;
+                    outSwizzle->b = pixelSwizzle->r;
+                    outSwizzle->a = pixelSwizzle->a;
+                } break;
+
                 default:
                     // Impossible state, we should have failed higher up.
                     FAIL_FAST_HR(E_UNEXPECTED);
@@ -991,7 +981,10 @@ CGImageRef CGImageCreateWithMaskingColors(CGImageRef image, const CGFloat* compo
     return StubReturn();
 }
 
-inline surfaceFormat _CGImageGetFormat(unsigned int bitsPerComponent, unsigned int bitsPerPixel, CGColorSpaceRef colorSpace, CGBitmapInfo bitmapInfo) {
+inline surfaceFormat _CGImageGetFormat(unsigned int bitsPerComponent,
+                                       unsigned int bitsPerPixel,
+                                       CGColorSpaceRef colorSpace,
+                                       CGBitmapInfo bitmapInfo) {
     CGColorSpaceModel colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel;
     surfaceFormat fmt;
     unsigned int alphaInfo = bitmapInfo & kCGBitmapAlphaInfoMask;
@@ -1002,37 +995,34 @@ inline surfaceFormat _CGImageGetFormat(unsigned int bitsPerComponent, unsigned i
     if (colorSpaceModel == kCGColorSpaceModelRGB) {
         if (byteOrder == kCGBitmapByteOrderDefault || byteOrder == kCGBitmapByteOrder32Big) {
             switch (alphaInfo) {
-            case kCGImageAlphaNoneSkipFirst:
-                if (bitsPerComponent == 8) {
-                    fmt = _ColorBGRX;
-                }
-                else if (bitsPerComponent == 5) {
-                    fmt = _Color565;
-                }
-                break;
-            case kCGImageAlphaFirst:
-            case kCGImageAlphaPremultipliedFirst:
-                fmt = _ColorARGB;
-                break;
-            case kCGImageAlphaNone:
-                if (bitsPerComponent == 5) {
-                    fmt = _Color565;
-                }
-                else if (bitsPerPixel == 32) {
-                    //TODO: verify
+                case kCGImageAlphaNoneSkipFirst:
+                    if (bitsPerComponent == 8) {
+                        fmt = _ColorBGRX;
+                    } else if (bitsPerComponent == 5) {
+                        fmt = _Color565;
+                    }
+                    break;
+                case kCGImageAlphaFirst:
+                case kCGImageAlphaPremultipliedFirst:
                     fmt = _ColorARGB;
-                }
-                else {
-                    fmt = _ColorBGR;
-                }
-                break;
-            case kCGImageAlphaNoneSkipLast:
-            case kCGImageAlphaLast:
-            case kCGImageAlphaPremultipliedLast:
-            default:
-                UNIMPLEMENTED_WITH_MSG("RGBX and RGBA pixelformats unsupported");
-                fmt = _ColorARGB;
-                break;
+                    break;
+                case kCGImageAlphaNone:
+                    if (bitsPerComponent == 5) {
+                        fmt = _Color565;
+                    } else if (bitsPerPixel == 32) {
+                        // TODO: verify
+                        fmt = _ColorARGB;
+                    } else {
+                        fmt = _ColorBGR;
+                    }
+                    break;
+                case kCGImageAlphaNoneSkipLast:
+                case kCGImageAlphaLast:
+                case kCGImageAlphaPremultipliedLast:
+                default:
+                    UNIMPLEMENTED_WITH_MSG("RGBX and RGBA pixelformats unsupported");
+                    fmt = _ColorARGB;
+                    break;
             }
         } else {
             assert(byteOrder == kCGBitmapByteOrder32Little);

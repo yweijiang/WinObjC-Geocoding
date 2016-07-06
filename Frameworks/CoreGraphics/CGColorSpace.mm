@@ -53,7 +53,7 @@ static IWLazyClassLookup _LazyUIColor2("UIColor");
 @end
 
 __CGColorSpace::__CGColorSpace(CGColorSpaceModel model) {
-    object_setClass((id) this, [CGNSColorSpace class]);
+    object_setClass((id)this, [CGNSColorSpace class]);
 
     colorSpaceModel = model;
     palette = NULL;
@@ -123,7 +123,7 @@ CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name) {
     } else if (strcmp(strName, "kCGColorSpaceGenericRGBLinear") == 0) {
         return (CGColorSpaceRef) new __CGColorSpace(kCGColorSpaceModelRGB);
     } else if (strcmp(strName, "kCGColorSpaceGenericGray") == 0) {
-                return (CGColorSpaceRef) new __CGColorSpace(kCGColorSpaceModelMonochrome);
+        return (CGColorSpaceRef) new __CGColorSpace(kCGColorSpaceModelMonochrome);
     } else {
         UNIMPLEMENTED_WITH_MSG("Colorspace Unsupported");
         return (CGColorSpaceRef) new __CGColorSpace(kCGColorSpaceModelRGB);
@@ -145,16 +145,16 @@ CGColorSpaceModel CGColorSpaceGetModel(CGColorSpaceRef colorSpace) {
 */
 size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef pSpace) {
     switch (((__CGColorSpace*)pSpace)->colorSpaceModel) {
-    case kCGColorSpaceModelRGB:
-        return 3;
-    case kCGColorSpaceModelPattern:
-    case kCGColorSpaceModelMonochrome:
-        return 1;
-    case kCGColorSpaceModelCMYK:
-        return 4;
-    default:
-        UNIMPLEMENTED_WITH_MSG("Colorspace Unsupported");
-        return 0;
+        case kCGColorSpaceModelRGB:
+            return 3;
+        case kCGColorSpaceModelPattern:
+        case kCGColorSpaceModelMonochrome:
+            return 1;
+        case kCGColorSpaceModelCMYK:
+            return 4;
+        default:
+            UNIMPLEMENTED_WITH_MSG("Colorspace Unsupported");
+            return 0;
     }
 }
 

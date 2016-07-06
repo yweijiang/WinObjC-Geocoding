@@ -19,9 +19,8 @@
 #define __CGCOLORSPACE_H
 
 #include <objc/runtime.h>
-//enum CGColorSpaceModel;
 
-class __CGColorSpace: private objc_object {
+class __CGColorSpace : private objc_object {
 public:
     CGColorSpaceModel colorSpaceModel;
     char* palette;
