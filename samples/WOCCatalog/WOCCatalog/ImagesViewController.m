@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -28,7 +29,7 @@
 
     CGContextSetInterpolationQuality(context, quality);
     CGAffineTransform flipVertical = CGAffineTransformMake(1, 0, 0, -1, 0, rect.size.height);
-    CGContextConcatCTM(context, flipVertical);  
+    CGContextConcatCTM(context, flipVertical);
     CGContextDrawImage(context, rect, imageRef);
     CGImageRef scaledImageRef = CGBitmapContextCreateImage(context);
     UIImage* scaledImage = [UIImage imageWithCGImage:scaledImageRef];
@@ -40,14 +41,13 @@
 }
 
 + (void)initCGImageFormat:(CGImageRef)imageRef formatInfo:(vImage_CGImageFormat*)formatInfo {
-
     formatInfo->bitmapInfo = CGImageGetBitmapInfo(imageRef);
     formatInfo->colorSpace = CGImageGetColorSpace(imageRef);
     formatInfo->bitsPerComponent = (uint32_t)CGImageGetBitsPerComponent(imageRef);
-    
+
     const uint32_t numColorComponents = CGColorSpaceGetNumberOfComponents(formatInfo->colorSpace);
     const uint32_t numAlphaOrPaddingComponents = (kCGImageAlphaNone != CGImageGetAlphaInfo(imageRef)) ? 1 : 0;
-    
+
     formatInfo->bitsPerPixel = formatInfo->bitsPerComponent * (numColorComponents + numAlphaOrPaddingComponents);
     formatInfo->decode = NULL;
     formatInfo->version = 0;
@@ -62,7 +62,6 @@
 }
 
 + (UIImage*)applyCMYStripes:(CGImageRef)imageRef {
-
     vImage_CGImageFormat format;
     [ImagesViewController initCGImageFormat:imageRef formatInfo:&format];
 
@@ -74,7 +73,8 @@
     const bool imageIsXRGB =
         (alphaInfo == kCGImageAlphaNoneSkipFirst) && ((byteOrder == kCGBitmapByteOrderDefault) || byteOrder == kCGBitmapByteOrder32Big);
     const bool imageIsXBGR = (alphaInfo == kCGImageAlphaNoneSkipLast) && (byteOrder == kCGBitmapByteOrder32Little);
-    const bool imageIsRGBX = (alphaInfo == kCGImageAlphaNoneSkipLast) && ((byteOrder == kCGBitmapByteOrderDefault) || byteOrder == kCGBitmapByteOrder32Big);
+    const bool imageIsRGBX =
+        (alphaInfo == kCGImageAlphaNoneSkipLast) && ((byteOrder == kCGBitmapByteOrderDefault) || byteOrder == kCGBitmapByteOrder32Big);
     const bool alphaIs4thByte = (imageIsARGB || imageIsABGR || imageIsXRGB || imageIsXBGR);
 
     assert(imageIsARGB || imageIsABGR || imageIsXRGB || imageIsXBGR || imageIsRGBX);
@@ -97,11 +97,11 @@
     result = vImageBuffer_Init(&planeBuffer[3], planeBuffer[0].height, planeBuffer[0].width, format.bitsPerComponent, 0);
     assert(result == kvImageNoError);
 
-    // Note: 16byte aligned formats with no alpha component (ex: XRGB and XBGR) still pass in an alpha buffer
+    // Note: Although the function calls for ARGB input, a different input format can be used if the output planes are swizzled
+    // appropriately
     if ((imageIsARGB == true) || (imageIsXRGB == true)) {
         result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &planeBuffer[0], &planeBuffer[1], &planeBuffer[2], &planeBuffer[3], 0);
     } else if ((imageIsABGR == true) || (imageIsXBGR == true)) {
-        // Note: Although the function calls for ARGB input, ABGR or XBGR input can be used if the output planes are swizzled
         result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &planeBuffer[0], &planeBuffer[3], &planeBuffer[2], &planeBuffer[1], 0);
     } else if (imageIsRGBX == true) {
         result = vImageConvert_ARGB8888toPlanar8(&imageBuffer8888, &planeBuffer[1], &planeBuffer[2], &planeBuffer[3], &planeBuffer[0], 0);
@@ -113,7 +113,7 @@
     const uint32_t endOfFirstSlice = height / 3;
     const uint32_t endOfSecondSlice = endOfFirstSlice * 2;
     const uint32_t endOfThirdSlice = height;
-    
+
     // Slice 0: Remove Red to produce Cyan output
     unsigned char* colorData;
     uint32_t rowPitch;
@@ -149,10 +149,10 @@
         colorData += rowPitch;
     }
 
+    // Note: Input planes are swizzled to get the correct output
     if ((imageIsARGB == true) || (imageIsXRGB == true)) {
         result = vImageConvert_Planar8toARGB8888(&planeBuffer[0], &planeBuffer[1], &planeBuffer[2], &planeBuffer[3], &imageBuffer8888, 0);
     } else if ((imageIsABGR == true) || (imageIsXBGR == true)) {
-        // Note: To get ABGR or XBGR output, input planes are swizzled
         result = vImageConvert_Planar8toARGB8888(&planeBuffer[0], &planeBuffer[3], &planeBuffer[2], &planeBuffer[1], &imageBuffer8888, 0);
     } else if (imageIsRGBX == true) {
         result = vImageConvert_Planar8toARGB8888(&planeBuffer[1], &planeBuffer[2], &planeBuffer[3], &planeBuffer[0], &imageBuffer8888, 0);
@@ -168,7 +168,6 @@
     } else {
         vImageUnpremultiplyData_RGBA8888(&imageBuffer8888, &imageBufferUnPremultiplied8888, 0);
     }
-
 
     assert(result == kvImageNoError);
     CGImageRef cgImageFromBuffer = vImageCreateCGImageFromBuffer(&imageBufferUnPremultiplied8888, &format, nil, nil, 0, nil);
@@ -191,47 +190,38 @@
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor blackColor];
     CGRect rect = CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
-    UIImageView* imagesView = [[UIImageView alloc] initWithFrame: rect];
+    UIImageView* imagesView = [[UIImageView alloc] initWithFrame:rect];
     UIImage* photo = [UIImage imageNamed:@"photo9.jpg"];
-    UIImage* scaledPhotoHighInterpolation = [ImagesViewController scaleImage:
-                                                photo.CGImage
-                                                scaledRect:rect
-                                                quality:kCGInterpolationHigh];
-    UIImage* scaledPhotoNoInterpolation = [ImagesViewController scaleImage:
-                                                photo.CGImage 
-                                                scaledRect:rect
-                                                quality:kCGInterpolationNone];
+    UIImage* scaledPhotoHighInterpolation = [ImagesViewController scaleImage:photo.CGImage scaledRect:rect quality:kCGInterpolationHigh];
+    UIImage* scaledPhotoNoInterpolation = [ImagesViewController scaleImage:photo.CGImage scaledRect:rect quality:kCGInterpolationNone];
 
     CIContext* context = [CIContext contextWithOptions:nil];
     photo = [UIImage imageNamed:@"photo2.jpg"];
     CIImage* ciImage = [CIImage imageWithCGImage:photo.CGImage];
     CGImageRef cgImage = [context createCGImage:ciImage fromRect:CGRectMake(300, 600, 200, 200)];
 
-    UIImage* cmyStripedAndBrightenedPhoto = [ImagesViewController applyCMYStripes : photo.CGImage];
+    UIImage* cmyStripedAndBrightenedPhoto = [ImagesViewController applyCMYStripes:photo.CGImage];
 
-    imagesView.animationImages = [NSArray arrayWithObjects:
-                            scaledPhotoHighInterpolation,
-                            scaledPhotoNoInterpolation,
-                            [UIImage imageNamed:@"photo1.jpg"],
-                            [UIImage imageNamed:@"photo2.jpg"],
-                            cmyStripedAndBrightenedPhoto,
-                            [UIImage imageWithCGImage:cgImage],
-                            [UIImage imageNamed:@"photo3.jpg"],
-                            [UIImage imageNamed:@"photo4.jpg"],
-                            [UIImage imageNamed:@"photo5.jpg"],
-                            [UIImage imageNamed:@"photo6.jpg"],
-                            [UIImage imageNamed:@"photo7.gif"],
-                            [UIImage imageNamed:@"photo8.tif"],
-                            nil];
+    imagesView.animationImages = [NSArray arrayWithObjects:scaledPhotoHighInterpolation,
+                                                           scaledPhotoNoInterpolation,
+                                                           [UIImage imageNamed:@"photo1.jpg"],
+                                                           [UIImage imageNamed:@"photo2.jpg"],
+                                                           cmyStripedAndBrightenedPhoto,
+                                                           [UIImage imageWithCGImage:cgImage],
+                                                           [UIImage imageNamed:@"photo3.jpg"],
+                                                           [UIImage imageNamed:@"photo4.jpg"],
+                                                           [UIImage imageNamed:@"photo5.jpg"],
+                                                           [UIImage imageNamed:@"photo6.jpg"],
+                                                           [UIImage imageNamed:@"photo7.gif"],
+                                                           [UIImage imageNamed:@"photo8.tif"],
+                                                           nil];
 
     imagesView.animationDuration = 10.0;
 
     [imagesView setContentMode:UIViewContentModeScaleAspectFit];
     [imagesView startAnimating];
     imagesView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [[self view] addSubview: imagesView];
+    [[self view] addSubview:imagesView];
 }
 
 @end
-
-
