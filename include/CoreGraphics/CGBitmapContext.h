@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -26,7 +27,7 @@ COREGRAPHICS_EXPORT CGContextRef CGBitmapContextCreate(
     void* data, size_t width, size_t height, size_t bitsPerComponent, size_t bytesPerRow, CGColorSpaceRef space, CGBitmapInfo bitmapInfo);
 
 COREGRAPHICS_EXPORT CGImageRef CGBitmapContextCreateImage(CGContextRef self);
-COREGRAPHICS_EXPORT CGImageAlphaInfo CGBitmapContextGetAlphaInfo(CGContextRef self);
+COREGRAPHICS_EXPORT CGImageAlphaInfo CGBitmapContextGetAlphaInfo(CGContextRef context);
 COREGRAPHICS_EXPORT void* CGBitmapContextGetData(CGContextRef context);
 COREGRAPHICS_EXPORT size_t CGBitmapContextGetHeight(CGContextRef context);
 COREGRAPHICS_EXPORT size_t CGBitmapContextGetWidth(CGContextRef context);

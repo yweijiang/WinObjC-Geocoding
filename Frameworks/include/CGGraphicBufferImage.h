@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -20,8 +21,8 @@
 
 class CGGraphicBufferImage : public __CGImage {
 public:
-    CGGraphicBufferImage(DWORD width, DWORD height, surfaceFormat fmt);
-    CGGraphicBufferImage(DWORD width, DWORD height, surfaceFormat fmt, DisplayTexture* nativeTexture, DisplayTextureLocking* locking);
+    CGGraphicBufferImage(_CGSurfaceInfo* surfaceInfo);
+    CGGraphicBufferImage(_CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking);
 };
 
 class EbrFastTexture;
@@ -31,17 +32,19 @@ private:
     void* _imageData;
     cairo_surface_t* _surface;
     surfaceFormat _bitmapFmt;
+    CGColorSpaceModel _colorSpaceModel;
+    CGBitmapInfo _bitmapInfo;
     DWORD _width, _height;
     DWORD _internalWidth, _internalHeight;
     DWORD _bytesPerRow;
     DWORD _bytesPerPixel;
+    DWORD _bitsPerComponent;
 
 public:
     DisplayTexture* _nativeTexture;
     DisplayTextureLocking* _nativeTextureLocking;
 
-    CGGraphicBufferImageBacking(
-        DWORD width, DWORD height, surfaceFormat fmt, DisplayTexture* nativeTexture, DisplayTextureLocking* locking);
+    CGGraphicBufferImageBacking(_CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking);
     ~CGGraphicBufferImageBacking();
 
     CGImageRef Copy();
@@ -54,7 +57,11 @@ public:
     int Height();
     int BytesPerRow();
     int BytesPerPixel();
+    int BitsPerComponent();
+    void GetSurfaceInfoWithoutPixelPtr(_CGSurfaceInfo* surfaceInfo);
     surfaceFormat SurfaceFormat();
+    CGColorSpaceModel ColorSpaceModel();
+    CGBitmapInfo BitmapInfo();
     void* StaticImageData();
     void* LockImageData();
     void ReleaseImageData();

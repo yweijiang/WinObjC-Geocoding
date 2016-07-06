@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -31,71 +32,37 @@
 static const wchar_t* TAG = L"CGGraphicBufferImage";
 extern int imgDataCount;
 
-CGGraphicBufferImage::CGGraphicBufferImage(DWORD width, DWORD height, surfaceFormat fmt) {
-    _img = new CGBitmapImageBacking(width, height, fmt);
+CGGraphicBufferImage::CGGraphicBufferImage(_CGSurfaceInfo* surfaceInfo) {
+    _img = new CGBitmapImageBacking(surfaceInfo);
     _img->_parent = this;
     _imgType = CGImageTypeBitmap;
 
     _img->_parent = this;
 }
 
-CGGraphicBufferImage::CGGraphicBufferImage(
-    DWORD width, DWORD height, surfaceFormat fmt, DisplayTexture* nativeTexture, DisplayTextureLocking* locking) {
-    _img = new CGGraphicBufferImageBacking(width, height, fmt, nativeTexture, locking);
+CGGraphicBufferImage::CGGraphicBufferImage(_CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking) {
+    _img = new CGGraphicBufferImageBacking(surfaceInfo, nativeTexture, locking);
     _imgType = CGImageTypeGraphicBuffer;
     _img->_parent = this;
 }
 
-CGGraphicBufferImageBacking::CGGraphicBufferImageBacking(
-    DWORD width, DWORD height, surfaceFormat fmt, DisplayTexture* nativeTexture, DisplayTextureLocking* locking) {
+CGGraphicBufferImageBacking::CGGraphicBufferImageBacking(_CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking) {
     EbrIncrement((volatile int*)&imgDataCount);
     TraceVerbose(TAG, L"Number of images: %d", imgDataCount);
 
     _imageLocks = 0;
     _cairoLocks = 0;
-    _width = width;
-    _height = height;
-    _internalHeight = height;
+    _width = surfaceInfo->width;
+    _height = surfaceInfo->height;
+    _internalHeight = surfaceInfo->height;
     _internalWidth = 0;
     _imageData = NULL;
     _surface = NULL;
-
-    _bitmapFmt = fmt;
-    switch (_bitmapFmt) {
-        case _Color565:
-            _bytesPerPixel = 2;
-            break;
-
-        case _ColorRGB32:
-            _bytesPerPixel = 4;
-            break;
-
-        case _ColorRGB32HE:
-            _bytesPerPixel = 4;
-            break;
-
-        case _ColorARGB:
-            _bytesPerPixel = 4;
-            break;
-
-        case _ColorRGBA:
-            _bytesPerPixel = 4;
-            break;
-
-        case _ColorRGB:
-            _bytesPerPixel = 4;
-            break;
-
-        case _ColorGrayscale:
-        case _ColorA8:
-            _bytesPerPixel = 1;
-            break;
-
-        case _ColorIndexed:
-        default:
-            UNIMPLEMENTED_WITH_MSG("Unsupported bitmap format %d", _bitmapFmt);
-            break;
-    }
+    _bitmapFmt = surfaceInfo->format;
+    _bitsPerComponent = surfaceInfo->bitsPerComponent;
+    _colorSpaceModel = surfaceInfo->colorSpaceModel;
+    _bytesPerPixel = surfaceInfo->bytesPerPixel;
+    _bitmapInfo = surfaceInfo->bitmapInfo;
     _bytesPerRow = 0;
     _nativeTexture = nativeTexture;
     _nativeTextureLocking = locking;
@@ -150,6 +117,7 @@ int CGGraphicBufferImageBacking::BytesPerRow() {
         int stride;
         _nativeTextureLocking->LockWritableBitmapTexture(_nativeTexture, &stride);
         _bytesPerPixel = 4;
+        _bitsPerComponent = 8;
         _bytesPerRow = stride;
         _internalWidth = stride / _bytesPerPixel;
         _nativeTextureLocking->UnlockWritableBitmapTexture(_nativeTexture);
@@ -161,8 +129,32 @@ int CGGraphicBufferImageBacking::BytesPerPixel() {
     return _bytesPerPixel;
 }
 
+int CGGraphicBufferImageBacking::BitsPerComponent() {
+    return _bitsPerComponent;
+}
+
+void CGGraphicBufferImageBacking::GetSurfaceInfoWithoutPixelPtr(_CGSurfaceInfo* surfaceInfo) {
+    surfaceInfo->width = _width;
+    surfaceInfo->height = _height;
+    surfaceInfo->bitsPerComponent = _bitsPerComponent;
+    surfaceInfo->bytesPerPixel = _bytesPerPixel;
+    surfaceInfo->bytesPerRow = 0;
+    surfaceInfo->surfaceData = NULL;
+    surfaceInfo->colorSpaceModel = _colorSpaceModel;
+    surfaceInfo->bitmapInfo = _bitmapInfo;
+    surfaceInfo->format = _bitmapFmt;
+}
+
 surfaceFormat CGGraphicBufferImageBacking::SurfaceFormat() {
     return _bitmapFmt;
+}
+
+CGColorSpaceModel CGGraphicBufferImageBacking::ColorSpaceModel() {
+    return _colorSpaceModel;
+}
+
+CGBitmapInfo CGGraphicBufferImageBacking::BitmapInfo() {
+    return _bitmapInfo;
 }
 
 void* CGGraphicBufferImageBacking::LockImageData() {
@@ -174,6 +166,7 @@ void* CGGraphicBufferImageBacking::LockImageData() {
     int stride;
     _imageData = _nativeTextureLocking->LockWritableBitmapTexture(_nativeTexture, &stride);
     _bytesPerPixel = 4;
+    _bitsPerComponent = 8;
     _bytesPerRow = stride;
     _internalWidth = stride / _bytesPerPixel;
     return _imageData;
@@ -213,7 +206,7 @@ cairo_surface_t* CGGraphicBufferImageBacking::LockCairoSurface() {
                                                                       -_internalWidth * 4);
             break;
 
-        case _ColorRGBA:
+        case _ColorABGR:
             _surface = _cairo_image_surface_create_with_pixman_format(((unsigned char*)_imageData) + _internalWidth * (_height - 1) * 4,
                                                                       PIXMAN_a8b8g8r8,
                                                                       _width,
@@ -221,7 +214,15 @@ cairo_surface_t* CGGraphicBufferImageBacking::LockCairoSurface() {
                                                                       -_internalWidth * 4);
             break;
 
-        case _ColorRGB:
+        case _ColorBGR:
+            _surface = _cairo_image_surface_create_with_pixman_format(((unsigned char*)_imageData) +
+                                                                          _internalWidth * (_height - 1) * _bytesPerPixel,
+                                                                      PIXMAN_b8g8r8,
+                                                                      _width,
+                                                                      _height,
+                                                                      -_internalWidth * _bytesPerPixel);
+            break;
+        case _ColorXBGR:
             _surface = _cairo_image_surface_create_with_pixman_format(((unsigned char*)_imageData) +
                                                                           _internalWidth * (_height - 1) * _bytesPerPixel,
                                                                       PIXMAN_x8b8g8r8,
@@ -231,8 +232,7 @@ cairo_surface_t* CGGraphicBufferImageBacking::LockCairoSurface() {
             break;
 
         case _Color565:
-        case _ColorRGB32:
-        case _ColorRGB32HE:
+        case _ColorBGRX:
         case _ColorGrayscale:
         case _ColorA8:
         case _ColorIndexed:
@@ -297,7 +297,7 @@ void CGGraphicBufferImageBacking::GetPixel(int x, int y, float& r, float& g, flo
             a = (float)((srcPixel >> 24) & 0xFF) / 255.0f;
         } break;
 
-        case _ColorRGBA: {
+        case _ColorABGR: {
             DWORD srcPixel = *(((DWORD*)LockImageData()) + (Height() - y - 1) * (BytesPerRow() >> 2) + x);
             ReleaseImageData();
 

@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -20,6 +21,8 @@ protected:
     bool _hasCachedInfo;
     int _cachedWidth, _cachedHeight;
     surfaceFormat _cachedSurfaceFormat;
+    CGColorSpaceModel _cachedColorSpaceModel;
+    CGBitmapInfo _cachedBitmapInfo;
 
 public:
     CGDiscardableImageBacking();
@@ -35,7 +38,11 @@ public:
     int Height();
     int BytesPerRow();
     int BytesPerPixel();
+    int BitsPerComponent();
+    void GetSurfaceInfoWithoutPixelPtr(_CGSurfaceInfo* surfaceInfo);
     surfaceFormat SurfaceFormat();
+    CGColorSpaceModel ColorSpaceModel();
+    CGBitmapInfo BitmapInfo();
     void* StaticImageData();
     void* LockImageData();
     void ReleaseImageData();
