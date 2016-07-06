@@ -25,6 +25,9 @@
     <ProjectReference Include="..\..\CoreGraphics\dll\CoreGraphics.vcxproj">
       <Project>{26da08da-d0b9-4579-b168-e7f0a5f20e57}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\Logging\dll\Logging.vcxproj">
+      <Project>{862d36c2-cc83-4d04-b9b8-bef07f479905}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)\dllmain.cpp" />
