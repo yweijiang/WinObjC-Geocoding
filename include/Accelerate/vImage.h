@@ -24,19 +24,11 @@
 #ifndef __attribute__
 #define __attribute__(x)
 #endif
-enum surfaceFormat { _Color565, _ColorARGB, _ColorRGBA, _ColorRGB32, _ColorRGB32HE, _ColorGrayscale, _ColorRGB, _ColorA8, _ColorIndexed };
 
-#include "../../Frameworks/include/CGColorSpaceInternal.h"
+#include "CoreGraphics/CoreGraphicsExport.h"
+
 typedef __CGColorSpace* CGColorSpaceRef;
-typedef uint32_t CGBitmapInfo;
 typedef float CGFloat;
-typedef enum {
-    kCGRenderingIntentDefault,
-    kCGRenderingIntentAbsoluteColorimetric,
-    kCGRenderingIntentRelativeColorimetric,
-    kCGRenderingIntentSaturation,
-    kCGRenderingIntentPerceptual,
-} CGColorRenderingIntent;
 #else
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreGraphics/CGBitmapContext.h>
@@ -111,7 +103,7 @@ typedef float Pixel_F;
 
 typedef uint8_t Pixel_8888[4];
 
-typedef struct {
+typedef struct _vImage_Buffer {
     void* data;
     vImagePixelCount height;
     vImagePixelCount width;
@@ -122,7 +114,7 @@ typedef struct Pixel_8888_s {
     Pixel_8888 val;
 } Pixel_8888_s;
 
-typedef struct {
+typedef struct _vImage_CGImageFormat {
     uint32_t                bitsPerComponent;
     uint32_t                bitsPerPixel;
     CGColorSpaceRef         colorSpace;
@@ -130,7 +122,7 @@ typedef struct {
     uint32_t                version;
     const CGFloat           *decode;
     CGColorRenderingIntent  renderingIntent;
-}vImage_CGImageFormat;
+} vImage_CGImageFormat;
 
 struct Pixel_888_s {
     uint8_t val[3];
@@ -154,7 +146,6 @@ ACCELERATE_EXPORT vImage_Error vImageMatrixMultiply_ARGB8888(const vImage_Buffer
                                                              const int32_t* post_bias_p,
                                                              vImage_Flags flags);
 
-/// Separates an ARGB8888 image into four Planar8 images.
 ACCELERATE_EXPORT vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buffer* srcARGB,
                                                                const vImage_Buffer* destA,
                                                                const vImage_Buffer* destR,
@@ -162,7 +153,6 @@ ACCELERATE_EXPORT vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buff
                                                                const vImage_Buffer* destB,
                                                                vImage_Flags flags);
 
-/// Combines four Planar8 images into one ARGB8888 image.
 ACCELERATE_EXPORT vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
                                                                const vImage_Buffer* srcR,
                                                                const vImage_Buffer* srcG,
@@ -170,23 +160,21 @@ ACCELERATE_EXPORT vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buff
                                                                const vImage_Buffer* dest,
                                                                vImage_Flags flags);
 
-/// Converts a Planar8 image to a PlanarF image.
 ACCELERATE_EXPORT vImage_Error
 vImageConvert_Planar8toPlanarF(const vImage_Buffer* src, const vImage_Buffer* dest, Pixel_F maxFloat, Pixel_F minFloat, vImage_Flags flags);
 
-/// Combines three Planar8 images into one RGB888 image.
 ACCELERATE_EXPORT vImage_Error vImageConvert_Planar8toRGB888(const vImage_Buffer* planarRed,
                                                              const vImage_Buffer* planarGreen,
                                                              const vImage_Buffer* planarBlue,
                                                              const vImage_Buffer* rgbDest,
                                                              vImage_Flags flags);
 
-/// Converts a PlanarF image to a Planar8 image, clipping values to the provided minimum and maximum values.
 ACCELERATE_EXPORT vImage_Error
 vImageConvert_PlanarFtoPlanar8(const vImage_Buffer* src, const vImage_Buffer* dest, Pixel_F maxFloat, Pixel_F minFloat, vImage_Flags flags);
 
-/// Takes an RGBA8888 image in premultiplied alpha format and transforms it into an image in nonpremultiplied alpha format.
 ACCELERATE_EXPORT vImage_Error vImageUnpremultiplyData_RGBA8888(const vImage_Buffer* src, const vImage_Buffer* dest, vImage_Flags flags);
+
+ACCELERATE_EXPORT vImage_Error vImageUnpremultiplyData_ARGB8888(const vImage_Buffer* src, const vImage_Buffer* dest, vImage_Flags flags);
 
 ACCELERATE_EXPORT vImage_Error vImageBuffer_Init(vImage_Buffer* buffer, vImagePixelCount height, vImagePixelCount width, uint32_t bitsPerFragment, vImage_Flags flags);
 
@@ -197,6 +185,22 @@ static inline unsigned char _vImageClipConvertAndSaturateFloatToUint8(Pixel_F in
         return (unsigned char)((inValue - minFloat) / (maxFloat - minFloat) * 255.0f);
     } else {
         return 255;
+    }
+}
+
+static inline float _vImageMinFloat(float val1, float val2) {
+    return ((val1 > val2) ? val2 : val1);
+}
+
+static inline float _vImageMaxFloat(float val1, float val2) {
+    return ((val1 > val2) ? val1 : val2);
+}
+
+static inline unsigned char _vImageDivideAndSaturateUint8(unsigned int val1, unsigned int val2) {
+    if (val2 == 0) {
+        return 255;
+    } else {
+         return (unsigned char)(_vImageMinFloat(((1.0f * val1) / val2 * 255.0f), 255.0f));
     }
 }
 
@@ -216,5 +220,4 @@ static inline uint32_t _vImageAlignUInt(uint32_t inValue, uint32_t alignment) {
 #if defined(__clang__)
 ACCELERATE_EXPORT vImage_Error vImageBuffer_InitWithCGImage(vImage_Buffer* destImageBuffer, const vImage_CGImageFormat* format, void* unknown, CGImageRef image, vImage_Flags flags);
 ACCELERATE_EXPORT CGImageRef vImageCreateCGImageFromBuffer(vImage_Buffer *buffer, vImage_CGImageFormat* format, void* pCleanupFunction, void* pCleanupFunctionParams, vImage_Flags flags, void* error);
-
 #endif
