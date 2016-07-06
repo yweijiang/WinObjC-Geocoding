@@ -114,7 +114,7 @@ int CGDiscardableImageBacking::BitsPerComponent() {
     return _forward->BitsPerComponent();
 }
 
-void CGDiscardableImageBacking::GetSurfaceInfoWithoutPixelPtr(_CGSurfaceInfo* surfaceInfo) {
+void CGDiscardableImageBacking::GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo * surfaceInfo) {
     ConstructIfNeeded();
 
     _forward->GetSurfaceInfoWithoutPixelPtr(surfaceInfo);
