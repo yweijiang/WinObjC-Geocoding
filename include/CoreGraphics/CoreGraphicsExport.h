@@ -126,7 +126,7 @@ typedef enum {
     _ColorIndexed
 } surfaceFormat;
 
-struct _CGSurfaceInfo {
+struct __CGSurfaceInfo {
     size_t width;
     size_t height;
     size_t bitsPerComponent;

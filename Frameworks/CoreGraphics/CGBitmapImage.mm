@@ -319,15 +319,15 @@ CGImageData::~CGImageData() {
 }
 
 CGImageData* CGImageData::Duplicate() {
-    _CGSurfaceInfo surfaceInfo = {.width = _width,
-                                  .height = _height,
-                                  .bitsPerComponent = _bitsPerComponent,
-                                  .bytesPerPixel = _bytesPerPixel,
-                                  .bytesPerRow = 0,
-                                  .surfaceData = NULL,
-                                  .colorSpaceModel = _colorSpaceModel,
-                                  .bitmapInfo = _bitmapInfo,
-                                  .format = _bitmapFmt };
+    __CGSurfaceInfo surfaceInfo = {.width = _width,
+                                   .height = _height,
+                                   .bitsPerComponent = _bitsPerComponent,
+                                   .bytesPerPixel = _bytesPerPixel,
+                                   .bytesPerRow = 0,
+                                   .surfaceData = NULL,
+                                   .colorSpaceModel = _colorSpaceModel,
+                                   .bitmapInfo = _bitmapInfo,
+                                   .format = _bitmapFmt };
 
     CGImageData* ret = new CGImageData(&surfaceInfo);
 
@@ -372,7 +372,7 @@ CGBitmapImageBacking::CGBitmapImageBacking(CGImageRef img) {
     if (img->_imgType == CGImageTypeBitmap) {
         _data = ((CGBitmapImageBacking*)img->Backing())->_data->Duplicate();
     } else {
-        _CGSurfaceInfo surfaceInfo; 
+        __CGSurfaceInfo surfaceInfo; 
         img->Backing()->GetSurfaceInfoWithoutPixelPtr(&surfaceInfo);
 
         _data = new CGImageData(&surfaceInfo);

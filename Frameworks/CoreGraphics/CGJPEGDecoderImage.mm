@@ -284,7 +284,7 @@ CGImageBacking* CGJPEGImageBacking::ConstructBacking() {
     if (_hasCachedInfo) {
         /* Allocate bitmap for our output */
         CGGraphicBufferImage* newImage;
-        _CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(_cachedWidth, _cachedHeight, _cachedSurfaceFormat, NULL, 0, _cachedBitmapInfo);
+        __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(_cachedWidth, _cachedHeight, _cachedSurfaceFormat, NULL, 0, _cachedBitmapInfo);
         newImage = new CGGraphicBufferImage(&surfaceInfo);
         retBacking = newImage->DetachBacking(_parent);
         CGImageRelease(newImage);

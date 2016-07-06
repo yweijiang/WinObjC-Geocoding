@@ -317,7 +317,7 @@ void CGContextImpl::CGContextClipToMask(CGRect dest, CGImageRef img) {
     if (img->Backing()->SurfaceFormat() != _ColorGrayscale) {
         curState->_imgMask = img->Backing()->Copy();
     } else {
-        _CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(img->Backing()->Width(), img->Backing()->Height(), _ColorABGR);
+        __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(img->Backing()->Width(), img->Backing()->Height(), _ColorABGR);
 
         CGBitmapImage* pNewImage = new CGBitmapImage(&surfaceInfo);
 

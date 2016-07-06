@@ -172,7 +172,7 @@ CGImageRef CGImageCreateWithImageInRect(CGImageRef ref, CGRect rect) {
 
     rect = CGRectIntersection(rect, imgRefSize);
 
-    _CGSurfaceInfo surfaceInfo;
+    __CGSurfaceInfo surfaceInfo;
     ref->Backing()->GetSurfaceInfoWithoutPixelPtr(&surfaceInfo);
 
     // Override width and height with the rect
@@ -214,7 +214,7 @@ CGImageRef CGImageCreateCopy(CGImageRef ref) {
     if (!ref)
         return nullptr;
 
-    _CGSurfaceInfo surfaceInfo;
+    __CGSurfaceInfo surfaceInfo;
     ref->Backing()->GetSurfaceInfoWithoutPixelPtr(&surfaceInfo);
 
     assert(surfaceInfo.surfaceData == NULL);
@@ -252,7 +252,7 @@ CGImageRef CGImageCreateCopy(CGImageRef ref) {
  @Notes No actual conversion between colorspaces, simply copies and reinterprets data in new colorspace
 */
 CGImageRef CGImageCreateCopyWithColorSpace(CGImageRef ref, CGColorSpaceRef colorSpace) {
-    _CGSurfaceInfo surfaceInfo;
+    __CGSurfaceInfo surfaceInfo;
     ref->Backing()->GetSurfaceInfoWithoutPixelPtr(&surfaceInfo);
 
     // Override colorSpaceModel
@@ -303,7 +303,7 @@ CGImageRef CGImageCreateWithMask(CGImageRef image, CGImageRef mask) {
         DWORD incX = ((mask->Backing()->Width()) << 16) / image->Backing()->Width();
         DWORD incY = ((mask->Backing()->Height()) << 16) / image->Backing()->Height();
 
-        _CGSurfaceInfo surfaceInfo =
+        __CGSurfaceInfo surfaceInfo =
             _CGSurfaceInfoInit(image->Backing()->Width(), image->Backing()->Height(), _ColorABGR, newImageData, bytesPerRow);
 
         newImage = new CGBitmapImage(&surfaceInfo);
@@ -400,7 +400,7 @@ CGImageRef CGImageMaskCreate(size_t width,
     size_t dataLen = (size_t)[dataProvider length];
 
     //  Create an 8-bit mask from the data
-    _CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, _ColorGrayscale);
+    __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, _ColorGrayscale);
 
     CGImageRef newImage = new CGBitmapImage(&surfaceInfo);
     char* pNewImage = (char*)newImage->Backing()->LockImageData();
@@ -643,19 +643,19 @@ CGImageRef CGImageCreate(size_t width,
     surfaceFormat format = _CGImageGetFormat(bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo);
 
     if (format != _ColorIndexed) {
-        _CGSurfaceInfo surfaceInfo = {.width = width,
-                                      .height = height,
-                                      .bitsPerComponent = bitsPerComponent,
-                                      .bytesPerPixel = bitsPerPixel >> 3,
-                                      .bytesPerRow = bytesPerRow,
-                                      .surfaceData = data,
-                                      .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
-                                      .bitmapInfo = bitmapInfo,
-                                      .format = format };
+        __CGSurfaceInfo surfaceInfo = {.width = width,
+                                       .height = height,
+                                       .bitsPerComponent = bitsPerComponent,
+                                       .bytesPerPixel = bitsPerPixel >> 3,
+                                       .bytesPerRow = bytesPerRow,
+                                       .surfaceData = data,
+                                       .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
+                                       .bitmapInfo = bitmapInfo,
+                                       .format = format };
 
         newImage = new CGBitmapImage(&surfaceInfo);
     } else {
-        _CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, _ColorBGR);
+        __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, _ColorBGR);
 
         newImage = new CGBitmapImage(&surfaceInfo);
         void* pData = newImage->Backing()->LockImageData();

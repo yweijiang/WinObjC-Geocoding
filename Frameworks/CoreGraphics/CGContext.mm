@@ -811,15 +811,15 @@ CGContextRef CGBitmapContextCreate(void* data,
 
     surfaceFormat format = _CGImageGetFormat(bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo);
 
-    _CGSurfaceInfo createParams = {.width = width,
-                                   .height = height,
-                                   .bitsPerComponent = bitsPerComponent,
-                                   .bytesPerPixel = bitsPerPixel >> 3,
-                                   .bytesPerRow = bytesPerRow,
-                                   .surfaceData = data,
-                                   .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
-                                   .bitmapInfo = bitmapInfo,
-                                   .format = format };
+    __CGSurfaceInfo createParams = {.width = width,
+                                    .height = height,
+                                    .bitsPerComponent = bitsPerComponent,
+                                    .bytesPerPixel = bitsPerPixel >> 3,
+                                    .bytesPerRow = bytesPerRow,
+                                    .surfaceData = data,
+                                    .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
+                                    .bitmapInfo = bitmapInfo,
+                                    .format = format };
 
     newImage = new CGBitmapImage(&createParams);
 
@@ -1066,7 +1066,7 @@ CGImageRef CGBitmapContextGetImage(CGContextRef ctx) {
 
 CGContextRef _CGBitmapContextCreateWithTexture(int width, int height, DisplayTexture* texture, DisplayTextureLocking* locking) {
     CGImageRef newImage = nullptr;
-    _CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, _ColorARGB);
+    __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, _ColorARGB);
 
     if (texture) {
         newImage = new CGGraphicBufferImage(&surfaceInfo, texture, locking);
@@ -1081,7 +1081,7 @@ CGContextRef _CGBitmapContextCreateWithTexture(int width, int height, DisplayTex
 }
 
 CGContextRef _CGBitmapContextCreateWithFormat(int width, int height, surfaceFormat fmt) {
-    _CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, fmt);
+    __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, fmt);
     CGImageRef newImage = new CGBitmapImage(&surfaceInfo);
     CGContextRef context = new __CGContext(newImage);
     CGImageRelease(newImage);
