@@ -136,15 +136,22 @@ CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name) {
 @Status Interoperable
 */
 CGColorSpaceModel CGColorSpaceGetModel(CGColorSpaceRef colorSpace) {
-    return ((__CGColorSpace*)colorSpace)->colorSpaceModel;
+    if (colorSpace) {
+        return ((__CGColorSpace*)colorSpace)->colorSpaceModel;
+    } else {
+        TraceWarning(TAG, L"CGColorSpaceGetModel: Null colorspace. Returning RGB");
+        return kCGColorSpaceModelRGB;
+    }
 }
 
 /**
 @Status Caveat
-@Notes Doesn't support all bitmap formats
+@Notes Doesn't support all colorSpaces
 */
 size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef pSpace) {
-    switch (((__CGColorSpace*)pSpace)->colorSpaceModel) {
+    const CGColorSpaceModel colorSpaceModel = ((__CGColorSpace*)pSpace)->colorSpaceModel;
+
+    switch (colorSpaceModel) {
         case kCGColorSpaceModelRGB:
             return 3;
         case kCGColorSpaceModelPattern:
@@ -153,7 +160,7 @@ size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef pSpace) {
         case kCGColorSpaceModelCMYK:
             return 4;
         default:
-            UNIMPLEMENTED_WITH_MSG("Colorspace Unsupported");
+            UNIMPLEMENTED_WITH_MSG("Colorspace Unsupported. Model: %d", colorSpaceModel);
             return 0;
     }
 }
