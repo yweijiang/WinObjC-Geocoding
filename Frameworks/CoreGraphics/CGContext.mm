@@ -997,39 +997,6 @@ size_t CGBitmapContextGetBytesPerRow(CGContextRef ctx) {
 }
 
 /**
-@Status Interoperable
-@Notes
-*/
-CGBitmapInfo CGBitmapContextGetBitmapInfo(CGContextRef ctx) {
-    int ret;
-
-    if (ctx) {
-        ret = ctx->Backing()->DestImage()->Backing()->BitmapInfo();
-    } else {
-        TraceWarning(TAG, L"CGBitmapContextGetBitmapInfo: Null context!");
-        ret = 0;
-    }
-
-    return (CGBitmapInfo)ret;
-}
-
-/**
- @Status Interoperable
-*/
-CGImageAlphaInfo CGBitmapContextGetAlphaInfo(CGContextRef ctx) {
-    int ret;
-
-    if (ctx) {
-        ret = ctx->Backing()->DestImage()->Backing()->BitmapInfo() & kCGBitmapAlphaInfoMask;
-    } else {
-        TraceWarning(TAG, L"CGBitmapContextGetAlphaInfo: Null context!");
-        ret = 0;
-    }
-
-    return (CGImageAlphaInfo)ret;
-}
-
-/**
  @Status Interoperable
 */
 void* CGBitmapContextGetData(CGContextRef ctx) {

@@ -528,7 +528,7 @@ size_t CGImageGetBitsPerPixel(CGImageRef img) {
         return 0;
     }
 
-    return (img->Backing()->BytesPerPixel() * 8);
+    return (img->Backing()->BytesPerPixel() << 3);
 }
 
 /**
