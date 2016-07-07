@@ -81,8 +81,8 @@
         colorSpaceModel = CGColorSpaceGetModel(colorSpace);
         CGColorSpaceRelease(colorSpace);
     } else {
-        // Default to monochrome in the absence of a colorSpace
-        colorSpaceModel = kCGColorSpaceModelMonochrome;
+        // Default to RGB in the absence of a colorSpace from CGColor
+        colorSpaceModel = kCGColorSpaceModelRGB;
     }
     
     CGFloat rFloat = 0.0, gFloat = 0.0, bFloat = 0.0, aFloat = 0.0;
