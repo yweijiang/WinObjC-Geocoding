@@ -87,4 +87,7 @@ COREGRAPHICS_EXPORT bool CGImageIsMask(CGImageRef image) STUB_METHOD;
 COREGRAPHICS_EXPORT size_t CGImageGetHeight(CGImageRef image);
 COREGRAPHICS_EXPORT size_t CGImageGetWidth(CGImageRef image);
 
-COREGRAPHICS_EXPORT inline surfaceFormat _CGImageGetFormat(unsigned int bitsPerComponent, unsigned int bitsPerPixel, CGColorSpaceRef colorSpace, CGBitmapInfo bitmapInfo);
+COREGRAPHICS_EXPORT inline surfaceFormat _CGImageGetFormat(unsigned int bitsPerComponent,
+                                                           unsigned int bitsPerPixel,
+                                                           CGColorSpaceRef colorSpace,
+                                                           CGBitmapInfo bitmapInfo);
