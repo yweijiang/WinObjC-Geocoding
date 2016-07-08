@@ -42,7 +42,7 @@ static const wchar_t* TAG = L"CGBitmapImage";
 
 int imgDataCount = 0, imgDataSize = 0;
 
-CGImageData::CGImageData(__CGSurfaceInfo * surfaceInfo) {
+CGImageData::CGImageData(__CGSurfaceInfo* surfaceInfo) {
     EbrIncrement((volatile int*)&imgDataCount);
 
     _refCount = 1;
@@ -342,7 +342,7 @@ CGImageData* CGImageData::Duplicate() {
     return ret;
 }
 
-CGBitmapImage::CGBitmapImage(__CGSurfaceInfo * surfaceInfo) {
+CGBitmapImage::CGBitmapImage(__CGSurfaceInfo* surfaceInfo) {
     _img = new CGBitmapImageBacking(surfaceInfo);
     _img->_parent = this;
     _imgType = CGImageTypeBitmap;
@@ -358,7 +358,7 @@ CGContextImpl* CGBitmapImageBacking::CreateDrawingContext(CGContextRef base) {
     return new CGContextCairo(base, _parent);
 }
 
-CGBitmapImageBacking::CGBitmapImageBacking(__CGSurfaceInfo * surfaceInfo) {
+CGBitmapImageBacking::CGBitmapImageBacking(__CGSurfaceInfo* surfaceInfo) {
     _imageLocks = 0;
     _cairoLocks = 0;
 
@@ -451,7 +451,7 @@ int CGBitmapImageBacking::BitsPerComponent() {
     return _data->_bitsPerComponent;
 }
 
-void CGBitmapImageBacking::GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo * surfaceInfo) {
+void CGBitmapImageBacking::GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo) {
     surfaceInfo->width = _data->_width;
     surfaceInfo->height = _data->_height;
     surfaceInfo->bitsPerComponent = _data->_bitsPerComponent;

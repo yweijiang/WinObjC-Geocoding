@@ -21,8 +21,8 @@
 
 class CGGraphicBufferImage : public __CGImage {
 public:
-    CGGraphicBufferImage(__CGSurfaceInfo * surfaceInfo);
-    CGGraphicBufferImage(__CGSurfaceInfo * surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking);
+    CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo);
+    CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking);
 };
 
 class EbrFastTexture;
@@ -44,7 +44,7 @@ public:
     DisplayTexture* _nativeTexture;
     DisplayTextureLocking* _nativeTextureLocking;
 
-    CGGraphicBufferImageBacking(__CGSurfaceInfo * surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking);
+    CGGraphicBufferImageBacking(__CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking);
     ~CGGraphicBufferImageBacking();
 
     CGImageRef Copy();
@@ -58,7 +58,7 @@ public:
     int BytesPerRow();
     int BytesPerPixel();
     int BitsPerComponent();
-    void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo * surfaceInfo);
+    void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo);
     surfaceFormat SurfaceFormat();
     CGColorSpaceModel ColorSpaceModel();
     CGBitmapInfo BitmapInfo();

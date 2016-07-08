@@ -33,13 +33,13 @@ public:
     BOOL _bottomOrientation;
 
     CGImageData* Duplicate();
-    CGImageData(__CGSurfaceInfo * surfaceInfo);
+    CGImageData(__CGSurfaceInfo* surfaceInfo);
     ~CGImageData();
 };
 
 class CGBitmapImage : public __CGImage {
 public:
-    CGBitmapImage(__CGSurfaceInfo * surfaceInfo);
+    CGBitmapImage(__CGSurfaceInfo* surfaceInfo);
     CGBitmapImage(CGImageRef pImg);
 };
 
@@ -48,7 +48,7 @@ private:
     CGImageData* _data;
 
 public:
-    CGBitmapImageBacking(__CGSurfaceInfo * surfaceInfo);
+    CGBitmapImageBacking(__CGSurfaceInfo* surfaceInfo);
     CGBitmapImageBacking(CGImageRef pImg);
 
     ~CGBitmapImageBacking();
@@ -65,7 +65,7 @@ public:
     int BytesPerRow();
     int BytesPerPixel();
     int BitsPerComponent();
-    void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo * surfaceInfo);
+    void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo);
     surfaceFormat SurfaceFormat();
     CGColorSpaceModel ColorSpaceModel();
     CGBitmapInfo BitmapInfo();

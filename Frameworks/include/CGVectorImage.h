@@ -68,7 +68,7 @@ public:
     int BytesPerRow();
     int BytesPerPixel();
     int BitsPerComponent();
-    void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo * surfaceInfo);
+    void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo);
     surfaceFormat SurfaceFormat();
     CGColorSpaceModel ColorSpaceModel();
     CGBitmapInfo BitmapInfo();

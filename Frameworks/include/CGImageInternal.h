@@ -58,7 +58,7 @@ public:
     virtual int BytesPerRow() = 0;
     virtual int BytesPerPixel() = 0;
     virtual int BitsPerComponent() = 0;
-    virtual void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo * surfaceInfo) = 0;
+    virtual void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo) = 0;
     virtual surfaceFormat SurfaceFormat() = 0;
     virtual CGColorSpaceModel ColorSpaceModel() = 0;
     virtual CGBitmapInfo BitmapInfo() = 0;

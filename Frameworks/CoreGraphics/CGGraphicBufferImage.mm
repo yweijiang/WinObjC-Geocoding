@@ -32,7 +32,7 @@
 static const wchar_t* TAG = L"CGGraphicBufferImage";
 extern int imgDataCount;
 
-CGGraphicBufferImage::CGGraphicBufferImage(__CGSurfaceInfo * surfaceInfo) {
+CGGraphicBufferImage::CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo) {
     _img = new CGBitmapImageBacking(surfaceInfo);
     _img->_parent = this;
     _imgType = CGImageTypeBitmap;
@@ -40,13 +40,13 @@ CGGraphicBufferImage::CGGraphicBufferImage(__CGSurfaceInfo * surfaceInfo) {
     _img->_parent = this;
 }
 
-CGGraphicBufferImage::CGGraphicBufferImage(__CGSurfaceInfo * surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking) {
+CGGraphicBufferImage::CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking) {
     _img = new CGGraphicBufferImageBacking(surfaceInfo, nativeTexture, locking);
     _imgType = CGImageTypeGraphicBuffer;
     _img->_parent = this;
 }
 
-CGGraphicBufferImageBacking::CGGraphicBufferImageBacking(__CGSurfaceInfo * surfaceInfo,
+CGGraphicBufferImageBacking::CGGraphicBufferImageBacking(__CGSurfaceInfo* surfaceInfo,
                                                          DisplayTexture* nativeTexture,
                                                          DisplayTextureLocking* locking) {
     EbrIncrement((volatile int*)&imgDataCount);
@@ -135,7 +135,7 @@ int CGGraphicBufferImageBacking::BitsPerComponent() {
     return _bitsPerComponent;
 }
 
-void CGGraphicBufferImageBacking::GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo * surfaceInfo) {
+void CGGraphicBufferImageBacking::GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo) {
     surfaceInfo->width = _width;
     surfaceInfo->height = _height;
     surfaceInfo->bitsPerComponent = _bitsPerComponent;

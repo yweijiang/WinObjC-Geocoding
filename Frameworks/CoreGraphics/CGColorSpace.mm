@@ -116,7 +116,7 @@ CGColorSpaceRef CGColorSpaceCreateDeviceGray() {
  @Notes Only GenericRGB, GenericRGBLinear and GenericGray supported
 */
 CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name) {
-    char* strName = (char*)[(NSString*)name UTF8String];
+    const char* strName = static_cast<const char*>([(__bridge NSString*)name UTF8String]);
 
     if (strcmp(strName, "kCGColorSpaceGenericRGB") == 0) {
         return (CGColorSpaceRef) new __CGColorSpace(kCGColorSpaceModelRGB);
@@ -125,7 +125,7 @@ CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name) {
     } else if (strcmp(strName, "kCGColorSpaceGenericGray") == 0) {
         return (CGColorSpaceRef) new __CGColorSpace(kCGColorSpaceModelMonochrome);
     } else {
-        UNIMPLEMENTED_WITH_MSG("Colorspace Unsupported");
+        UNIMPLEMENTED_WITH_MSG("Colorspace Unsupported: %s", strName);
         return (CGColorSpaceRef) new __CGColorSpace(kCGColorSpaceModelRGB);
     }
 

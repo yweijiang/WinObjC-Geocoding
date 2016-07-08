@@ -21,7 +21,7 @@
 
 static CGBitmapInfo c_kCGBitmapInfoInvalidBits = 0xDEADBEEF;
 
-static inline CGBitmapInfo _CGBitmapGetBitmapInfoFromFormat(surfaceFormat fmt) { 
+static inline CGBitmapInfo _CGBitmapGetBitmapInfoFromFormat(surfaceFormat fmt) {
     CGBitmapInfo ret;
 
     switch (fmt) {
@@ -54,7 +54,12 @@ static inline CGBitmapInfo _CGBitmapGetBitmapInfoFromFormat(surfaceFormat fmt) {
     return ret;
 }
 
-static inline __CGSurfaceInfo _CGSurfaceInfoInit(size_t width, size_t height, surfaceFormat fmt, void* data = NULL, size_t bytesPerRow = 0, CGBitmapInfo bitmapInfo = c_kCGBitmapInfoInvalidBits) {
+static inline __CGSurfaceInfo _CGSurfaceInfoInit(size_t width,
+                                                 size_t height,
+                                                 surfaceFormat fmt,
+                                                 void* data = NULL,
+                                                 size_t bytesPerRow = 0,
+                                                 CGBitmapInfo bitmapInfo = c_kCGBitmapInfoInvalidBits) {
     __CGSurfaceInfo surfaceInfo;
 
     switch (fmt) {
