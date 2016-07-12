@@ -39,7 +39,6 @@
 #import <math.h>
 #import <stdlib.h>
 #import "CGContextInternal.h"
-#import "CGSurfaceInfoInternal.h"
 
 extern "C" {
 #import <png.h>
@@ -178,10 +177,7 @@ CGImageBacking* CGPNGImageBacking::ConstructBacking() {
     if (_hasCachedInfo) {
         /* Allocate bitmap for our output */
         CGGraphicBufferImage* newImage;
-
-        __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(_cachedWidth, _cachedHeight, _cachedSurfaceFormat, NULL, 0, _cachedBitmapInfo);
-        newImage = new CGGraphicBufferImage(&surfaceInfo);
-
+        newImage = new CGGraphicBufferImage(_cachedWidth, _cachedHeight, _cachedSurfaceFormat);
         retBacking = newImage->DetachBacking(_parent);
         CGImageRelease(newImage);
 
@@ -255,19 +251,13 @@ void CGPNGImageBacking::Decode(void* imgDest, int stride) {
     _cachedHeight = png_height;
     if (color_type == PNG_COLOR_TYPE_GRAY) {
         _cachedSurfaceFormat = _ColorGrayscale;
-        _cachedBitmapInfo = kCGImageAlphaNone | kCGBitmapByteOrderDefault;
-        _cachedColorSpaceModel = kCGColorSpaceModelMonochrome;
     } else {
 #ifndef QNX
-        _cachedSurfaceFormat = _ColorABGR;
-        _cachedBitmapInfo = kCGImageAlphaLast | kCGBitmapByteOrder32Little;
+        _cachedSurfaceFormat = _ColorRGBA;
 #else
         _cachedSurfaceFormat = _ColorARGB;
-        _cachedBitmapInfo = kCGImageAlphaFirst | kCGBitmapByteOrderDefault;
 #endif
-        _cachedColorSpaceModel = kCGColorSpaceModelRGB;
     }
-
     _hasCachedInfo = true;
 
     if (imgDest) {

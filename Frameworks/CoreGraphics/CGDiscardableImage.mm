@@ -28,6 +28,7 @@ CGContextImpl* CGDiscardableImageBacking::CreateDrawingContext(CGContextRef base
 CGDiscardableImageBacking::CGDiscardableImageBacking() {
     _forward = NULL;
     _hasCachedInfo = false;
+    _hasFormatInfo = false;
     _cachedSurfaceFormat = _Color565;
     _cachedColorSpaceModel = kCGColorSpaceModelRGB;
     _cachedBitmapInfo = 0;
@@ -123,6 +124,7 @@ void CGDiscardableImageBacking::GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* s
 surfaceFormat CGDiscardableImageBacking::SurfaceFormat() {
     if (!_forward) {
         if (_hasCachedInfo) {
+            InitFormatInfoIfNeeded();
             return _cachedSurfaceFormat;
         }
     }
@@ -135,6 +137,7 @@ surfaceFormat CGDiscardableImageBacking::SurfaceFormat() {
 CGColorSpaceModel CGDiscardableImageBacking::ColorSpaceModel() {
     if (!_forward) {
         if (_hasCachedInfo) {
+            InitFormatInfoIfNeeded();
             return _cachedColorSpaceModel;
         }
     }
@@ -147,6 +150,7 @@ CGColorSpaceModel CGDiscardableImageBacking::ColorSpaceModel() {
 CGBitmapInfo CGDiscardableImageBacking::BitmapInfo() {
     if (!_forward) {
         if (_hasCachedInfo) {
+            InitFormatInfoIfNeeded();
             return _cachedBitmapInfo;
         }
     }

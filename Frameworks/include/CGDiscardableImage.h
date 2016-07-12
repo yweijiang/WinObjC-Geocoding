@@ -19,6 +19,7 @@ class CGDiscardableImageBacking : public CGImageBacking {
 protected:
     CGImageBacking* _forward;
     bool _hasCachedInfo;
+    bool _hasFormatInfo;
     int _cachedWidth, _cachedHeight;
     surfaceFormat _cachedSurfaceFormat;
     CGColorSpaceModel _cachedColorSpaceModel;
@@ -53,6 +54,14 @@ public:
 
     void ConstructIfNeeded();
     virtual CGImageBacking* ConstructBacking() = 0;
+
+    inline void InitFormatInfoIfNeeded() {
+        if (!_hasFormatInfo) {
+            _cachedBitmapInfo = c_FormatTable[_cachedSurfaceFormat].bitmapInfo;
+            _cachedColorSpaceModel = c_FormatTable[_cachedSurfaceFormat].colorSpaceModel;
+            _hasFormatInfo = true;
+        }
+    }
 };
 
 class ImageDataStream {

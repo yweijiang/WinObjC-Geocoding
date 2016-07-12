@@ -19,25 +19,6 @@
 
 #import "CoreGraphics/CoreGraphicsExport.h"
 
-typedef struct {
-    CGColorSpaceModel colorSpaceModel;
-    CGBitmapInfo bitmapInfo;
-    unsigned int bitsPerComponent;
-    unsigned int bytesPerPixel;
-}__CGFormatProperties;
-
-static const __CGFormatProperties c_FormatTable[_ColorMax] = {
-    { kCGColorSpaceModelRGB,        (kCGImageAlphaNone  | kCGBitmapByteOrderDefault),          5, 2 }, //_Color565,
-    { kCGColorSpaceModelRGB,        (kCGImageAlphaFirst | kCGBitmapByteOrderDefault),          8, 4 }, //_ColorARGB,
-    { kCGColorSpaceModelRGB,        (kCGImageAlphaLast  | kCGBitmapByteOrder32Little),         8, 4 }, //_ColorABGR,
-    { kCGColorSpaceModelRGB,        (kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrderDefault),  8, 4 }, //_ColorBGRX,
-    { kCGColorSpaceModelRGB,        (kCGImageAlphaNoneSkipLast  | kCGBitmapByteOrder32Little), 8, 4 }, //_ColorXBGR,
-    { kCGColorSpaceModelMonochrome, (kCGImageAlphaNone | kCGBitmapByteOrderDefault),           8, 1 }, //_ColorGrayscale,
-    { kCGColorSpaceModelRGB,        (kCGImageAlphaNone | kCGBitmapByteOrderDefault),           8, 3 }, //_ColorBGR,
-    { kCGColorSpaceModelPattern,    (kCGImageAlphaOnly | kCGBitmapByteOrderDefault),           8, 1 }, //_ColorA8,
-    { kCGColorSpaceModelIndexed,    (kCGImageAlphaNone | kCGBitmapByteOrderDefault),           8, 2 }, //_ColorIndexed,
-};
-
 static CGBitmapInfo c_kCGBitmapInfoInvalidBits = 0xDEADBEEF;
 
 static inline __CGSurfaceInfo _CGSurfaceInfoInit(size_t width,
@@ -49,25 +30,26 @@ static inline __CGSurfaceInfo _CGSurfaceInfoInit(size_t width,
     __CGSurfaceInfo surfaceInfo;
 
     assert(fmt < _ColorMax);
-    surfaceInfo.colorSpaceModel = c_FormatTable[fmt].colorSpaceModel;
-    surfaceInfo.bitmapInfo = c_FormatTable[fmt].bitmapInfo;
-    surfaceInfo.bitsPerComponent = c_FormatTable[fmt].bitsPerComponent;
-    surfaceInfo.bytesPerPixel = c_FormatTable[fmt].bytesPerPixel;
     surfaceInfo.format = fmt;
     surfaceInfo.width = width;
     surfaceInfo.height = height;
     surfaceInfo.surfaceData = data;
+
+    surfaceInfo.colorSpaceModel = c_FormatTable[fmt].colorSpaceModel;
+    surfaceInfo.bitsPerComponent = c_FormatTable[fmt].bitsPerComponent;
+    surfaceInfo.bytesPerPixel = c_FormatTable[fmt].bytesPerPixel;
 
     // Set bytesPerRow if necessary
     if ((data != NULL) && (bytesPerRow == 0)) {
         surfaceInfo.bytesPerRow = width * surfaceInfo.bytesPerPixel;
     }
 
-    // Override bitmapInfo if it is passed in
+    // Set bitmapInfo if passed in, otherwise set the default value for the surface format
     if (bitmapInfo != c_kCGBitmapInfoInvalidBits) {
         surfaceInfo.bitmapInfo = bitmapInfo;
+    } else {
+        surfaceInfo.bitmapInfo = c_FormatTable[fmt].bitmapInfo;
     }
-
 
     return surfaceInfo;
 }

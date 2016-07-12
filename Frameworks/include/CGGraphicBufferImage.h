@@ -21,6 +21,7 @@
 
 class CGGraphicBufferImage : public __CGImage {
 public:
+    CGGraphicBufferImage(int width, int height, surfaceFormat fmt);
     CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo);
     CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking);
 };

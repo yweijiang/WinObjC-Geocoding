@@ -1,6 +1,5 @@
 //******************************************************************************
 //
-// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -20,7 +19,6 @@
 #import <stdlib.h>
 #import <UIKit/UIImage.h>
 #import "CGContextInternal.h"
-#import "CGSurfaceInfoInternal.h"
 
 extern "C" {
 #import <jpeglib.h>
@@ -284,8 +282,7 @@ CGImageBacking* CGJPEGImageBacking::ConstructBacking() {
     if (_hasCachedInfo) {
         /* Allocate bitmap for our output */
         CGGraphicBufferImage* newImage;
-        __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(_cachedWidth, _cachedHeight, _cachedSurfaceFormat, NULL, 0, _cachedBitmapInfo);
-        newImage = new CGGraphicBufferImage(&surfaceInfo);
+        newImage = new CGGraphicBufferImage(_cachedWidth, _cachedHeight, _cachedSurfaceFormat);
         retBacking = newImage->DetachBacking(_parent);
         CGImageRelease(newImage);
 
@@ -410,13 +407,10 @@ void CGJPEGImageBacking::Decode(void* imgDest, int stride) {
     _cachedWidth = cinfo.image_width;
     _cachedHeight = cinfo.image_height;
 #ifndef QNX
-    _cachedSurfaceFormat = _ColorABGR;
-    _cachedBitmapInfo = kCGImageAlphaLast | kCGBitmapByteOrder32Little;
+    _cachedSurfaceFormat = _ColorRGBA;
 #else
     _cachedSurfaceFormat = _ColorARGB;
-    _cachedBitmapInfo = kCGImageAlphaFirst | kCGBitmapByteOrderDefault;
 #endif
-    _cachedColorSpaceModel = kCGColorSpaceModelRGB;
     _hasCachedInfo = true;
 
     if (imgDest) {

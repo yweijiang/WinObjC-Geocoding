@@ -19,6 +19,7 @@
 #import <math.h>
 #import <stdlib.h>
 #import "CGContextCairo.h"
+#import "CGSurfaceInfoInternal.h"
 
 #include "LoggingNative.h"
 
@@ -31,6 +32,16 @@
 
 static const wchar_t* TAG = L"CGGraphicBufferImage";
 extern int imgDataCount;
+
+CGGraphicBufferImage::CGGraphicBufferImage(int width, int height, surfaceFormat fmt) {
+    __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, fmt);
+
+    _img = new CGBitmapImageBacking(&surfaceInfo);
+    _img->_parent = this;
+    _imgType = CGImageTypeBitmap;
+
+    _img->_parent = this;
+}
 
 CGGraphicBufferImage::CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo) {
     _img = new CGBitmapImageBacking(surfaceInfo);
