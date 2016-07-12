@@ -28,7 +28,7 @@
 #import "CGFontInternal.h"
 #import "CGPathInternal.h"
 #import "UIColorInternal.h"
-#import "CGBitmapInternal.h"
+#import "CGSurfaceInfoInternal.h"
 
 #define CAIRO_WIN32_STATIC_BUILD
 

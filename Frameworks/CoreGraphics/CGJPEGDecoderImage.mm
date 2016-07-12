@@ -20,7 +20,7 @@
 #import <stdlib.h>
 #import <UIKit/UIImage.h>
 #import "CGContextInternal.h"
-#import "CGBitmapInternal.h"
+#import "CGSurfaceInfoInternal.h"
 
 extern "C" {
 #import <jpeglib.h>

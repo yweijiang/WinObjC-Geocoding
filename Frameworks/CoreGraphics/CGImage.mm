@@ -26,7 +26,7 @@
 #import "CGColorSpaceInternal.h"
 #import "CGImageInternal.h"
 #import "_CGLifetimeBridgingType.h"
-#import "CGBitmapInternal.h"
+#import "CGSurfaceInfoInternal.h"
 
 extern "C" {
 #import <png.h>

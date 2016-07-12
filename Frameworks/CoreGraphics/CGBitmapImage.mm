@@ -21,7 +21,7 @@
 
 #import "CGContextImpl.h"
 #import "CGContextCairo.h"
-#import "CGBitmapInternal.h"
+#import "CGSurfaceInfoInternal.h"
 
 #include "LoggingNative.h"
 

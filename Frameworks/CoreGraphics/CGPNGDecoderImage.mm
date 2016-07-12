@@ -39,7 +39,7 @@
 #import <math.h>
 #import <stdlib.h>
 #import "CGContextInternal.h"
-#import "CGBitmapInternal.h"
+#import "CGSurfaceInfoInternal.h"
 
 extern "C" {
 #import <png.h>

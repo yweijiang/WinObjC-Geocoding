@@ -26,7 +26,7 @@
 #import "CGPathInternal.h"
 #import "UIColorInternal.h"
 #import "UIFontInternal.h"
-#import "CGBitmapInternal.h"
+#import "CGSurfaceInfoInternal.h"
 
 extern "C" {
 #import <ft2build.h>

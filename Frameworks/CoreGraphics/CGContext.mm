@@ -30,7 +30,7 @@
 #import "CGContextInternal.h"
 #import "CGColorSpaceInternal.h"
 #import "_CGLifetimeBridgingType.h"
-#import "CGBitmapInternal.h"
+#import "CGSurfaceInfoInternal.h"
 #include "LoggingNative.h"
 #import <pthread.h>
 
