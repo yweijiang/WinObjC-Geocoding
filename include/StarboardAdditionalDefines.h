@@ -17,7 +17,9 @@
 #ifndef __STARBOARD_ADDITIONAL_DEFINES
 #define __STARBOARD_ADDITIONAL_DEFINES
 
+#ifndef TARGET_IPHONE_SIMULATOR
 #define TARGET_IPHONE_SIMULATOR 1 //  Temporary for Cocos2D compat, for now
+#endif
 
 enum { noErr = 0 };
 
@@ -28,6 +30,7 @@ extern "C" {
 #endif
 
 uint arc4random(void);
+uint arc4random_uniform(uint upper_bound);
 unsigned random(void);
 
 #ifdef __cplusplus

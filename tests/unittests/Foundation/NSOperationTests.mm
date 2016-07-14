@@ -17,7 +17,12 @@
 #include <TestFramework.h>
 #import <Foundation/Foundation.h>
 
-TEST(Foundation, NSOperation) {
+TEST(NSOperation, NSOperationDealloc) {
+    NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+    ASSERT_NO_THROW([queue release]);
+}
+
+TEST(NSOperation, NSOperation) {
     NSOperationQueue* queue = [[NSOperationQueue alloc] init];
 
     NSOperation* operation = [[NSOperation alloc] init];
@@ -35,7 +40,7 @@ TEST(Foundation, NSOperation) {
     ASSERT_FALSE([operation isExecuting]);
 }
 
-TEST(Foundation, NSOperationCancellation) {
+TEST(NSOperation, NSOperationCancellation) {
     NSOperationQueue* queue = [[NSOperationQueue alloc] init];
 
     NSOperation* cancelledOperation = [[NSOperation alloc] init];

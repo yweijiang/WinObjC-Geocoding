@@ -47,3 +47,24 @@ TEST(NSDictionary, Enumerate) {
 
     ASSERT_EQ(0, waitingCount);
 }
+
+TEST(NSDictionary, keysSortedByValueUsingComparator) {
+    NSDictionary* testDict = @{ @"A" : @2, @"B" : @4, @"C" : @3, @"D" : @1 };
+    NSArray* actualArray = [testDict keysSortedByValueUsingComparator: ^(id obj1, id obj2) {
+        return [obj1 compare:obj2];
+    }];
+
+    NSArray* expectedArray = @[@"D", @"A", @"C", @"B" ];
+    ASSERT_OBJCEQ(expectedArray, actualArray);
+}
+
+TEST(NSDictionary, ExpandBeyondCapacity) {
+    NSMutableDictionary* dictionary = [NSMutableDictionary dictionaryWithCapacity:1];
+
+    NSUInteger expectedCount = 10;
+    for (NSUInteger i = 0; i < expectedCount; i++) {
+        [dictionary setObject:@1 forKey:[NSNumber numberWithInt:i]];
+    }
+
+    ASSERT_EQ(expectedCount, [dictionary count]);
+}

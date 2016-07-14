@@ -1,5 +1,11 @@
 LIBRARY AudioToolbox
     EXPORTS
+          AudioServicesCreateSystemSoundID
+          AudioServicesDisposeSystemSoundID
+          AudioServicesPlayAlertSound
+          AudioServicesPlaySystemSound
+          AudioServicesAddSystemSoundCompletion
+          AudioServicesRemoveSystemSoundCompletion
           AudioFileClose
           AudioFileGetProperty
           AudioFileGetPropertyInfo
@@ -15,6 +21,8 @@ LIBRARY AudioToolbox
           ExtAudioFileOpenURL
           ExtAudioFileRead
           ExtAudioFileSetProperty
+          AudioServicesCreateSystemSoundID
+          AudioServicesDisposeSystemSoundID
           kAudioSession_AudioRouteKey_Inputs DATA
           kAudioSession_AudioRouteKey_Outputs DATA
           kAudioSession_InputSourceKey_ID DATA

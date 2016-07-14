@@ -27,7 +27,7 @@
 
 #include "Platform/EbrPlatform.h"
 #include "Starboard.h"
-
+#include <pthread.h>
 #include "pevents.h"
 #include "PathMapper.h"
 #include "LoggingNative.h"
@@ -101,12 +101,17 @@ size_t EbrFile::Read(void* dest, size_t elem, size_t count) {
     return 0;
 }
 
-size_t EbrFile::Write(void* dest, size_t elem, size_t count) {
+size_t EbrFile::Write(const void* dest, size_t elem, size_t count) {
     assert(0);
     return 0;
 }
 
 int EbrFile::Seek(long offset, int origin) {
+    assert(0);
+    return -1;
+}
+
+int EbrFile::Seek64(__int64 offset, int origin) {
     assert(0);
     return -1;
 }
@@ -195,12 +200,17 @@ int EbrFile::Write(const void* src, size_t count) {
     return 0;
 }
 
-int EbrFile::Lseek(off_t pos, int whence) {
+int EbrFile::Lseek(__int64 pos, int whence) {
     assert(0);
     return 0;
 }
 
 int EbrFile::Truncate(off_t size) {
+    assert(0);
+    return 0;
+}
+
+int EbrFile::Truncate64(__int64 size) {
     assert(0);
     return 0;
 }
@@ -253,8 +263,9 @@ public:
 
     virtual int Close();
     virtual size_t Read(void* dest, size_t elem, size_t count);
-    virtual size_t Write(void* dest, size_t elem, size_t count);
+    virtual size_t Write(const void* dest, size_t elem, size_t count);
     virtual int Seek(long offset, int origin);
+    virtual int Seek64(__int64 offset, int origin);
     virtual size_t Tell();
     virtual int Eof();
     virtual int Putc(int c);
@@ -273,8 +284,9 @@ public:
     virtual int Stat(struct stat* ret);
     virtual int Read(void* dest, size_t count);
     virtual int Write(const void* src, size_t count);
-    virtual int Lseek(off_t pos, int whence);
+    virtual int Lseek(__int64 pos, int whence);
     virtual int Truncate(off_t size);
+    virtual int Truncate64(__int64 size);
     virtual int Dup();
 };
 
@@ -313,9 +325,9 @@ int EbrIOFile::Close() {
 
 static EbrFile* _openFiles[MAX_OPEN_EBRFILES];
 static int EbrFileHead = 0;
-static EbrLock _EbrFilesLock = EBRLOCK_INITIALIZE;
+static pthread_mutex_t _EbrFilesLock = PTHREAD_MUTEX_INITIALIZER;
 EbrFile* EbrAllocFile(EbrFile* ioInterface) {
-    EbrLockEnter(_EbrFilesLock);
+    pthread_mutex_lock(&_EbrFilesLock);
     int start = EbrFileHead;
 
     do {
@@ -323,7 +335,7 @@ EbrFile* EbrAllocFile(EbrFile* ioInterface) {
             _openFiles[EbrFileHead] = ioInterface;
             _openFiles[EbrFileHead]->idx = EbrFileHead;
 
-            EbrLockLeave(_EbrFilesLock);
+            pthread_mutex_unlock(&_EbrFilesLock);
             return _openFiles[EbrFileHead];
         }
 
@@ -372,57 +384,6 @@ void EbrSleep(__int64 nanoseconds) {
     Sleep((DWORD)(nanoseconds / 1000000LL));
 }
 
-void EbrLockInit(EbrLock* pLock) {
-    CRITICAL_SECTION* pCrit = (CRITICAL_SECTION*)IwMalloc(sizeof(CRITICAL_SECTION));
-
-    InitializeCriticalSectionEx(pCrit, 0, 0);
-
-    *pLock = (EbrLock)pCrit;
-}
-
-static void EbrLockInitializeOnce(EbrLock& pLock) {
-    for (;;) {
-        DWORD curValue = EbrCompareExchange((volatile int*)&pLock, EBRLOCK_INITIALIZING, EBRLOCK_INITIALIZE);
-        if (curValue == EBRLOCK_INITIALIZING) {
-            EbrSleep(10);
-            continue;
-        }
-        if (curValue == EBRLOCK_INITIALIZE) {
-            EbrLockInit(&pLock);
-        }
-        break;
-    }
-}
-
-void EbrLockEnter(EbrLock& pLock) {
-    EbrLockInitializeOnce(pLock);
-    CRITICAL_SECTION* pCrit = (CRITICAL_SECTION*)pLock;
-
-    EnterCriticalSection(pCrit);
-}
-
-bool EbrLockTryEnter(EbrLock& pLock) {
-    EbrLockInitializeOnce(pLock);
-    CRITICAL_SECTION* pCrit = (CRITICAL_SECTION*)pLock;
-
-    BOOL ret = TryEnterCriticalSection(pCrit);
-
-    return ret;
-}
-
-void EbrLockLeave(EbrLock pLock) {
-    CRITICAL_SECTION* pCrit = (CRITICAL_SECTION*)pLock;
-
-    LeaveCriticalSection(pCrit);
-}
-
-void EbrLockDestroy(EbrLock pLock) {
-    CRITICAL_SECTION* pCrit = (CRITICAL_SECTION*)pLock;
-
-    DeleteCriticalSection(pCrit);
-    IwFree(pCrit);
-}
-
 #define PTW32_TIMESPEC_TO_FILETIME_OFFSET (((LONGLONG)27111902 << 32) + (LONGLONG)3577643008)
 
 static void filetime_to_timeval(const FILETIME* ft, struct EbrTimeval* ts) {
@@ -469,19 +430,25 @@ EbrFile* EbrFopen(const char* filename, const char* mode) {
 }
 
 //  IO funcs
+
 int EbrOpen(const char* file, int mode, int share) {
+    return EbrOpenWithPermission(file, mode, share, 0);
+}
+
+int EbrOpenWithPermission(const char* file, int mode, int share, int pmode) {
     if (strcmp(file, "/dev/urandom") == 0) {
         EbrFileDevRandom* ret = new EbrFileDevRandom();
         EbrFile* addedFile = EbrAllocFile(ret);
 
         return addedFile->idx;
     }
+
     bool stop = false;
     if (stop) {
         return -1;
     }
     int ret = -1;
-    _sopen_s(&ret, CPathMapper(file), mode, share, 0);
+    _sopen_s(&ret, CPathMapper(file), mode, share, pmode);
     if (ret == -1) {
         return -1;
     }
@@ -526,11 +493,11 @@ size_t EbrFread(void* dest, size_t elem, size_t count, EbrFile* file) {
     return file->Read(dest, elem, count);
 }
 
-size_t EbrIOFile::Write(void* dest, size_t elem, size_t count) {
+size_t EbrIOFile::Write(const void* dest, size_t elem, size_t count) {
     return fwrite(dest, elem, count, fp);
 }
 
-size_t EbrFwrite(void* dest, size_t elem, size_t count, EbrFile* file) {
+size_t EbrFwrite(const void* dest, size_t elem, size_t count, EbrFile* file) {
     return file->Write(dest, elem, count);
 }
 
@@ -540,6 +507,14 @@ int EbrIOFile::Seek(long offset, int origin) {
 
 int EbrFseek(EbrFile* fp, long offset, int origin) {
     return fp->Seek(offset, origin);
+}
+
+int EbrIOFile::Seek64(__int64 offset, int origin) {
+    return _fseeki64(fp, offset, origin);
+}
+
+int EbrFseek64(EbrFile* fp, __int64 offset, int origin) {
+    return fp->Seek64(offset, origin);
 }
 
 size_t EbrIOFile::Tell() {
@@ -727,11 +702,11 @@ int EbrWrite(int fd, const void* src, size_t count) {
     return _openFiles[fd]->Write(src, count);
 }
 
-int EbrIOFile::Lseek(off_t pos, int whence) {
+int EbrIOFile::Lseek(__int64 pos, int whence) {
     return _lseeki64(filefd, pos, whence);
 }
 
-int EbrLseek(int fd, off_t pos, int whence) {
+int EbrLseek(int fd, __int64 pos, int whence) {
     return _openFiles[fd]->Lseek(pos, whence);
 }
 
@@ -741,6 +716,14 @@ int EbrIOFile::Truncate(off_t size) {
 
 int EbrTruncate(int fd, off_t size) {
     return _openFiles[fd]->Truncate(size);
+}
+
+int EbrIOFile::Truncate64(__int64 size) {
+    return _chsize_s(filefd, size);
+}
+
+int EbrTruncate64(int fd, __int64 size) {
+    return _openFiles[fd]->Truncate64(size);
 }
 
 typedef struct {

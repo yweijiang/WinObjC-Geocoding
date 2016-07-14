@@ -16,7 +16,7 @@
 //******************************************************************************
 
 #import <ImageIO/CGImageDestination.h>
-#import <ImageIO/CGImageDestinationInternal.h>
+#import "CGImageDestinationInternal.h"
 #import <StubReturn.h>
 #include <windows.h>
 #include <string>
@@ -90,7 +90,7 @@ enum destinationTypes { toData,
 
         if (url) {
             if ([(NSURL*)url path]) { // Make sure that the url path actually resolves to something to avoid causing an exception
-                NSString* urlNSString = [[(NSURL*)url path] substringFromIndex:1];
+                NSString* urlNSString = [(NSURL*)url path];
                 NSData* urlAsData = [urlNSString dataUsingEncoding:NSUnicodeStringEncoding];
                 std::wstring wideUrl((wchar_t*)[urlAsData bytes], [urlAsData length]/sizeof(wchar_t));
                 RETURN_NULL_IF_FAILED(_idStream->InitializeFromFilename(wideUrl.c_str(), GENERIC_WRITE));

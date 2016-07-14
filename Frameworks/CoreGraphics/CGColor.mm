@@ -26,7 +26,9 @@ static IWLazyClassLookup _LazyUIColor("UIColor");
  @Status Interoperable
 */
 void CGColorRelease(CGColorRef color) {
-    CFRelease(color);
+    if (color != nullptr) {
+        CFRelease(color);
+    }
 }
 
 /**
@@ -70,7 +72,7 @@ CGColorRef CGColorCreateCopyWithAlpha(CGColorRef color, float alpha) {
 /**
  @Status Interoperable
 */
-CGColorRef CGColorCreateWithPattern(CGColorSpaceRef colorSpace, id pattern, float components[]) {
+CGColorRef CGColorCreateWithPattern(CGColorSpaceRef colorSpace, CGPatternRef pattern, const CGFloat* components) {
     CGColorRef ret = (CGColorRef)[[_LazyUIColor _colorWithCGPattern:(CGPatternRef)pattern] retain];
 
     return ret;

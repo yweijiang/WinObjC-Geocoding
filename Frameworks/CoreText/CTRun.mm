@@ -59,14 +59,14 @@ CFIndex CTRunGetGlyphCount(CTRunRef run) {
 }
 
 /**
- @Status Stub
+@Status Interoperable
 */
 CFDictionaryRef CTRunGetAttributes(CTRunRef run) {
     if (run == nil) {
         return nil;
     }
 
-    return static_cast<CFDictionaryRef>((static_cast<_CTRun*>(run))->_attributes);
+    return (__bridge CFDictionaryRef)(NSDictionary*)(static_cast<_CTRun*>(run))->_attributes;
 }
 
 /**

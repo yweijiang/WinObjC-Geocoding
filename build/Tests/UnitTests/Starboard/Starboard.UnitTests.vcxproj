@@ -22,6 +22,9 @@
     <ProjectReference Include="..\..\..\Foundation\dll\Foundation.vcxproj">
       <Project>{86127226-9A6E-439B-A070-420A572AF0C7}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\CoreFoundation\dll\CoreFoundation.vcxproj">
+      <Project>{81F30AF6-EAC3-4DFA-929A-C25D69E8080B}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Logging\dll\Logging.vcxproj">
       <Project>{862d36c2-cc83-4d04-b9b8-bef07f479905}</Project>
     </ProjectReference>
@@ -89,6 +92,7 @@
     <Import Project="$(StarboardBasePath)\msvc\starboard-cmdline.props" />
   </ImportGroup>
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(StarboardBasePath)\msvc\ut-build.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
     <Import Project="..\..\Tests.Shared\Tests.Shared.vcxitems" />
@@ -132,7 +136,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ObjCUWP.lib;mincore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>RTObjCInterop.lib;ObjCUWP.lib;mincore.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AppContainer>false</AppContainer>
     </Link>
     <ClangCompile>
@@ -154,7 +158,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ObjCUWP.lib;mincore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>RTObjCInterop.lib;ObjCUWP.lib;mincore.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AppContainer>false</AppContainer>
     </Link>
     <ClangCompile>
@@ -180,7 +184,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>ObjCUWP.lib;mincore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>RTObjCInterop.lib;ObjCUWP.lib;mincore.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AppContainer>false</AppContainer>
     </Link>
     <ClangCompile>
@@ -206,7 +210,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>ObjCUWP.lib;mincore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>RTObjCInterop.lib;ObjCUWP.lib;mincore.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AppContainer>false</AppContainer>
     </Link>
     <ClangCompile>
@@ -230,6 +234,7 @@
     <ClangCompile Include="..\..\..\..\tests\unittests\Starboard\objcrt_assoc.mm" />
     <ClangCompile Include="..\..\..\..\tests\unittests\Starboard\objcrt_runtime.mm" />
     <ClangCompile Include="..\..\..\..\tests\unittests\Starboard\objcrt_sanity.m" />
+    <ClangCompile Include="..\..\..\..\tests\unittests\Starboard\PthreadTests.mm" />
     <ClangCompile Include="..\..\..\..\tests\unittests\Starboard\ProjectionsTests.mm" />
   </ItemGroup>
   <ItemGroup>
