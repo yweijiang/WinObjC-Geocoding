@@ -518,7 +518,7 @@ TEST(GLKit, TemporaryShaderNodes) {
 }
 
 TEST(GLKit, BasicMath) {
-    BOOL invertible = false;
+    bool invertible = false;
 
     Dw32 cos2f;
     Dw32 sin2f;
@@ -890,7 +890,7 @@ TEST(GLKit, Performance) {
     float botDelta = (botMax - bot);
 
     // Intermediates
-    BOOL isInvertible;
+    bool isInvertible;
     unsigned int invertibleCount = 0;
     GLKMatrix4 matrix4LookAt;
     GLKMatrix4 matrix4Rotate;

@@ -292,8 +292,6 @@ void GLKMatrix4MultiplyVector4Array(GLKMatrix4 m, GLKVector4* vecs, size_t numVe
     GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
     __m128 vector4;
 
-    assert((uintptr_t(vecs) & 15) == 0);
-
     for (size_t i = 0; i < numVecs; i++) {
         vector4 = _mm_loadu_ps((const float*)vecs[i].v);
         vector4 = GLKSSE2MultiplyMatrix4Vector4(matrix, vector4);
@@ -455,7 +453,7 @@ GLKMatrix4 GLKMatrix4Transpose(GLKMatrix4 mat) {
 /**
 @Status Interoperable
 */
-GLKMatrix4 GLKMatrix4InvertAndTranspose(GLKMatrix4 m, BOOL* isInvertible) {
+GLKMatrix4 GLKMatrix4InvertAndTranspose(GLKMatrix4 m, bool* isInvertible) {
     GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
 
     GLKUniversalMatrix res;
@@ -469,7 +467,7 @@ GLKMatrix4 GLKMatrix4InvertAndTranspose(GLKMatrix4 m, BOOL* isInvertible) {
 /**
 @Status Interoperable
 */
-GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, BOOL* isInvertible) {
+GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, bool* isInvertible) {
     GLKMatrix4M128 matrix = GLKMatrix4M128(m.m);
     GLKUniversalMatrix res;
 
@@ -488,7 +486,7 @@ GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, BOOL* isInvertible) {
 /**
 @Status Interoperable
 */
-GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, BOOL* isInvertible) {
+GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, bool* isInvertible) {
     GLKMatrix4M128 matrix;
     GLKMatrix4M128 matrixInv;
     GLKUniversalMatrix res;
@@ -515,7 +513,7 @@ GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, BOOL* isInvertible) {
 /**
 @Status Interoperable
 */
-GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInvertible) {
+GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, bool* isInvertible) {
     GLKMatrix4M128 matrix;
     GLKMatrix4M128 matrixInv;
     GLKUniversalMatrix res;
@@ -712,7 +710,7 @@ GLKMatrix4 GLKMatrix4TranslateWithVector3(GLKMatrix4 m, GLKVector3 v) {
 GLKMatrix4 GLKMatrix4TranslateWithVector4(GLKMatrix4 m, GLKVector4 v) {
     // TODO: Consider using something similar to GLKSSE2MultiplyMatrix4Vector3Translate but use a vec4 to generate row 4
     GLKUniversalMatrix res = GLKUniversalMatrix(m.m);
-    __m128 translateVector = _mm_load_ps1(v.v);
+    __m128 translateVector = _mm_loadu_ps(v.v);
 
     GLKSSE2Matrix4TranslateVector4(res.matrix4M128, translateVector);
 

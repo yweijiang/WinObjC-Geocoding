@@ -173,8 +173,8 @@ inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4MakeYRotation(float rad);
 inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4MakeZRotation(float rad);
 inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4MakeRotation(__m128 axisVector, float rad);
 inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4MultiplyMatrix4(GLKMatrix4M128 m1, GLKMatrix4M128& m2);
-inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4Invert(GLKMatrix4M128 mT, BOOL* isInvertible);
-inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrix4M128 mT, BOOL* isInvertible);
+inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4Invert(GLKMatrix4M128 mT, bool* isInvertible);
+inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrix4M128 mT, bool* isInvertible);
 
 inline void GLK_CALLCONV GLKSSE2Matrix4TranslateVector4(GLKMatrix4M128& m, __m128 v);
 inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4ScaleVector4(GLKMatrix4M128 m, __m128 scaleVector);
@@ -392,7 +392,6 @@ inline void GLK_CALLCONV GLKSSE2Matrix4MultiplyVector3Array(GLKMatrix4M128 m, GL
 
 inline void GLK_CALLCONV GLKSSE2Matrix4MultiplyVector4Array(GLKMatrix4M128 m, GLKVector4* vecs, size_t numVecs) {
     __m128 vector;
-    assert((uintptr_t(vecs) & 15) == 0);
 
     for (size_t i = 0; i < numVecs; i++) {
         vector = _mm_loadu_ps((const float*)vecs[i].v);
@@ -583,7 +582,7 @@ inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4MultiplyMatrix4(GLKMatrix4M128 
 //    Output: Transpose(MInverse)
 //    Input: Transpose(M)
 //    Output: MInverse
-inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4Invert(GLKMatrix4M128 mT, BOOL* isInvertible) {
+inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4Invert(GLKMatrix4M128 mT, bool* isInvertible) {
     __m128 v00 = _mm_shuffle_ps(mT.row[2], mT.row[2], _MM_SHUFFLE(1, 1, 0, 0));
     __m128 v10 = _mm_shuffle_ps(mT.row[3], mT.row[3], _MM_SHUFFLE(3, 2, 3, 2));
     __m128 v01 = _mm_shuffle_ps(mT.row[0], mT.row[0], _MM_SHUFFLE(1, 1, 0, 0));
@@ -703,7 +702,6 @@ inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4Invert(GLKMatrix4M128 mT, BOOL*
         res.row[2] = _mm_mul_ps(c4, detInvVector);
         res.row[3] = _mm_mul_ps(c6, detInvVector);
     } else {
-        assert(comparisonMask == 0xf);
         if (isInvertible != nullptr) {
             *isInvertible = false;
         }
@@ -714,7 +712,7 @@ inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix4Invert(GLKMatrix4M128 mT, BOOL*
     return res;
 }
 
-inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrix4M128 mT, BOOL* isInvertible) {
+inline GLKMatrix4M128 GLK_CALLCONV GLKSSE2Matrix3Invert(GLKMatrix4M128 mT, bool* isInvertible) {
     // Row1Sh1 = <m12, m10, m11, #>
     __m128 tmpVector1 = _mm_shuffle_ps(mT.row[1], mT.row[1], _MM_SHUFFLE(0, 1, 0, 2));
 

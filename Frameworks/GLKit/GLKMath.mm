@@ -297,7 +297,7 @@ GLKIT_EXPORT GLKVector3 GLKMatrix4MultiplyVector3(GLKMatrix4 m, GLKVector3 vec) 
 /**
  @Status Interoperable
 */
-GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInvertible) {
+GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, bool* isInvertible) {
     const float a1 = m.m[0];
     const float b1 = m.m[1];
     const float c1 = m.m[2];
@@ -347,7 +347,7 @@ GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(GLKMatrix3 m, BOOL* isInver
 /**
  @Status Interoperable
 */
-GLKIT_EXPORT GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, BOOL* isInvertible) {
+GLKIT_EXPORT GLKMatrix3 GLKMatrix3Invert(GLKMatrix3 m, bool* isInvertible) {
     m = GLKMatrix3InvertAndTranspose(m, isInvertible);
     return GLKMatrix3Transpose(m);
 }
@@ -406,7 +406,7 @@ GLKIT_EXPORT void GLKMatrix4MultiplyVector4Array(GLKMatrix4 m, GLKVector4* vecs,
 /**
  @Status Interoperable
 */
-GLKIT_EXPORT GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, BOOL* isInvertible) {
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4Invert(GLKMatrix4 m, bool* isInvertible) {
     GLKMatrix4 a;
     GLKMatrix4 aNorm;
 
@@ -632,7 +632,7 @@ GLKIT_EXPORT GLKQuaternion GLKQuaternionMakeWithMatrix4(GLKMatrix4 mat) {
  @Status Interoperable
  @Notes
 */
-GLKMatrix4 GLKMatrix4InvertAndTranspose(GLKMatrix4 matrix, BOOL* isInvertible) {
+GLKMatrix4 GLKMatrix4InvertAndTranspose(GLKMatrix4 matrix, bool* isInvertible) {
     GLKMatrix4 inverse = GLKMatrix4Invert(matrix, isInvertible);
     GLKMatrix4 inverseT = GLKMatrix4Transpose(inverse);
     return inverseT;
@@ -1295,7 +1295,7 @@ GLKVector3 GLKMathProject(GLKVector3 object, GLKMatrix4 model, GLKMatrix4 projec
  @Status Stub
  @Notes
 */
-GLKVector3 GLKMathUnproject(GLKVector3 window, GLKMatrix4 model, GLKMatrix4 projection, int* viewport, BOOL* success) {
+GLKVector3 GLKMathUnproject(GLKVector3 window, GLKMatrix4 model, GLKMatrix4 projection, int* viewport, bool* success) {
     UNIMPLEMENTED();
     return StubReturn();
 }

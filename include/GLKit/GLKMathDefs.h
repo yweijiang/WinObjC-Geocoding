@@ -26,7 +26,7 @@
 #endif
 
 #if (!defined(__clang__) && defined(_MSC_VER) && !defined(__attribute__))
-//#define __attribute__(x)
+#define __attribute__(x)
 #ifdef STUB_METHOD
 #undef STUB_METHOD
 #endif
@@ -136,7 +136,7 @@ typedef struct _GLKMatrix3 {
         };
         float m[9];
     };
-} GLK_POSTFIX_ALIGN(16) GLKMatrix3;
+} GLKMatrix3;
 
 typedef struct _GLKMatrix4 {
     union {
@@ -328,8 +328,8 @@ GLKIT_EXPORT GLKMatrix4
 GLKMatrix4MakeLookAt(float eyeX, float eyeY, float eyeZ, float lookX, float lookY, float lookZ, float upX, float upY, float upZ);
 GLKIT_EXPORT GLKVector4 GLKMatrix4MultiplyVector4(const GLKMatrix4 m, const GLKVector4 vec);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4Transpose(const GLKMatrix4 mat);
-GLKIT_EXPORT GLKMatrix4 GLKMatrix4InvertAndTranspose(const GLKMatrix4 matrix, BOOL* isInvertible);
-GLKIT_EXPORT GLKMatrix4 GLKMatrix4Invert(const GLKMatrix4 m, BOOL* isInvertible);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4InvertAndTranspose(const GLKMatrix4 matrix, bool* isInvertible);
+GLKIT_EXPORT GLKMatrix4 GLKMatrix4Invert(const GLKMatrix4 m, bool* isInvertible);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeXRotation(float rad);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeYRotation(float rad);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4MakeZRotation(float rad);
@@ -357,8 +357,8 @@ GLKIT_EXPORT GLKMatrix4 GLKMatrix4ScaleWithVector3(const GLKMatrix4 matrix, cons
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4ScaleWithVector4(const GLKMatrix4 matrix, const GLKVector4 scaleVector);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4Add(const GLKMatrix4 matrixLeft, const GLKMatrix4 matrixRight);
 GLKIT_EXPORT GLKMatrix4 GLKMatrix4Subtract(const GLKMatrix4 matrixLeft, const GLKMatrix4 matrixRight);
-GLKIT_EXPORT GLKMatrix3 GLKMatrix3Invert(const GLKMatrix3 m, BOOL* isInvertible);
-GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(const GLKMatrix3 m, BOOL* isInvertible);
+GLKIT_EXPORT GLKMatrix3 GLKMatrix3Invert(const GLKMatrix3 m, bool* isInvertible);
+GLKIT_EXPORT GLKMatrix3 GLKMatrix3InvertAndTranspose(const GLKMatrix3 m, bool* isInvertible);
 
 GLKIT_EXPORT GLKVector3 GLKQuaternionRotateVector3(GLKQuaternion q, GLKVector3 v);
 GLKIT_EXPORT void GLKQuaternionRotateVector3Array(GLKQuaternion q, GLKVector3* vecs, size_t numVecs);
