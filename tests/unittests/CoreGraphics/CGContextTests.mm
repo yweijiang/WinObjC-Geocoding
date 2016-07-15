@@ -14,8 +14,7 @@
 //
 //******************************************************************************
 
-@interface NSXMLPropertyList : NSObject {
-@public
-}
-+ (id)propertyListFromData:(NSData*)data;
-@end
+#import <TestFramework.h>
+#import <Starboard.h>
+#import <CoreGraphics\CGContext.h>
+#import <Foundation\Foundation.h>

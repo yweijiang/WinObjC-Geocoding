@@ -1,6 +1,6 @@
 //******************************************************************************
 //
-// Copyright (c) 2015 Microsoft Corporation. All rights reserved.
+// Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
 //
@@ -14,8 +14,10 @@
 //
 //******************************************************************************
 
+#pragma once
+
 #import <UIKit/UIKit.h>
 
-@interface WindowViewController : UITableViewController
+@interface CGCRootViewController : UIViewController
 
 @end

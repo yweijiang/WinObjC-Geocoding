@@ -1,6 +1,6 @@
 //******************************************************************************
 //
-// Copyright (c) 2015 Microsoft Corporation. All rights reserved.
+// Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
 //
@@ -14,8 +14,11 @@
 //
 //******************************************************************************
 
-#import <UIKit/UIKit.h>
+#pragma once
 
-@interface BlankWindowViewController : UIViewController {
-}
+#import "CGCBaseViewController.h"
+#import <Foundation/Foundation.h>
+
+@interface CGCCGContextSetPatternPhase : CGCBaseViewController
+
 @end

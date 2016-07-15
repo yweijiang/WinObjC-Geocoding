@@ -17,13 +17,11 @@
 #include "Starboard.h"
 #include "StubReturn.h"
 #include "CFHelpers.h"
-#include "NSPropertyListReader.h"
 #include "Foundation/NSMutableArray.h"
 #include "Foundation/NSMutableData.h"
 #include "Foundation/NSEnumerator.h"
 #include "Foundation/NSKeyedArchiver.h"
 #include "Foundation/NSArray.h"
-#include "NSXMLPropertyList.h"
 #include "NSEnumeratorInternal.h"
 #include "NSPropertyListWriter_binary.h"
 #include "CoreFoundation/CFArray.h"
@@ -39,11 +37,9 @@
 
 static const wchar_t* TAG = L"NSArray";
 
-@class NSXMLPropertyList, NSPropertyListReader, NSPropertyListWriter_Binary;
-
 @implementation NSArray
 
-+ ALLOC_PROTOTYPE_SUBCLASS_WITH_ZONE(NSArray, NSArrayPrototype);
+BASE_CLASS_REQUIRED_IMPLS(NSArray, NSArrayPrototype, CFArrayGetTypeID);
 
 /**
  @Status Interoperable
@@ -654,9 +650,11 @@ static CFComparisonResult _CFComparatorFunctionFromComparator(const void* val1, 
                     format:@"Both NSBinarySearchingFirstEqual and NSBinarySearchingLastEqual were specified."];
     }
 
-    if (range.location + range.length > [self count]) {
+    NSUInteger selfCount = [self count];
+
+    if (range.location + range.length > selfCount) {
         [NSException raise:NSInvalidArgumentException
-                    format:@"Range {%d, %d} larger than array of size %d.", range.location, range.length, [self count]];
+                    format:@"Range {%d, %d} larger than array of size %d.", range.location, range.length, selfCount];
     }
 
     NSUInteger index = CFArrayBSearchValues(static_cast<CFArrayRef>(self),
@@ -665,11 +663,11 @@ static CFComparisonResult _CFComparatorFunctionFromComparator(const void* val1, 
                                             _CFComparatorFunctionFromComparator,
                                             &comparator);
 
-    if (index >= [self count] && (options & NSBinarySearchingInsertionIndex)) {
-        return index;
+    if (index >= selfCount && (options & NSBinarySearchingInsertionIndex)) {
+        return selfCount;
     }
 
-    if (([self count] > 0) && ([[self objectAtIndex:index] isEqual:obj])) {
+    if ((selfCount > index) && ([[self objectAtIndex:index] isEqual:obj])) {
         if (options & NSBinarySearchingFirstEqual) {
             while (NSLocationInRange(index - 1, range)) {
                 if ([[self objectAtIndex:index - 1] isEqual:obj]) {
@@ -745,7 +743,7 @@ static CFComparisonResult _CFComparatorFunctionFromComparator(const void* val1, 
     }
 
     if ([self count] > 0) {
-        [s deleteCharactersInRange:{[s length] - 2, 2}];
+        [s deleteCharactersInRange:{[s length] - 2, 2 }];
     }
 
     [s appendString:@")"];
