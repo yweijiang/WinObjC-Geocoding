@@ -48,7 +48,8 @@ extern "C" NSString* const NSRunLoopCommonModes = @"kCFRunLoopCommonModes";
     NSMutableArray* _continue;
     NSMutableArray* _orderedPerforms;
     NSRecursiveLock* _orderedLock;
-    bool _stop;
+    bool _isStopped;
+    bool _isShutdown;
     pthread_mutex_t _modeLock;
 }
 @property (readwrite, copy) NSString* currentMode;
@@ -262,11 +263,6 @@ static void DispatchMainRunLoopWakeup(void* arg) {
         [self acceptInputForMode:mode beforeDate:limitDate];
     }
 
-    if ([NSThread currentThread] == [NSThread mainThread]) {
-        [[NSOperationQueue mainQueue] _doMainWork];
-        dispatch_main_queue_callback();
-    }
-
     [pool release];
 
     return (limitDate != nil);
@@ -287,13 +283,18 @@ static void DispatchMainRunLoopWakeup(void* arg) {
  @Status Interoperable
 */
 - (void)run {
-    // Calling -run w/o a pool in place is valid, which is why we need one here
-    // for the NSDate. Could get rid of the pool if the date was not autoreleased.
-    NSDate* future = [NSDate distantFuture];
+    // Reset _stop value if the user directly invoked the run.
+    if (_isStopped) {
+        _isStopped = false;
+    }
 
-    while ([self runMode:NSDefaultRunLoopMode beforeDate:future] && !_stop)
-        ;
-    _stop = false;
+    // Stop the runloop permanently if _shutdown flag is set.
+    if (!_isShutdown) {
+        // Calling -run w/o a pool in place is valid, which is why we need one here
+        // for the NSDate. Could get rid of the pool if the date was not autoreleased.
+        NSDate* future = [NSDate distantFuture];
+        [self runMode:NSDefaultRunLoopMode beforeDate:future];
+    }
 }
 
 /**
@@ -428,8 +429,8 @@ static void DispatchMainRunLoopWakeup(void* arg) {
     return static_cast<CFRunLoopRef>(self);
 }
 
-+ (void)setUIThreadWaitFunction:(int (*)(EbrEvent* events, int numEvents, double timeout, SocketWait* sockets))callback {
-    [NSRunLoopState setUIThreadWaitFunction:callback];
++ (void)setUIThreadMainRunLoopWaitFunction:(int (*)(EbrEvent* events, int numEvents, double timeout, SocketWait* sockets))callback {
+    [NSRunLoopState setUIThreadMainRunLoopWaitFunction:callback];
 }
 
 /**
@@ -488,8 +489,22 @@ static void DispatchMainRunLoopWakeup(void* arg) {
     }
 }
 
+/**
+ * Internal wrapper to the actual run method that will be used by the main runloop
+ * to schedule.
+ */
+- (void)_run {
+    if (!_isStopped) {
+        [self run];
+    }
+}
+
 - (void)_stop {
-    _stop = true;
+    _isStopped = true;
+}
+
+- (void)_shutdown {
+    _isShutdown = true;
 }
 
 - (void)_wakeUp {
@@ -502,6 +517,25 @@ static void DispatchMainRunLoopWakeup(void* arg) {
     for (NSRunLoopState* curMode in modeStates) {
         [curMode removeTimer:timer];
     }
+}
+
+- (void)_processMainRunLoop:(int)value {
+    if ([NSThread currentThread] != [NSThread mainThread]) {
+        FAIL_FAST_MSG(E_UNEXPECTED, "_processMainRunLoop should only be scheduled on the main UI thread!");
+    }
+
+    NSRunLoopState* state = [self _stateForMode:NSDefaultRunLoopMode];
+
+    // Wrap code in a autorelease pool so all the auto released objects from calling the event
+    // handlers can be manually released.
+    NSAutoreleasePool* pool = [NSAutoreleasePool new];
+
+    [[NSOperationQueue mainQueue] _doMainWork];
+    dispatch_main_queue_callback();
+
+    [state _handleSignaledInput:value];
+
+    [pool release];
 }
 
 @end

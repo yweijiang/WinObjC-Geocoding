@@ -59,11 +59,13 @@
 #include "NSLayoutConstraint.h"
 #include "UICollectionViewCell.h"
 #include "UICollectionView.h"
+#include "UICollectionViewController.h"
 #include "UIStepper.h"
 #include "_UILayoutGuide.h"
 #include "UIPanGestureRecognizer.h"
 #include "UISwipeGestureRecognizer.h"
 #include "UITapGestureRecognizer.h"
+#include "UIStackView.h"
 #include <assert.h>
 
 #include "..\WBITelemetry\WBITelemetry.h"
@@ -75,6 +77,7 @@
 XIBObject* ObjectConverter::ConverterForObject(const char* className, pugi::xml_node node) {
     XIBObject* ret = NULL;
 
+    // NOTE: Legacy XIBs (pre-XCode5) are not really under active expansion. Developers can upgrade their XIBs to modern XIB format using ibtool
     IS_CONVERTER(ret, className, "IBCocoaTouchEventConnection", UIRuntimeEventConnection)
     IS_CONVERTER(ret, className, "IBCocoaTouchOutletConnection", UIRuntimeOutletConnection)
     IS_CONVERTER(ret, className, "IBCocoaTouchOutletCollectionConnection", UIRuntimeOutletCollectionConnection)
@@ -179,18 +182,22 @@ XIBObject* ObjectConverter::ConverterForStoryObject(const char* className, pugi:
     IS_CONVERTER(ret, className, "collectionReusableView", UICollectionReusableView)
     IS_CONVERTER(ret, className, "collectionViewCell", UICollectionViewCell)
     IS_CONVERTER(ret, className, "collectionView", UICollectionView)
+    IS_CONVERTER(ret, className, "collectionViewController", UICollectionViewController)
     IS_CONVERTER(ret, className, "pickerView", UIPickerView)
     IS_CONVERTER(ret, className, "segmentedControl", UISegmentedControl)
     IS_CONVERTER(ret, className, "stepper", UIStepper)
     IS_CONVERTER(ret, className, "panGestureRecognizer", UIPanGestureRecognizer)
     IS_CONVERTER(ret, className, "swipeGestureRecognizer", UISwipeGestureRecognizer)
     IS_CONVERTER(ret, className, "tapGestureRecognizer", UITapGestureRecognizer)
+
+    // Stubbed mapping - full functionality is not provided but these stubs will unblock the import process
+    IS_CONVERTER(ret, className, "pageControl", UIPageControl)
+    IS_CONVERTER(ret, className, "mapView", MKMapView)
+    IS_CONVERTER(ret, className, "stackView", UIStackView)
+
     IS_CONVERTER(ret, className, "customObject", ObjectConverterSwapper)
 
     if (ret == NULL) {
-#ifdef _DEBUG
-// printf("Unrecognized tag <%s>\n", className);
-#endif
         TELEMETRY_EVENT_DATA(L"UnRecognizedTag", className);
         ret = new XIBObject();
     }

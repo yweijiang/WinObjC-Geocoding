@@ -1,15 +1,18 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Globals">
     <HasSharedItems>true</HasSharedItems>
     <ItemsRootNamespace>WOCCatalog_Headers</ItemsRootNamespace>
     <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
     <Keyword>IslandwoodProj</Keyword>
-    <ItemsProjectGuid>{4D3236FB-F6EC-4605-85D0-714203CA41CA}</ItemsProjectGuid>
-    <SharedGUID>{891E104F-4880-430F-8BAB-1F8A0DB12BD7}</SharedGUID>
+    <ItemsProjectGuid>{23D15392-643F-4482-940E-49780A265A58}</ItemsProjectGuid>
+    <SharedGUID>{64DD2FB9-5D8C-4FBC-8159-68B00C4D35DB}</SharedGUID>
   </PropertyGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)..\..\WOCCatalog\UserDefaultsViewController.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)..\..\WOCCatalog\UIPasteboardViewController.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\..\WOCCatalog\ShadowViewController.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)..\..\WOCCatalog\AudioToolboxViewController.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\..\WOCCatalog\CoreMotionViewController.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\..\WOCCatalog\AccelerateViewController.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\..\WOCCatalog\PopoverViewController.h" />

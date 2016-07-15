@@ -7,7 +7,7 @@ The Windows Bridge for iOS (also referred to as WinObjC) is a Microsoft open-sou
 
 
 ## Where to get the bridge
-Download the latest pre-built Windows Bridge for iOS SDK [here](https://github.com/Microsoft/WinObjC/releases/download/0.1.160512/winobjc.zip).
+Download the latest pre-built Windows Bridge for iOS SDK [here](https://aka.ms/winobjc_latest).
 
 
 ## Resources
@@ -49,6 +49,8 @@ For guidance on importing your own Xcode project and other tips, see the [wiki](
 
 ## Contributions
 See our [contribution guidance in the wiki](https://github.com/Microsoft/WinObjC/wiki/How-to-Contribute) for details on how to contribute to the project.
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
 
 ## Privacy

@@ -30,7 +30,7 @@
     <WindowsTargetPlatformVersion>10.0.10586.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.10586.0</WindowsTargetPlatformMinVersion>
     <Keyword>IslandwoodProj</Keyword>
-    <ProjectGuid>{DD605E13-6694-420C-9E19-77C104B83659}</ProjectGuid>
+    <ProjectGuid>{2B371F33-8F49-4B8E-8FE6-E7046BBD2FF4}</ProjectGuid>
     <WINOBJC_SDK_ROOT Condition="'$(WINOBJC_SDK_ROOT)' == ''">..\..\..\..</WINOBJC_SDK_ROOT>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -80,6 +80,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <PackageCertificateKeyFile>WOCCatalog_TemporaryKey.pfx</PackageCertificateKeyFile>
+    <PackageCertificateThumbprint>D095ED4071F7A0D93085697ECF15F78E76342CCF</PackageCertificateThumbprint>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -141,7 +142,7 @@
     </ClangCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>%(AdditionalDependencies);Accelerate.lib;CoreImage.lib;CoreMotion.lib;GLKit.lib;OpenGLES.lib</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies);Accelerate.lib;CoreImage.lib;CoreMotion.lib;GLKit.lib;OpenGLES.lib;AudioToolbox.lib;</AdditionalDependencies>
     </Link>
     <SBInfoPlistCopy>
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -180,6 +181,7 @@
     <Image Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Image Include="Assets\StoreLogo.png" />
     <Image Include="Assets\Wide310x150Logo.scale-200.png" />
+    <ClangCompile Include="..\..\WOCCatalog\AudioToolboxViewController.mm" />
     <ClangCompile Include="..\..\WOCCatalog\XamlViewController.m" />
     <ClangCompile Include="..\..\WOCCatalog\ViewController.m" />
     <ClangCompile Include="..\..\WOCCatalog\WebViewController.m" />
@@ -187,6 +189,7 @@
     <ClangCompile Include="..\..\WOCCatalog\ButtonsViewController.m" />
     <ClangCompile Include="..\..\WOCCatalog\GLKitExampleController.mm" />
     <ClangCompile Include="..\..\WOCCatalog\BezierViewController.m" />
+    <ClangCompile Include="..\..\WOCCatalog\UIPasteboardViewController.m" />
     <ClangCompile Include="..\..\WOCCatalog\main.m" />
     <ClangCompile Include="..\..\WOCCatalog\URLDownloadCell.mm" />
     <ClangCompile Include="..\..\WOCCatalog\TransitionsViewController.m" />
@@ -214,6 +217,7 @@
     <ClangCompile Include="..\..\WOCCatalog\TaskInfoViewController.m" />
     <ClangCompile Include="..\..\WOCCatalog\ShadowViewController.m" />
     <ClangCompile Include="..\..\WOCCatalog\ToolbarsViewController.m" />
+    <ClangCompile Include="..\..\WOCCatalog\UserDefaultsViewController.m" />
     <ClangCompile Include="..\..\WOCCatalog\AccelerateViewController.m" />
     <ClangCompile Include="..\..\WOCCatalog\TextFieldsViewController.m" />
     <ClangCompile Include="..\..\WOCCatalog\PickersViewController.m" />
@@ -247,6 +251,9 @@
     <Text Include="WOCCatalog-Release-xcvars.txt">
       <DeploymentContent>false</DeploymentContent>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="..\..\WOCCatalog\test.wav" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

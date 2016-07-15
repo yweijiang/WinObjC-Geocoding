@@ -32,11 +32,10 @@
 #import <UIKit/UIImage.h>
 #import <UIKit/UIImageView.h>
 #import <UIKit/UITableViewCell.h>
-#import "NSMutableString+Internal.h"
-
 #import <UWP/WindowsUIXamlControls.h>
-
 #import "XamlUtilities.h"
+#import "UIResponderInternal.h"
+#import "UIApplicationInternal.h"
 
 static const wchar_t* TAG = L"UITextField";
 
@@ -809,9 +808,9 @@ NSString* const UITextFieldTextDidEndEditingNotification = @"UITextFieldTextDidE
 */
 - (void)setEnabled:(BOOL)enabled {
     if (self.secureTextEntry) {
-        self->_textBox.isEnabled = enabled;
-    } else {
         self->_passwordBox.isEnabled = enabled;
+    } else {
+        self->_textBox.isEnabled = enabled;
     }
 }
 

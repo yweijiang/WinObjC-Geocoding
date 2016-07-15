@@ -46,22 +46,27 @@
       <MSVCFiles Include="..\..\msvc\*.xml" />
       <MSVCFiles Include="..\..\msvc\*.dll" />
       <MSVCFiles Include="..\..\msvc\*.cpp" />
+      <MSVCObjCRTFiles Include="..\..\msvc\objcrt\*.cpp" />
       <SBIncludes Include="..\..\include\**\*" />
       <SBIncludes Include="..\..\deps\prebuilt\include\zlib.h" />
       <SBIncludes Include="..\..\deps\prebuilt\include\zconf.h" />
       <SBXMLIncludes Include="..\..\deps\prebuilt\include\libxml\**" />
+      <SBICUUnicodeIncludes Include="..\..\deps\prebuilt\include\icu\unicode\**" />
       <SBDispatchIncludes Include="..\..\deps\prebuilt\include\dispatch\**" />
       <SBOpenALIncludes Include="..\..\deps\prebuilt\include\openal\**" />
       <SBSamples Include="..\..\samples\**\*" />
       <SBBinaries Include="..\..\bin\*.exe" />
       <SBBinaries Include="..\..\bin\*.dll" />
       <SBBinaries Include="..\..\bin\*.vsix" />
+      <SBBinaries Include="..\..\bin\*.pkgdef" />
       <SBLegal Include="..\..\license.txt;..\..\ThirdPartyNotices.txt;..\..\README.md" />
 
       <!-- X86 -->
       <SBLibsWin10Win32 Include="..\Win32\$(Configuration)\Universal Windows\*.lib" />
       <SBLibsWin10Win32 Include="..\Win32\$(Configuration)\Universal Windows\*.dll" />
       <SBLibsWin10Win32 Include="..\Win32\$(Configuration)\Universal Windows\*.winmd" />
+      <SBLibsWin10Win32 Include="..\Win32\$(Configuration)\Universal Windows\*.bitmap" />
+      <SBLibsWin10Win32 Include="..\Win32\$(Configuration)\Universal Windows\*.data" />
 
       <!-- Files in these directories ship both Debug and Release varieties -->
       <SBLibsWin10Win32 Include="..\Win32\Debug\Universal Windows\Debug\*.lib">
@@ -98,6 +103,8 @@
       <SBLibsWin10ARM Include="..\ARM\$(Configuration)\Universal Windows\*.lib" />
       <SBLibsWin10ARM Include="..\ARM\$(Configuration)\Universal Windows\*.dll" />
       <SBLibsWin10ARM Include="..\ARM\$(Configuration)\Universal Windows\*.winmd" />
+      <SBLibsWin10ARM Include="..\ARM\$(Configuration)\Universal Windows\*.bitmap" />
+      <SBLibsWin10ARM Include="..\ARM\$(Configuration)\Universal Windows\*.data" />
 
       <!-- Files in these directories ship both Debug and Release varieties -->
       <SBLibsWin10ARM Include="..\ARM\Debug\Universal Windows\Debug\*.lib">
@@ -182,6 +189,8 @@
     <Copy SourceFiles="@(StarboardTemplates)" DestinationFiles="@(StarboardTemplates->'$(SBPackageDir)msvc\vsimporter-templates\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Message Importance="high" Text="Copying MSBuild files to destination" />
     <Copy SourceFiles="@(MSVCFiles)" DestinationFiles="@(MSVCFiles->'$(SBPackageDir)msvc\%(OutputFileName)%(Extension)')" />
+    <Message Importance="high" Text="Copying ObjC Runtime Support files to destination" />
+    <Copy SourceFiles="@(MSVCObjCRTFiles)" DestinationFiles="@(MSVCObjCRTFiles->'$(SBPackageDir)msvc\objcrt\%(Filename)%(Extension)')" />
     <Message Importance="high" Text="Copying x86 lib files to destination" />
     <Copy SourceFiles="@(SBLibsWin10Win32)" DestinationFiles="@(SBLibsWin10Win32->'$(SBPackageDir)lib\Universal Windows\%(OutputDirectory)\%(Filename)%(Extension)')" />
     <Message Importance="high" Text="Copying ARM lib files to destination" />
@@ -189,6 +198,7 @@
     <Message Importance="high" Text="Copying includes to destination" />
     <Copy SourceFiles="@(SBIncludes)" DestinationFiles="@(SBIncludes->'$(SBPackageDir)include\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="@(SBXMLIncludes)" DestinationFiles="@(SBXMLIncludes->'$(SBPackageDir)include\libxml\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(SBICUUnicodeIncludes)" DestinationFiles="@(SBICUUnicodeIncludes->'$(SBPackageDir)include\unicode\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="@(SBDispatchIncludes)" DestinationFiles="@(SBDispatchIncludes->'$(SBPackageDir)include\dispatch\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="@(SBOpenALIncludes)" DestinationFiles="@(SBOpenALIncludes->'$(SBPackageDir)include\OpenAL\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Message Importance="high" Text="Copying binaries to destination" />
