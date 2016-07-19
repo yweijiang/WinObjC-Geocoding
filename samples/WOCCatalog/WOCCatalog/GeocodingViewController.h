@@ -14,18 +14,9 @@
 // THE SOFTWARE.
 //
 //******************************************************************************
-#pragma once
 
-#import <CoreLocation/CoreLocationExport.h>
-#import <Foundation/NSObject.h>
+#import <UIKit/UIKit.h>
 
-@class CLLocation;
-@class CLRegion;
-@class NSTimeZone;
-@class NSDictionary;
-@class NSArray;
+@interface GeocodingViewController : UITableViewController
 
-@interface CLPlacemark ()
-- (instancetype)initWithName:(NSString*)name location:(CLLocation*)location;
-- (instancetype)initWithLocation:(CLLocation*)location dictionary:(NSMutableDictionary*)dictionary;
 @end

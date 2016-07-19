@@ -18,6 +18,7 @@
 #import <CoreLocation/CLPlacemark.h>
 #import <Starboard.h>
 #import <StubReturn.h>
+#import <AddressBook/ABPerson.h>
 
 @interface CLPlacemark()
 
@@ -43,10 +44,30 @@
 
 @implementation CLPlacemark
 
-- (instancetype)initWithName:(NSString*)name location : (CLLocation*)location {
+- (instancetype)initWithName:(NSString*)name location:(CLLocation*)location {
     if (self = [super init]) {
         _name = name;
         _location = location;
+    }
+
+    return self;
+}
+
+- (instancetype)initWithLocation:(CLLocation*)location
+                dictionary:(NSMutableDictionary*)dictionary
+{
+    if (self = [super init]) {
+        _location = location;
+        _name = [dictionary objectForKey:@"placemarkName"];
+        _ISOcountryCode = [dictionary objectForKey:@"placemarkISOcountryCode"];
+        _country = [dictionary objectForKey:@"placemarkCountry"];
+        _postalCode = [dictionary objectForKey:@"placemarkPostalCode"];
+        _administrativeArea = [dictionary objectForKey:@"placemarkAdministrativeArea"];
+        _subAdministrativeArea = [dictionary objectForKey:@"placemarkSubAdministrativeArea"];
+        _locality = [dictionary objectForKey:@"placemarkLocality"];
+        _subLocality = [dictionary objectForKey:@"placemarkSubLocality"];
+        _thoroughfare = [dictionary objectForKey:@"placemarkThoroughfare"];
+        _subThoroughfare = [dictionary objectForKey:@"placemarkSubThoroughfare"];
     }
 
     return self;

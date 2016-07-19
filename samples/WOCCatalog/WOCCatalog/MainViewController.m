@@ -43,6 +43,7 @@
 #import "ShadowViewController.h"
 #import "UIPasteboardViewController.h"
 #import "WindowViewController.h"
+#import "GeocodingViewController.h"
 
 #ifdef WINOBJC
 #import "XamlViewController.h"
@@ -58,6 +59,9 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.menuItems = [NSMutableArray array];
+
+    // CoreMotion
+    [self addMenuItemViewController:[[GeocodingViewController alloc] init] andTitle : @"Geocoding"];
 
     // CoreMotion
     [self addMenuItemViewController:[[CoreMotionViewController alloc] init] andTitle:@"CoreMotion"];

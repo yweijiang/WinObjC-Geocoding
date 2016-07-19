@@ -39,10 +39,78 @@
     return self;
 }
 
+// Helper function to convert WSM error code to NSError codes
+NSError* parseError(WSMMapLocationFinderResult* results) {
+    // Unknown Error and Status Not Supported don't map to any iOS error codes
+    WSMMapLocationFinderStatus status = results.status;
+    if (status == WSMMapLocationFinderStatusSuccess) {
+        return nullptr;
+    } else if (status == WSMMapLocationFinderStatusUnknownError) {
+        return nullptr;
+    } else if (status == WSMMapLocationFinderStatusInvalidCredentials) {
+        return [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorDenied userInfo:nullptr];
+    } else if (status == WSMMapLocationFinderStatusBadLocation) {
+        return [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorLocationUnknown userInfo:nullptr];
+    } else if (status == WSMMapLocationFinderStatusIndexFailure) {
+        return [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorGeocodeFoundNoResult userInfo:nullptr];
+    } else if (status == WSMMapLocationFinderStatusNetworkFailure) {
+        return [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorNetwork userInfo:nullptr];
+    } else if (status == WSMMapLocationFinderStatusNotSupported) {
+        return nullptr;
+    }
+
+    return nullptr;
+}
+
+// Helper function to parse address results from the location finder and put them into an array of placemarks
+void createResultsArray(WSMMapLocationFinderResult* results, NSMutableArray* geocodeResult) {
+    int geocodeResultCount = [results.locations count];
+    for (int i = 0; i < geocodeResultCount; i++) {
+        WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
+        WSMMapAddress* currentAddress = [currentResult address];
+
+        NSMutableDictionary* addressDictionary = [[NSMutableDictionary alloc] init];
+
+        NSString* placemarkName;
+        if ([currentAddress streetNumber] && [currentAddress street]) {
+            placemarkName = [NSString stringWithFormat:@"%@ %@", [currentAddress streetNumber], [currentAddress street]];
+        }
+        else if ([currentAddress street]) {
+            placemarkName = [currentAddress street];
+        }
+        else if ([currentAddress town] && [currentAddress region]) {
+            placemarkName = [NSString stringWithFormat:@"%@, %@", [currentAddress town], [currentAddress region]];
+        }
+        else if ([currentAddress town]) {
+            placemarkName = [currentAddress town];
+        }
+        else {
+            // Do whatever Windows decides should be the default
+            placemarkName = [currentAddress formattedAddress];
+        }
+
+        [addressDictionary setValue:placemarkName forKey:@"placemarkName"];
+        [addressDictionary setValue:[currentAddress countryCode] forKey:@"placemarkISOcountryCode"];
+        [addressDictionary setValue:[currentAddress country] forKey:@"placemarkCountry"];
+        [addressDictionary setValue:[currentAddress postCode] forKey:@"placemarkPostalCode"];
+        [addressDictionary setValue:[currentAddress region] forKey:@"placemarkAdministrativeArea"];
+        [addressDictionary setValue:[currentAddress district] forKey:@"placemarkSubAdministrativeArea"];
+        [addressDictionary setValue:[currentAddress town] forKey:@"placemarkLocality"];
+        [addressDictionary setValue:[currentAddress neighborhood] forKey:@"placemarkSubLocality"];
+        [addressDictionary setValue:[currentAddress street] forKey:@"placemarkThoroughfare"];
+        [addressDictionary setValue:[currentAddress streetNumber] forKey:@"placemarkSubThoroughfare"];
+        CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
+                                                                longitude:[[[currentResult point] position] longitude]];
+
+        CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithLocation:resultLocation dictionary:addressDictionary];
+        [geocodeResult addObject:currentPlacemark];
+    }
+}
+
 /**
  @Status Interoperable
 */
--(void)reverseGeocodeLocation:(CLLocation*)location completionHandler:(CLGeocodeCompletionHandler)completionHandler {
+- (void)reverseGeocodeLocation:(CLLocation*)location completionHandler:(CLGeocodeCompletionHandler)completionHandler {
     @synchronized(self) {
         if (!CLLocationCoordinate2DIsValid(location.coordinate)) {
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -68,41 +136,15 @@
             [WSMMapLocationFinder findLocationsAtAsync:geopoint
                                                success:^void(WSMMapLocationFinderResult* results) {
                     self.geocoding = false;
-                    NSMutableArray* reverseGeocodeResult = [[NSMutableArray alloc] init];
-
-                    // Unknown Error and Status Not Supported don't map to any iOS error codes
+                    
                     WSMMapLocationFinderStatus status = results.status;
-                    NSError* geocodeStatus;
-                    if (status == WSMMapLocationFinderStatusSuccess) {
-                        geocodeStatus = nullptr;
-                    } else if (status == WSMMapLocationFinderStatusUnknownError) {
-                        geocodeStatus = nullptr;
-                    } else if (status == WSMMapLocationFinderStatusInvalidCredentials) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorDenied userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusBadLocation) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorLocationUnknown userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusIndexFailure) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorGeocodeFoundNoResult userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusNetworkFailure) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorNetwork userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusNotSupported) {
-                        geocodeStatus = nullptr;
-                    }
+                    NSError* geocodeStatus = parseError(results);
 
-                    int reverseGeocodeResultCount = [results.locations count];
-                    for (int i = 0; i < reverseGeocodeResultCount; i++) {
-                        WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
-
-                        NSString* resultName = [[currentResult address] formattedAddress];
-                        CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
-                                                                                longitude:[[[currentResult point] position] longitude]];
-
-                        CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithName:resultName location:resultLocation];
-                        [reverseGeocodeResult addObject:currentPlacemark];
-                    }
+                    NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
+                    createResultsArray(results, geocodeResult);
 
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        completionHandler(reverseGeocodeResult, geocodeStatus);
+                        completionHandler(geocodeResult, geocodeStatus);
                     });
                 }
                 failure:^void(NSError* error) {
@@ -164,38 +206,12 @@
                                       referencePoint:nullptr
                                              success:^void(WSMMapLocationFinderResult* results) {
                     self.geocoding = false;
-                    NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
-
-                    // Unknown Error and Status Not Supported don't map to any iOS error codes
+                    
                     WSMMapLocationFinderStatus status = results.status;
-                    NSError* geocodeStatus;
-                    if (status == WSMMapLocationFinderStatusSuccess) {
-                        geocodeStatus = nullptr;
-                    } else if (status == WSMMapLocationFinderStatusUnknownError) {
-                        geocodeStatus = nullptr;
-                    } else if (status == WSMMapLocationFinderStatusInvalidCredentials) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorDenied userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusBadLocation) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorLocationUnknown userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusIndexFailure) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorGeocodeFoundNoResult userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusNetworkFailure) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorNetwork userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusNotSupported) {
-                        geocodeStatus = nullptr;
-                    }
+                    NSError* geocodeStatus = parseError(results);
 
-                    int geocodeResultCount = [results.locations count];
-                    for (int i = 0; i < geocodeResultCount; i++) {
-                        WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
-
-                        NSString* resultName = [[currentResult address] formattedAddress];
-                        CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
-                                                                                longitude:[[[currentResult point] position] longitude]];
-
-                        CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithName:resultName location:resultLocation];
-                        [geocodeResult addObject:currentPlacemark];
-                    }
+                    NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
+                    createResultsArray(results, geocodeResult);
 
                     dispatch_async(dispatch_get_main_queue(), ^{
                         completionHandler(geocodeResult, geocodeStatus);
@@ -228,38 +244,12 @@
                                       referencePoint:nullptr
                                              success:^void(WSMMapLocationFinderResult* results) {
                     self.geocoding = false;
-                    NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
-
-                    // Unknown Error and Status Not Supported don't map to any iOS error codes
+                    
                     WSMMapLocationFinderStatus status = results.status;
-                    NSError* geocodeStatus;
-                    if (status == WSMMapLocationFinderStatusSuccess) {
-                        geocodeStatus = nullptr;
-                    } else if (status == WSMMapLocationFinderStatusUnknownError) {
-                        geocodeStatus = nullptr;
-                    } else if (status == WSMMapLocationFinderStatusInvalidCredentials) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorDenied userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusBadLocation) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorLocationUnknown userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusIndexFailure) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorGeocodeFoundNoResult userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusNetworkFailure) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorNetwork userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusNotSupported) {
-                        geocodeStatus = nullptr;
-                    }
+                    NSError* geocodeStatus = parseError(results);
 
-                    int geocodeResultCount = [results.locations count];
-                    for (int i = 0; i < geocodeResultCount; i++) {
-                        WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
-
-                        NSString* resultName = [[currentResult address] formattedAddress];
-                        CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
-                                                                                longitude:[[[currentResult point] position] longitude]];
-
-                        CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithName:resultName location:resultLocation];
-                        [geocodeResult addObject:currentPlacemark];
-                    }
+                    NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
+                    createResultsArray(results, geocodeResult);
 
                     dispatch_async(dispatch_get_main_queue(), ^{
                         completionHandler(geocodeResult, geocodeStatus);
@@ -302,38 +292,12 @@
                                       referencePoint:geopoint
                                              success:^void(WSMMapLocationFinderResult* results) {
                     self.geocoding = false;
-                    NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
-
-                    // Unknown Error and Status Not Supported don't map to any iOS error codes
+                    
                     WSMMapLocationFinderStatus status = results.status;
-                    NSError* geocodeStatus;
-                    if (status == WSMMapLocationFinderStatusSuccess) {
-                        geocodeStatus = nullptr;
-                    } else if (status == WSMMapLocationFinderStatusUnknownError) {
-                        geocodeStatus = nullptr;
-                    } else if (status == WSMMapLocationFinderStatusInvalidCredentials) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorDenied userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusBadLocation) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorLocationUnknown userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusIndexFailure) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorGeocodeFoundNoResult userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusNetworkFailure) {
-                        geocodeStatus = [NSError errorWithDomain:@"kCLErrorDomain" code:kCLErrorNetwork userInfo:nullptr];
-                    } else if (status == WSMMapLocationFinderStatusNotSupported) {
-                        geocodeStatus = nullptr;
-                    }
+                    NSError* geocodeStatus = parseError(results);
 
-                    int geocodeResultCount = [results.locations count];
-                    for (int i = 0; i < geocodeResultCount; i++) {
-                        WSMMapLocation* currentResult = [results.locations objectAtIndex:i];
-
-                        NSString* resultName = [[currentResult address] formattedAddress];
-                        CLLocation* resultLocation = [[CLLocation alloc] initWithLatitude:[[[currentResult point] position] latitude]
-                                                                                longitude:[[[currentResult point] position] longitude]];
-
-                        CLPlacemark* currentPlacemark = [[CLPlacemark alloc] initWithName:resultName location:resultLocation];
-                        [geocodeResult addObject:currentPlacemark];
-                    }
+                    NSMutableArray* geocodeResult = [[NSMutableArray alloc] init];
+                    createResultsArray(results, geocodeResult);
 
                     dispatch_async(dispatch_get_main_queue(), ^{
                         completionHandler(geocodeResult, geocodeStatus);
