@@ -1971,3 +1971,4 @@ CGPathRef CGContextCairo::CGContextCopyPath(void) {
     cairo_path_destroy(caPath);
     return (CGPathRef)copyPath;
 }
+}

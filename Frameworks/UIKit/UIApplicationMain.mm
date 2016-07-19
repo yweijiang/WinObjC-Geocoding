@@ -29,6 +29,7 @@
 #import <UIKit/UIApplicationDelegate.h>
 #import <StringHelpers.h>
 #import "NSThread-Internal.h"
+#import "NSUserDefaultsInternal.h"
 #import "StarboardXaml/StarboardXaml.h"
 #import "UIApplicationInternal.h"
 #import "UIFontInternal.h"
@@ -38,6 +39,8 @@
 #import "UIDeviceInternal.h"
 #import <MainDispatcher.h>
 #import <CACompositor.h>
+#import <UWP/WindowsMediaSpeechRecognition.h>
+#import <UWP/WindowsFoundation.h>
 
 static const wchar_t* TAG = L"UIApplicationMain";
 
@@ -118,7 +121,7 @@ int UIApplicationMainInit(NSString* principalClassName,
                           NSString* delegateClassName,
                           UIInterfaceOrientation defaultOrientation,
                           int activationType,
-                          NSString* activationArg) {
+                          id activationArg) {
     // Make sure we reference classes we need:
     void ForceInclusion();
     ForceInclusion();
@@ -246,6 +249,12 @@ int UIApplicationMainInit(NSString* principalClassName,
             [launchOption setValue:activationArg forKey:UIApplicationLaunchOptionsRemoteNotificationKey];
             [launchOption setValue:activationArg forKey:UIApplicationLaunchOptionsLocalNotificationKey];
             break;
+        case ActivationTypeVoiceCommand:
+            [launchOption setValue:activationArg forKey:UIApplicationLaunchOptionsVoiceCommandKey];
+            break;
+        case ActivationTypeProtocol:
+            [launchOption setValue:activationArg forKey:UIApplicationLaunchOptionsProtocolKey];
+            break;
         default:
             break;
     }
@@ -312,7 +321,25 @@ extern "C" void UIApplicationMainHandleHighMemoryUsageEvent() {
     [[UIApplication sharedApplication] _sendHighMemoryWarning];
 }
 
+extern "C" void UIApplicationMainHandleSuspendEvent() {
+    [[NSUserDefaults _standardUserDefaultsNoInitialize] _suspendSynchronize];
+}
+
+extern "C" void UIApplicationMainHandleResumeEvent() {
+    [[NSUserDefaults _standardUserDefaultsNoInitialize] _resumeSynchronize];
+}
+
 extern "C" void UIApplicationMainHandleToastNotificationEvent(const char* notificationData) {
     NSString* data = Strings::IsEmpty<const char*>(notificationData) ? nil : [[NSString alloc] initWithCString:notificationData];
     [[UIApplication sharedApplication] _sendNotificationReceivedEvent:data];
+}
+
+extern "C" void UIApplicationMainHandleVoiceCommandEvent(IInspectable* voiceCommandResult) {
+    WMSSpeechRecognitionResult* speechResult = [WMSSpeechRecognitionResult createWith:voiceCommandResult];
+    [[UIApplication sharedApplication] _sendVoiceCommandReceivedEvent:speechResult];
+}
+
+extern "C" void UIApplicationMainHandleProtocolEvent(IInspectable* protocolUri) {
+    WFUri* protocolResult = [WFUri createWith:protocolUri];
+    [[UIApplication sharedApplication] _sendProtocolReceivedEvent:protocolResult];
 }

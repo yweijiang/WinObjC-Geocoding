@@ -25,6 +25,7 @@
 #import "CoreGraphics/CGGeometry.h"
 #import "UIColorInternal.h"
 #import "UIFontInternal.h"
+#import "cairo-ft.h"
 #import "CGSurfaceInfoInternal.h"
 
 extern "C" {

@@ -1,6 +1,6 @@
 //******************************************************************************
 //
-// Copyright (c) 2016 Microsoft Corporation. All rights reserved.
+// Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
 //
@@ -14,10 +14,27 @@
 //
 //******************************************************************************
 
-#pragma once
+#include "UIPongPressGestureRecognizer.h"
 
-#include <Foundation/NSHTTPURLResponse.h>
+UIPongPressGestureRecognizer::UIPongPressGestureRecognizer()
+{
+}
 
-@interface NSHTTPURLResponse ()
-- (id)initWithURL:(NSURL*)url statusCode:(NSInteger)statusCode headers:(id)headers expectedContentLength:(int)expectedContentLength;
-@end
+void UIPongPressGestureRecognizer::InitFromXIB(XIBObject *obj)
+{
+    UIView::InitFromXIB(obj);
+
+    _outputClassName = "UIPongPressGestureRecognizer";
+}
+
+void UIPongPressGestureRecognizer::InitFromStory(XIBObject *obj)
+{
+    UIView::InitFromStory(obj);
+
+    _outputClassName = "UIPongPressGestureRecognizer";
+}
+
+void UIPongPressGestureRecognizer::ConvertStaticMappings(NIBWriter *writer, XIBObject *obj)
+{
+    UIView::ConvertStaticMappings(writer, obj);
+}
