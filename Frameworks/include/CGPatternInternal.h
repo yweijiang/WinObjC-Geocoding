@@ -17,6 +17,7 @@
 #ifndef __CGPATTERNINTERNAL_H
 #define __CGPATTERNINTERNAL_H
 
+#include "CoreGraphicsInternal.h"
 #include "CoreGraphics/CGPattern.h"
 
 @interface CGPattern : NSObject {
@@ -28,7 +29,7 @@
     DWORD tiling;
     BOOL isColored;
     CGPatternCallbacks callbacks;
-    surfaceFormat surfaceFmt;
+    __CGSurfaceFormat surfaceFmt;
 }
 - (CGImageRef)getPatternImage;
 - (CGAffineTransform)getPatternTransform;

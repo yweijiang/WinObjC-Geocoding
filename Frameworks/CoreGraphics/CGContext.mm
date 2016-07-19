@@ -21,17 +21,17 @@
 #import <CoreGraphics/CGContext.h>
 #import <CoreGraphics/CGPath.h>
 #import <CoreGraphics/CGLayer.h>
+#import "CGColorSpaceInternal.h"
+#import "CGContextInternal.h"
+#include "LoggingNative.h"
+#import "_CGLifetimeBridgingType.h"
 #import <CoreGraphics/CGAffineTransform.h>
 #import <CoreGraphics/CGGradient.h>
 #import <Foundation/NSString.h>
 #import <UIKit/UIImage.h>
 #import <UIKit/UIFont.h>
 #import <UIKit/UIColor.h>
-#import "CGContextInternal.h"
-#import "CGColorSpaceInternal.h"
-#import "_CGLifetimeBridgingType.h"
 #import "CGSurfaceInfoInternal.h"
-#include "LoggingNative.h"
 #import <pthread.h>
 
 static const wchar_t* TAG = L"CGContext";
@@ -72,10 +72,6 @@ __CGContext::~__CGContext() {
     delete _backing;
 }
 
-CGContextImpl* __CGContext::Backing() {
-    return _backing;
-}
-
 /**
  @Status Interoperable
 */
@@ -95,11 +91,10 @@ void CGContextSetFillPattern(CGContextRef ctx, CGPatternRef pattern, const float
 }
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 void CGContextSetPatternPhase(CGContextRef ctx, CGSize phase) {
-    UNIMPLEMENTED();
-    TraceWarning(TAG, L"CGContextSetPatternPhase not implemented");
+    return ctx->Backing()->CGContextSetPatternPhase(phase);
 }
 
 /**
@@ -789,16 +784,16 @@ CGContextRef CGBitmapContextCreate(void* data,
                                    CGColorSpaceRef colorSpace,
                                    CGBitmapInfo bitmapInfo) {
     CGImageRef newImage = NULL;
-    DWORD alphaType = bitmapInfo & 0x1F;
+    DWORD alphaType = bitmapInfo & kCGBitmapAlphaInfoMask;
 
     bool colorSpaceAllocated = false;
 
     if (colorSpace == NULL) {
-        TraceWarning(TAG, L"Warning: colorSpace = NULL, assuming colorspace relative to RGB.");
-
         if (bytesPerRow >= (width * 3)) {
+            TraceWarning(TAG, L"Warning: colorSpace = NULL, assuming RGB based on bytesPerRow.");
             colorSpace = CGColorSpaceCreateDeviceRGB();
         } else {
+            TraceWarning(TAG, L"Warning: colorSpace = NULL, assuming Gray based on bytesPerRow.");
             colorSpace = CGColorSpaceCreateDeviceGray();
         }
 
@@ -809,16 +804,16 @@ CGContextRef CGBitmapContextCreate(void* data,
     const unsigned int numComponents = numColorComponents + ((alphaType == kCGImageAlphaNone) ? 0 : 1);
     const unsigned int bitsPerPixel = (bitsPerComponent == 5) ? 16 : numComponents * bitsPerComponent;
 
-    surfaceFormat format = _CGImageGetFormat(bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo);
+    __CGSurfaceFormat format = _CGImageGetFormat(bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo);
 
     __CGSurfaceInfo createParams = {.width = width,
                                     .height = height,
-                                    .bitsPerComponent = bitsPerComponent,
-                                    .bytesPerPixel = bitsPerPixel >> 3,
                                     .bytesPerRow = bytesPerRow,
                                     .surfaceData = data,
-                                    .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
-                                    .bitmapInfo = bitmapInfo,
+                                    .pixelProperties = {.bitsPerComponent = bitsPerComponent,
+                                                        .bytesPerPixel = bitsPerPixel >> 3,
+                                                        .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
+                                                        .bitmapInfo = bitmapInfo },
                                     .format = format };
 
     newImage = new CGBitmapImage(&createParams);
@@ -1047,7 +1042,7 @@ CGContextRef _CGBitmapContextCreateWithTexture(int width, int height, DisplayTex
     return context;
 }
 
-CGContextRef _CGBitmapContextCreateWithFormat(int width, int height, surfaceFormat fmt) {
+CGContextRef _CGBitmapContextCreateWithFormat(int width, int height, __CGSurfaceFormat fmt) {
     __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, fmt);
     CGImageRef newImage = new CGBitmapImage(&surfaceInfo);
     CGContextRef context = new __CGContext(newImage);
@@ -1081,12 +1076,11 @@ void CGContextBeginTransparencyLayerWithRect(CGContextRef ctx, CGRect rect, CFDi
 }
 
 /**
- @Status Stub
+ @Status Interoperable
  @Notes
 */
 CGPathRef CGContextCopyPath(CGContextRef c) {
-    UNIMPLEMENTED();
-    return StubReturn();
+    return c->Backing()->CGContextCopyPath();
 }
 
 /**
@@ -1241,4 +1235,8 @@ CGImageRef CGJPEGImageCreateFromFile(NSString* path) {
 
 CGImageRef CGJPEGImageCreateFromData(NSData* data) {
     return new CGJPEGDecoderImage(data);
+}
+
+bool CGContextIsPointInPath(CGContextRef c, bool eoFill, float x, float y) {
+    return c->Backing()->CGContextIsPointInPath(eoFill, x, y);
 }

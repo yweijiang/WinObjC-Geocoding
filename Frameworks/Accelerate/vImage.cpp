@@ -963,7 +963,7 @@ vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buffer* srcARGB,
     unsigned char* greenRowBytePtr = reinterpret_cast<unsigned char*>(destG->data);
     unsigned char* blueRowBytePtr = reinterpret_cast<unsigned char*>(destB->data);
 
-#if (VIMAGE_USE_SSE == 1)
+#if (VIMAGE_SSE == 1)
     if (width >= 16) {
         const unsigned int pixelsPerIteration = 16;
         const unsigned int iterationsPerRow = width / pixelsPerIteration + ((width % pixelsPerIteration != 0) ? 1 : 0);
@@ -1050,7 +1050,7 @@ vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buffer* srcARGB,
             blueRowBytePtr += destB->rowBytes;
             pixelRowBytePtr += srcARGB->rowBytes;
         }
-#if (VIMAGE_USE_SSE == 1)
+#if (VIMAGE_SSE == 1)
     }
 #endif
 
@@ -1087,7 +1087,7 @@ vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
     unsigned char* greenRowBytePtr = reinterpret_cast<unsigned char*>(srcG->data);
     unsigned char* blueRowBytePtr = reinterpret_cast<unsigned char*>(srcB->data);
 
-#if (VIMAGE_USE_SSE == 1)
+#if (VIMAGE_SSE == 1)
     if (width >= 16) {
         const unsigned int pixelsPerIteration = 16;
         const unsigned int iterationsPerRow = width / pixelsPerIteration + ((width % pixelsPerIteration != 0) ? 1 : 0);
@@ -1161,7 +1161,7 @@ vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
             blueRowBytePtr += srcB->rowBytes;
             pixelRowBytePtr += dest->rowBytes;
         }
-#if (VIMAGE_USE_SSE == 1)
+#if (VIMAGE_SSE == 1)
     }
 #endif
 
@@ -1188,7 +1188,7 @@ vImage_Error vImageConvert_Planar8toPlanarF(
     Pixel_F* dstWritePtr;
     unsigned char* srcReadPtr;
 
-#if (VIMAGE_USE_SSE == 1)
+#if (VIMAGE_SSE == 1)
     if (width >= 16) {
         const unsigned int pixelsPerIteration = 16;
         const unsigned int iterationsPerRow = width / pixelsPerIteration + ((width % pixelsPerIteration != 0) ? 1 : 0);
@@ -1262,7 +1262,7 @@ vImage_Error vImageConvert_Planar8toPlanarF(
             srcRowStartPtr += src->rowBytes;
             dstRowStartPtr += dest->rowBytes;
         }
-#if (VIMAGE_USE_SSE == 1)
+#if (VIMAGE_SSE == 1)
     }
 #endif
 
@@ -1335,7 +1335,7 @@ vImage_Error vImageConvert_PlanarFtoPlanar8(
     Pixel_F* srcReadPtr;
     unsigned char* dstWritePtr;
 
-#if (VIMAGE_USE_SSE == 1)
+#if (VIMAGE_SSE == 1)
     if (width >= 16) {
         const unsigned int pixelsPerIteration = 16;
         const unsigned int iterationsPerRow = width / pixelsPerIteration + ((width % pixelsPerIteration != 0) ? 1 : 0);
@@ -1494,7 +1494,7 @@ vImage_Error vImageBuffer_Init(
     const uint32_t bytesPerFragment = bitsPerFragment >> 3;
     vImage_Error returnCode = kvImageNoError;
 
-    if ((c_padAllocs == true) && (width >= 16) && (height > 1) && (bytesPerFragment < 8)) {
+    if ((c_vImagePadAllocs == true) && (width >= 16) && (height > 1) && (bytesPerFragment < 8)) {
         // For 4bytesPerFragment pixels, SSE2 instructions operate on 16 pixels at a time
         const uint32_t pixelPitchAlignment = 16;
         const uint32_t idealMemAlignmentBytes = 16;
@@ -1509,8 +1509,8 @@ vImage_Error vImageBuffer_Init(
         buffer->data = malloc(allocSize);
 
         if (buffer->data != nullptr) {
-            // SSE2 load store instructions operate best on 16byte aligned memory
-            // Padding to ensure that for unaligned allocs, at least:
+            // SIMD load/store instructions operate best on 16byte aligned memory and in blocks of 16bytes
+            // Padding to ensure that for unaligned start addresses, at the very least:
             // 1. A single 16pixel block can be operated on per row
             // 2. Every second row will be 16byte aligned
             const uint32_t bytePaddingForIdealAlignment =

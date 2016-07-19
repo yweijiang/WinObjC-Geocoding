@@ -15,15 +15,14 @@
 //
 //******************************************************************************
 
-#import <Starboard.h>
 #import <CoreGraphics/CGContext.h>
+#import <Starboard.h>
 
 #import "CGContextInternal.h"
 #import "CGFontInternal.h"
+#import "CGPathInternal.h"
 #import "CGPatternInternal.h"
 #import "CoreGraphics/CGGeometry.h"
-#import "cairo-ft.h"
-#import "CGPathInternal.h"
 #import "UIColorInternal.h"
 #import "UIFontInternal.h"
 #import "CGSurfaceInfoInternal.h"
@@ -31,10 +30,10 @@
 extern "C" {
 #import <ft2build.h>
 #import FT_FREETYPE_H
-#import <ftglyph.h>
-#import <tttables.h>
 #import <ftadvanc.h>
+#import <ftglyph.h>
 #import <ftsizes.h>
+#import <tttables.h>
 }
 
 #include "LoggingNative.h"
@@ -112,10 +111,6 @@ CGContextImpl::~CGContextImpl() {
     }
     ReleaseLock();
     CGImageRelease(_imgDest);
-}
-
-CGImageRef CGContextImpl::DestImage() {
-    return _imgDest;
 }
 
 void CGContextImpl::ObtainLock() {
@@ -379,7 +374,7 @@ void CGContextImpl::CGContextSetFillColor(float* components) {
 
 void CGContextImpl::CGContextSetFillPattern(CGPatternRef pattern, const float* components) {
     CGPattern* intPattern = (CGPattern*)pattern;
-    curState->curFillColorObject = pattern;
+    curState->curFillColorObject = [pattern retain];
     switch (intPattern->surfaceFmt) {
         case _ColorBGR:
         case _Color565:
@@ -401,6 +396,16 @@ void CGContextImpl::CGContextSetFillPattern(CGPatternRef pattern, const float* c
             curState->curFillColor.b = 1.0f;
             curState->curFillColor.a = 1.0f;
             break;
+    }
+}
+
+void CGContextImpl::CGContextSetPatternPhase(CGSize phase) {
+    if ([curState->curFillColorObject isKindOfClass:[CGPattern class]]) {
+        CGPattern* pattern = curState->curFillColorObject;
+        CGAffineTransform matrix = pattern->matrix;
+        matrix.tx += phase.width;
+        matrix.ty += phase.height;
+        pattern->matrix = matrix;
     }
 }
 
@@ -764,4 +769,13 @@ void CGContextImpl::CGContextSetShadow(CGSize offset, float blur) {
     CGContextSetShadowWithColor(offset, blur, shadowColor);
 
     CGColorRelease(shadowColor);
+}
+
+bool CGContextImpl::CGContextIsPointInPath(bool eoFill, float x, float y) {
+    // CGContext could be backed by CGContextImpl or CGContextCairo.
+    // CGContextImpl is not being currently used but, by convention we add the method here.
+    return false;
+}
+CGPathRef CGContextImpl::CGContextCopyPath(void) {
+    return NULL;
 }

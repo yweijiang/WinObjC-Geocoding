@@ -33,7 +33,7 @@
 static const wchar_t* TAG = L"CGGraphicBufferImage";
 extern int imgDataCount;
 
-CGGraphicBufferImage::CGGraphicBufferImage(int width, int height, surfaceFormat fmt) {
+CGGraphicBufferImage::CGGraphicBufferImage(int width, int height, __CGSurfaceFormat fmt) {
     __CGSurfaceInfo surfaceInfo = _CGSurfaceInfoInit(width, height, fmt);
 
     _img = new CGBitmapImageBacking(&surfaceInfo);
@@ -43,7 +43,7 @@ CGGraphicBufferImage::CGGraphicBufferImage(int width, int height, surfaceFormat 
     _img->_parent = this;
 }
 
-CGGraphicBufferImage::CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo) {
+CGGraphicBufferImage::CGGraphicBufferImage(const __CGSurfaceInfo* surfaceInfo) {
     _img = new CGBitmapImageBacking(surfaceInfo);
     _img->_parent = this;
     _imgType = CGImageTypeBitmap;
@@ -51,13 +51,13 @@ CGGraphicBufferImage::CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo) {
     _img->_parent = this;
 }
 
-CGGraphicBufferImage::CGGraphicBufferImage(__CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking) {
+CGGraphicBufferImage::CGGraphicBufferImage(const __CGSurfaceInfo* surfaceInfo, DisplayTexture* nativeTexture, DisplayTextureLocking* locking) {
     _img = new CGGraphicBufferImageBacking(surfaceInfo, nativeTexture, locking);
     _imgType = CGImageTypeGraphicBuffer;
     _img->_parent = this;
 }
 
-CGGraphicBufferImageBacking::CGGraphicBufferImageBacking(__CGSurfaceInfo* surfaceInfo,
+CGGraphicBufferImageBacking::CGGraphicBufferImageBacking(const __CGSurfaceInfo* surfaceInfo,
                                                          DisplayTexture* nativeTexture,
                                                          DisplayTextureLocking* locking) {
     EbrIncrement((volatile int*)&imgDataCount);
@@ -72,10 +72,10 @@ CGGraphicBufferImageBacking::CGGraphicBufferImageBacking(__CGSurfaceInfo* surfac
     _imageData = NULL;
     _surface = NULL;
     _bitmapFmt = surfaceInfo->format;
-    _bitsPerComponent = surfaceInfo->bitsPerComponent;
-    _colorSpaceModel = surfaceInfo->colorSpaceModel;
-    _bytesPerPixel = surfaceInfo->bytesPerPixel;
-    _bitmapInfo = surfaceInfo->bitmapInfo;
+    _bitsPerComponent = surfaceInfo->pixelProperties.bitsPerComponent;
+    _colorSpaceModel = surfaceInfo->pixelProperties.colorSpaceModel;
+    _bytesPerPixel = surfaceInfo->pixelProperties.bytesPerPixel;
+    _bitmapInfo = surfaceInfo->pixelProperties.bitmapInfo;
     _bytesPerRow = 0;
     _nativeTexture = nativeTexture;
     _nativeTextureLocking = locking;
@@ -129,8 +129,6 @@ int CGGraphicBufferImageBacking::BytesPerRow() {
     if (_bytesPerRow == 0) {
         int stride;
         _nativeTextureLocking->LockWritableBitmapTexture(_nativeTexture, &stride);
-        _bytesPerPixel = 4;
-        _bitsPerComponent = 8;
         _bytesPerRow = stride;
         _internalWidth = stride / _bytesPerPixel;
         _nativeTextureLocking->UnlockWritableBitmapTexture(_nativeTexture);
@@ -149,16 +147,16 @@ int CGGraphicBufferImageBacking::BitsPerComponent() {
 void CGGraphicBufferImageBacking::GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo) {
     surfaceInfo->width = _width;
     surfaceInfo->height = _height;
-    surfaceInfo->bitsPerComponent = _bitsPerComponent;
-    surfaceInfo->bytesPerPixel = _bytesPerPixel;
+    surfaceInfo->pixelProperties.bitsPerComponent = _bitsPerComponent;
+    surfaceInfo->pixelProperties.bytesPerPixel = _bytesPerPixel;
     surfaceInfo->bytesPerRow = 0;
     surfaceInfo->surfaceData = NULL;
-    surfaceInfo->colorSpaceModel = _colorSpaceModel;
-    surfaceInfo->bitmapInfo = _bitmapInfo;
+    surfaceInfo->pixelProperties.colorSpaceModel = _colorSpaceModel;
+    surfaceInfo->pixelProperties.bitmapInfo = _bitmapInfo;
     surfaceInfo->format = _bitmapFmt;
 }
 
-surfaceFormat CGGraphicBufferImageBacking::SurfaceFormat() {
+__CGSurfaceFormat CGGraphicBufferImageBacking::SurfaceFormat() {
     return _bitmapFmt;
 }
 
@@ -178,8 +176,6 @@ void* CGGraphicBufferImageBacking::LockImageData() {
 
     int stride;
     _imageData = _nativeTextureLocking->LockWritableBitmapTexture(_nativeTexture, &stride);
-    _bytesPerPixel = 4;
-    _bitsPerComponent = 8;
     _bytesPerRow = stride;
     _internalWidth = stride / _bytesPerPixel;
     return _imageData;

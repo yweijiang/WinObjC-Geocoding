@@ -42,22 +42,18 @@ typedef float CGFloat;
 
 
 #if defined(_M_IX86) || defined(_M_X64)
-#define VIMAGE_USE_SSE 1
-#define VIMAGE_PAD_ALLOCS 1
+#define VIMAGE_SSE 1
 #include <xmmintrin.h>
 #include <emmintrin.h>
+static const bool c_vImagePadAllocs = true;
 #else
+#define VIMAGE_SSE 0
 #define VIMAGE_PAD_ALLOCS 0
-#define VIMAGE_USE_SSE 0
+static const bool c_vImagePadAllocs = false;
 #endif
 
-
-#if (VIMAGE_PAD_ALLOCS == 1)
-static const bool c_padAllocs = true;
-#else
-static const bool c_padAllocs = false;
-#endif
-
+static const bool c_vImagePadAllocs = (VIMAGE_SSE == 1);
+static const bool c_vImageUseSse2 = c_vImagePadAllocs && (VIMAGE_SSE == 1);
 
 enum
 {

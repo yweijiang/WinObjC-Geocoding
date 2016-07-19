@@ -42,7 +42,7 @@ static const wchar_t* TAG = L"CGBitmapImage";
 
 int imgDataCount = 0, imgDataSize = 0;
 
-CGImageData::CGImageData(__CGSurfaceInfo* surfaceInfo) {
+CGImageData::CGImageData(const __CGSurfaceInfo* surfaceInfo) {
     EbrIncrement((volatile int*)&imgDataCount);
 
     _refCount = 1;
@@ -53,11 +53,11 @@ CGImageData::CGImageData(__CGSurfaceInfo* surfaceInfo) {
     _internalHeight = surfaceInfo->height;
     _bottomOrientation = FALSE;
     _freeWhenDone = FALSE;
-    _bitmapInfo = surfaceInfo->bitmapInfo;
+    _bitmapInfo = surfaceInfo->pixelProperties.bitmapInfo;
     _bitmapFmt = surfaceInfo->format;
-    _bitsPerComponent = surfaceInfo->bitsPerComponent;
-    _colorSpaceModel = surfaceInfo->colorSpaceModel;
-    _bytesPerPixel = surfaceInfo->bytesPerPixel;
+    _bitsPerComponent = surfaceInfo->pixelProperties.bitsPerComponent;
+    _colorSpaceModel = surfaceInfo->pixelProperties.colorSpaceModel;
+    _bytesPerPixel = surfaceInfo->pixelProperties.bytesPerPixel;
 
     switch (_bitmapFmt) {
         case _Color565:
@@ -321,12 +321,12 @@ CGImageData::~CGImageData() {
 CGImageData* CGImageData::Duplicate() {
     __CGSurfaceInfo surfaceInfo = {.width = _width,
                                    .height = _height,
-                                   .bitsPerComponent = _bitsPerComponent,
-                                   .bytesPerPixel = _bytesPerPixel,
                                    .bytesPerRow = 0,
                                    .surfaceData = NULL,
-                                   .colorSpaceModel = _colorSpaceModel,
-                                   .bitmapInfo = _bitmapInfo,
+                                   .pixelProperties = {.bitsPerComponent = _bitsPerComponent,
+                                                       .bytesPerPixel = _bytesPerPixel,
+                                                       .colorSpaceModel = _colorSpaceModel,
+                                                       .bitmapInfo = _bitmapInfo },
                                    .format = _bitmapFmt };
 
     CGImageData* ret = new CGImageData(&surfaceInfo);
@@ -342,7 +342,7 @@ CGImageData* CGImageData::Duplicate() {
     return ret;
 }
 
-CGBitmapImage::CGBitmapImage(__CGSurfaceInfo* surfaceInfo) {
+CGBitmapImage::CGBitmapImage(const __CGSurfaceInfo* surfaceInfo) {
     _img = new CGBitmapImageBacking(surfaceInfo);
     _img->_parent = this;
     _imgType = CGImageTypeBitmap;
@@ -358,7 +358,7 @@ CGContextImpl* CGBitmapImageBacking::CreateDrawingContext(CGContextRef base) {
     return new CGContextCairo(base, _parent);
 }
 
-CGBitmapImageBacking::CGBitmapImageBacking(__CGSurfaceInfo* surfaceInfo) {
+CGBitmapImageBacking::CGBitmapImageBacking(const __CGSurfaceInfo* surfaceInfo) {
     _imageLocks = 0;
     _cairoLocks = 0;
 
@@ -372,7 +372,7 @@ CGBitmapImageBacking::CGBitmapImageBacking(CGImageRef img) {
     if (img->_imgType == CGImageTypeBitmap) {
         _data = ((CGBitmapImageBacking*)img->Backing())->_data->Duplicate();
     } else {
-        __CGSurfaceInfo surfaceInfo; 
+        __CGSurfaceInfo surfaceInfo;
         img->Backing()->GetSurfaceInfoWithoutPixelPtr(&surfaceInfo);
 
         _data = new CGImageData(&surfaceInfo);
@@ -454,16 +454,16 @@ int CGBitmapImageBacking::BitsPerComponent() {
 void CGBitmapImageBacking::GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo) {
     surfaceInfo->width = _data->_width;
     surfaceInfo->height = _data->_height;
-    surfaceInfo->bitsPerComponent = _data->_bitsPerComponent;
-    surfaceInfo->bytesPerPixel = _data->_bytesPerPixel;
+    surfaceInfo->pixelProperties.bitsPerComponent = _data->_bitsPerComponent;
+    surfaceInfo->pixelProperties.bytesPerPixel = _data->_bytesPerPixel;
     surfaceInfo->bytesPerRow = 0;
     surfaceInfo->surfaceData = NULL;
-    surfaceInfo->colorSpaceModel = _data->_colorSpaceModel;
-    surfaceInfo->bitmapInfo = _data->_bitmapInfo;
+    surfaceInfo->pixelProperties.colorSpaceModel = _data->_colorSpaceModel;
+    surfaceInfo->pixelProperties.bitmapInfo = _data->_bitmapInfo;
     surfaceInfo->format = _data->_bitmapFmt;
 }
 
-surfaceFormat CGBitmapImageBacking::SurfaceFormat() {
+__CGSurfaceFormat CGBitmapImageBacking::SurfaceFormat() {
     return _data->_bitmapFmt;
 }
 

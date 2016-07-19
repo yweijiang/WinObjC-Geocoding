@@ -40,7 +40,7 @@ EbrFastTexture* EbrCreateFastTexture(int x,
                                      int height,
                                      int sourceStride,
                                      void* data,
-                                     surfaceFormat fmt,
+                                     __CGSurfaceFormat fmt,
                                      EbrTextureFilter minFilter = EbrTextureFilterLinear,
                                      EbrTextureFilter magFilter = EbrTextureFilterLinear);
 void* EbrLockFastTexture(EbrFastTexture* buf, int* stride);

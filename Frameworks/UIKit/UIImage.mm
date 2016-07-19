@@ -480,7 +480,7 @@ static bool loadTIFF(UIImage* dest, void* bytes, int length) {
     fpIn = EbrFopen(pathStr, "rb");
     if (!fpIn) {
         TraceVerbose(TAG, L"Image %hs not found", pathStr);
-        // m_pImage = new CGBitmapImage(64, 64, surfaceFormat::_ColorABGR, NULL);
+        // m_pImage = new CGBitmapImage(64, 64, __CGSurfaceFormat::_ColorABGR, NULL);
         return nil;
     }
 
@@ -501,7 +501,7 @@ static bool loadTIFF(UIImage* dest, void* bytes, int length) {
         fpIn = EbrFopen(pathStr, "rb");
         if (!fpIn) {
             TraceVerbose(TAG, L"Image %hs not found", pathStr);
-            // m_pImage = new CGBitmapImage(64, 64, surfaceFormat::_ColorABGR, NULL);
+            // m_pImage = new CGBitmapImage(64, 64, __CGSurfaceFormat::_ColorABGR, NULL);
             return nil;
         }
 
@@ -509,7 +509,7 @@ static bool loadTIFF(UIImage* dest, void* bytes, int length) {
         int len = EbrFtell(fpIn);
         if (len <= 0) {
             TraceVerbose(TAG, L"Image %hs invalid", pathStr);
-            // m_pImage = new CGBitmapImage(64, 64, surfaceFormat::_ColorABGR, NULL);
+            // m_pImage = new CGBitmapImage(64, 64, __CGSurfaceFormat::_ColorABGR, NULL);
             EbrFclose(fpIn);
             return nil;
         }
@@ -530,7 +530,7 @@ static bool loadTIFF(UIImage* dest, void* bytes, int length) {
                             TraceVerbose(TAG, L"");
                     }
                     TraceVerbose(TAG, L"Image type %hs not recognized header=%x", pathStr, *((DWORD*)in));
-                    // m_pImage = new CGBitmapImage(64, 64, surfaceFormat::_ColorABGR, NULL);
+                    // m_pImage = new CGBitmapImage(64, 64, __CGSurfaceFormat::_ColorABGR, NULL);
                     return nil;
                 }
             }
@@ -1082,8 +1082,8 @@ static void drawLeftAndTopCap(UIImage* self, CGContextRef ctx, CGRect rect) {
         CGPatternRef pat = CGPatternCreate((void*)&ii,
                                            makeRect(0, 0, pos.size.width * _scale, pos.size.height * _scale),
                                            CGAffineTransformMakeScale(_scale, _scale),
-                                           10,
-                                           10,
+                                           pos.size.width * _scale,
+                                           pos.size.height * _scale,
                                            kCGPatternTilingConstantSpacing,
                                            true,
                                            &patCB);

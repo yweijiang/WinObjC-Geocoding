@@ -256,7 +256,7 @@ CGImageRef CGImageCreateCopyWithColorSpace(CGImageRef ref, CGColorSpaceRef color
     ref->Backing()->GetSurfaceInfoWithoutPixelPtr(&surfaceInfo);
 
     // Override colorSpaceModel
-    surfaceInfo.colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel;
+    surfaceInfo.pixelProperties.colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel;
 
     assert(surfaceInfo.surfaceData == NULL);
 
@@ -640,17 +640,33 @@ CGImageRef CGImageCreate(size_t width,
     NSData* dataProvider = (__bridge NSData*)provider;
 
     char* data = (char*)[dataProvider bytes];
-    surfaceFormat format = _CGImageGetFormat(bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo);
+
+    bool colorSpaceAllocated = false;
+
+    if (colorSpace == NULL) {
+        if (bytesPerRow >= (width * 3)) {
+            TraceWarning(TAG, L"Warning: colorSpace = NULL, assuming RGB based on bytesPerRow.");
+            colorSpace = CGColorSpaceCreateDeviceRGB();
+        }
+        else {
+            TraceWarning(TAG, L"Warning: colorSpace = NULL, assuming Gray based on bytesPerRow.");
+            colorSpace = CGColorSpaceCreateDeviceGray();
+        }
+
+        colorSpaceAllocated = true;
+    }
+
+    __CGSurfaceFormat format = _CGImageGetFormat(bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo);
 
     if (format != _ColorIndexed) {
         __CGSurfaceInfo surfaceInfo = {.width = width,
                                        .height = height,
-                                       .bitsPerComponent = bitsPerComponent,
-                                       .bytesPerPixel = bitsPerPixel >> 3,
                                        .bytesPerRow = bytesPerRow,
                                        .surfaceData = data,
-                                       .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
-                                       .bitmapInfo = bitmapInfo,
+                                       .pixelProperties = {.bitsPerComponent = bitsPerComponent,
+                                                           .bytesPerPixel = bitsPerPixel >> 3,
+                                                           .colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel,
+                                                           .bitmapInfo = bitmapInfo },
                                        .format = format };
 
         newImage = new CGBitmapImage(&surfaceInfo);
@@ -690,6 +706,10 @@ CGImageRef CGImageCreate(size_t width,
     }
 
     newImage->_provider = dataProvider;
+
+    if (colorSpaceAllocated == true) {
+        CGColorSpaceRelease(colorSpace);
+    }
 
     return (CGImageRef)newImage;
 }
@@ -779,7 +799,7 @@ NSData* _CGImagePNGRepresentation(UIImage* img) {
 
     int xStrideOut;
     int yStrideOut;
-    surfaceFormat backingFormat = pImage->Backing()->SurfaceFormat();
+    __CGSurfaceFormat backingFormat = pImage->Backing()->SurfaceFormat();
 
     // Write header (8 bit colour depth)
     switch (backingFormat) {
@@ -979,72 +999,4 @@ bool CGImageIsMask(CGImageRef image) {
 CGImageRef CGImageCreateWithMaskingColors(CGImageRef image, const CGFloat* components) {
     UNIMPLEMENTED();
     return StubReturn();
-}
-
-inline surfaceFormat _CGImageGetFormat(unsigned int bitsPerComponent,
-                                       unsigned int bitsPerPixel,
-                                       CGColorSpaceRef colorSpace,
-                                       CGBitmapInfo bitmapInfo) {
-    CGColorSpaceModel colorSpaceModel = ((__CGColorSpace*)colorSpace)->colorSpaceModel;
-    surfaceFormat fmt;
-    unsigned int alphaInfo = bitmapInfo & kCGBitmapAlphaInfoMask;
-    unsigned int byteOrder = bitmapInfo & kCGBitmapByteOrderMask;
-
-    assert((bitmapInfo & kCGBitmapFloatComponents) == 0);
-
-    if (colorSpaceModel == kCGColorSpaceModelRGB) {
-        if (byteOrder == kCGBitmapByteOrderDefault || byteOrder == kCGBitmapByteOrder32Big) {
-            switch (alphaInfo) {
-                case kCGImageAlphaNoneSkipFirst:
-                    if (bitsPerComponent == 8) {
-                        fmt = _ColorBGRX;
-                    } else if (bitsPerComponent == 5) {
-                        fmt = _Color565;
-                    }
-                    break;
-                case kCGImageAlphaFirst:
-                case kCGImageAlphaPremultipliedFirst:
-                    fmt = _ColorARGB;
-                    break;
-                case kCGImageAlphaNone:
-                    if (bitsPerComponent == 5) {
-                        fmt = _Color565;
-                    } else if (bitsPerPixel == 32) {
-                        // TODO: verify
-                        fmt = _ColorARGB;
-                    } else {
-                        fmt = _ColorBGR;
-                    }
-                    break;
-                case kCGImageAlphaNoneSkipLast:
-                case kCGImageAlphaLast:
-                case kCGImageAlphaPremultipliedLast:
-                default:
-                    UNIMPLEMENTED_WITH_MSG("RGBX and RGBA pixelformats unsupported");
-                    fmt = _ColorARGB;
-                    break;
-            }
-        } else {
-            assert(byteOrder == kCGBitmapByteOrder32Little);
-
-            if (alphaInfo == kCGImageAlphaLast || alphaInfo == kCGImageAlphaPremultipliedLast) {
-                fmt = _ColorABGR;
-            } else if (alphaInfo == kCGImageAlphaNoneSkipLast) {
-                fmt = _ColorXBGR;
-            } else if (alphaInfo == kCGImageAlphaNoneSkipFirst) {
-                fmt = _ColorBGRX;
-            } else {
-                UNIMPLEMENTED_WITH_MSG("Pixel format unsupported");
-                fmt = _ColorABGR;
-            }
-        }
-    } else if (colorSpaceModel == kCGColorSpaceModelPattern) {
-        fmt = _ColorA8;
-    } else if (colorSpaceModel == kCGColorSpaceModelMonochrome) {
-        fmt = _ColorGrayscale;
-    } else if (colorSpaceModel == kCGColorSpaceModelIndexed) {
-        fmt = _ColorIndexed;
-    }
-
-    return fmt;
 }

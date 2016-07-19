@@ -19,6 +19,7 @@
 #define __CGIMAGEINTERNAL_H
 
 #include "Starboard.h"
+#include "CoreGraphicsInternal.h"
 #include "CoreGraphics/CGImage.h"
 #include <objc/runtime.h>
 
@@ -59,7 +60,7 @@ public:
     virtual int BytesPerPixel() = 0;
     virtual int BitsPerComponent() = 0;
     virtual void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo) = 0;
-    virtual surfaceFormat SurfaceFormat() = 0;
+    virtual __CGSurfaceFormat SurfaceFormat() = 0;
     virtual CGColorSpaceModel ColorSpaceModel() = 0;
     virtual CGBitmapInfo BitmapInfo() = 0;
     virtual void* StaticImageData() = 0;
@@ -104,7 +105,7 @@ public:
     __CGImage();
     ~__CGImage();
 
-    CGImageBacking* Backing() const {
+    inline CGImageBacking* Backing() const {
         return _img;
     }
     CGImageBacking* DetachBacking(CGImageRef newParent);

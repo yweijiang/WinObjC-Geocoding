@@ -21,7 +21,7 @@ public:
     BOOL _freeWhenDone;
     void* _imageData;
     DWORD _pixmanFmt;
-    surfaceFormat _bitmapFmt;
+    __CGSurfaceFormat _bitmapFmt;
     CGColorSpaceModel _colorSpaceModel;
     CGBitmapInfo _bitmapInfo;
     DWORD _width, _height;
@@ -39,7 +39,7 @@ public:
 
 class CGBitmapImage : public __CGImage {
 public:
-    CGBitmapImage(__CGSurfaceInfo* surfaceInfo);
+    CGBitmapImage(const __CGSurfaceInfo* surfaceInfo);
     CGBitmapImage(CGImageRef pImg);
 };
 
@@ -66,7 +66,7 @@ public:
     int BytesPerPixel();
     int BitsPerComponent();
     void GetSurfaceInfoWithoutPixelPtr(__CGSurfaceInfo* surfaceInfo);
-    surfaceFormat SurfaceFormat();
+    __CGSurfaceFormat SurfaceFormat();
     CGColorSpaceModel ColorSpaceModel();
     CGBitmapInfo BitmapInfo();
     void* StaticImageData();
