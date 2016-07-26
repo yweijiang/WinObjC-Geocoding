@@ -214,13 +214,12 @@ void CGContextCairo::_cairoContextStrokePathShadow() {
     cairo_append_path(ctx, path);
 
     NSUInteger componentsNum = CGColorGetNumberOfComponents(curState->shadowColor);
-    CGFloat* components = (CGFloat*)CGColorGetComponents(curState->shadowColor);
+    const CGFloat* components = CGColorGetComponents(curState->shadowColor);
     if (componentsNum == 2) {
         cairo_set_source_rgba(ctx, components[0], components[0], components[0], components[1]);
     } else if (componentsNum == 4) {
         cairo_set_source_rgba(ctx, components[0], components[1], components[2], components[3]);
     }
-    IwFree(components);
 
     // Make the stroke style same as _drawContext
     cairo_set_line_width(ctx, cairo_get_line_width(_drawContext));
@@ -327,7 +326,7 @@ void CGContextCairo::DrawImage(CGImageRef img, CGRect src, CGRect dest, bool til
         cairo_new_path(_drawContext);
         cairo_rectangle(_drawContext, 0, 0, dest.size.width, dest.size.height);
         cairo_clip(_drawContext);
-        cairo_paint(_drawContext);
+        cairo_paint_with_alpha(_drawContext, curState->curFillColor.a);
 
         cairo_restore(_drawContext);
         cairo_new_path(_drawContext);
@@ -377,7 +376,7 @@ void CGContextCairo::DrawImage(CGImageRef img, CGRect src, CGRect dest, bool til
         cairo_clip(_drawContext);
 
         if (curState->_imgMask == NULL) {
-            cairo_paint(_drawContext);
+            cairo_paint_with_alpha(_drawContext, curState->curFillColor.a);
         } else {
             cairo_mask_surface(_drawContext, curState->_imgMask->Backing()->LockCairoSurface(), 0.0, 0.0);
             curState->_imgMask->Backing()->ReleaseCairoSurface();
@@ -704,12 +703,20 @@ void CGContextCairo::CGContextSetStrokeColor(float* components) {
 }
 
 void CGContextCairo::CGContextSetStrokeColorWithColor(id color) {
-    [(UIColor*)color getColors:&curState->curStrokeColor];
+    if (color) {
+        curState->curStrokeColor = *[(UIColor*)color _getColors];
+    } else {
+        _ClearColorQuad(curState->curStrokeColor);
+    }
 }
 
 void CGContextCairo::CGContextSetFillColorWithColor(id color) {
     if ((int)[(UIColor*)color _type] == solidBrush) {
-        [(UIColor*)color getColors:&curState->curFillColor];
+        if (color) {
+            curState->curFillColor = *[(UIColor*)color _getColors];
+        } else {
+            _ClearColorQuad(curState->curFillColor);
+        }
         curState->curFillColorObject = nil;
     } else {
         curState->curFillColorObject = [color retain];
@@ -1424,7 +1431,7 @@ void CGContextCairo::CGContextDrawLinearGradient(CGGradientRef gradient, CGPoint
         cairo_mask_surface(_drawContext, curState->_imgMask->Backing()->LockCairoSurface(), 0.0, 0.0);
         curState->_imgMask->Backing()->ReleaseCairoSurface();
     } else {
-        cairo_paint(_drawContext);
+        cairo_paint_with_alpha(_drawContext, curState->curFillColor.a);
     }
     cairo_pattern_destroy(pattern);
     UNLOCK_CAIRO();
@@ -1465,7 +1472,7 @@ void CGContextCairo::CGContextDrawRadialGradient(
         cairo_mask_surface(_drawContext, curState->_imgMask->Backing()->LockCairoSurface(), 0.0, 0.0);
         curState->_imgMask->Backing()->ReleaseCairoSurface();
     } else {
-        cairo_paint(_drawContext);
+        cairo_paint_with_alpha(_drawContext, curState->curFillColor.a);
     }
     cairo_pattern_destroy(pattern);
     UNLOCK_CAIRO();
