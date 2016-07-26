@@ -22,7 +22,6 @@
 /**
 @Status Interoperable
 */
-
 vImage_Error vImageBoxConvolve_ARGB8888(const vImage_Buffer* src,
                                         const vImage_Buffer* dest,
                                         void* tempBuffer,
