@@ -243,12 +243,20 @@ LIBRARY Accelerate
           vImageBoxConvolve_ARGB8888
           vImageMatrixMultiply_ARGB8888
           vImageConvert_ARGB8888toPlanar8
+          vImageConvert_BGRA8888toPlanar8
+          vImageConvert_RGBA8888toPlanar8
+          ;vImageConvert_BGRX8888toPlanar8
+          ;vImageConvert_RGBX8888toPlanar8
+          ;vImageConvert_XRGB8888toPlanar8
           vImageConvert_Planar8toARGB8888
+          ;vImageConvert_Planar8ToBGRX8888
+          ;vImageConvert_Planar8ToRGBX8888
+          ;vImageConvert_Planar8ToXRGB8888
           vImageConvert_Planar8toPlanarF
           vImageConvert_Planar8toRGB888
           vImageConvert_PlanarFtoPlanar8
-          vImageUnpremultiplyData_RGBA8888
           vImageUnpremultiplyData_ARGB8888
+          vImageUnpremultiplyData_RGBA8888
           vImageBuffer_Init
           vImageBuffer_InitWithCGImage
           vImageCreateCGImageFromBuffer
