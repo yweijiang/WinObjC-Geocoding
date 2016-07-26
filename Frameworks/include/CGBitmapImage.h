@@ -33,7 +33,7 @@ public:
     BOOL _bottomOrientation;
 
     CGImageData* Duplicate();
-    CGImageData(__CGSurfaceInfo* surfaceInfo);
+    CGImageData(const __CGSurfaceInfo* surfaceInfo);
     ~CGImageData();
 };
 
@@ -48,7 +48,7 @@ private:
     CGImageData* _data;
 
 public:
-    CGBitmapImageBacking(__CGSurfaceInfo* surfaceInfo);
+    CGBitmapImageBacking(const __CGSurfaceInfo* surfaceInfo);
     CGBitmapImageBacking(CGImageRef pImg);
 
     ~CGBitmapImageBacking();

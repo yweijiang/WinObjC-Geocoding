@@ -1939,6 +1939,7 @@ bool CGContextCairo::CGContextIsPointInPath(bool eoFill, float x, float y) {
     UNLOCK_CAIRO();
     return returnValue;
 }
+
 CGPathRef CGContextCairo::CGContextCopyPath(void) {
     CGMutablePathRef copyPath = CGPathCreateMutable();
     ObtainLock();
@@ -1970,5 +1971,4 @@ CGPathRef CGContextCairo::CGContextCopyPath(void) {
     }
     cairo_path_destroy(caPath);
     return (CGPathRef)copyPath;
-}
 }

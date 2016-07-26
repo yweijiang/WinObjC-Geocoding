@@ -45,11 +45,9 @@ typedef float CGFloat;
 #define VIMAGE_SSE 1
 #include <xmmintrin.h>
 #include <emmintrin.h>
-static const bool c_vImagePadAllocs = true;
 #else
 #define VIMAGE_SSE 0
 #define VIMAGE_PAD_ALLOCS 0
-static const bool c_vImagePadAllocs = false;
 #endif
 
 static const bool c_vImagePadAllocs = (VIMAGE_SSE == 1);
