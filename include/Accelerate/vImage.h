@@ -14,6 +14,7 @@
 // THE SOFTWARE.
 //
 //******************************************************************************
+#pragma once
 
 #include <inttypes.h>
 #include <BaseTsd.h>
@@ -41,22 +42,16 @@ typedef float CGFloat;
 
 
 #if defined(_M_IX86) || defined(_M_X64)
-#define VIMAGE_USE_SSE 1
-#define VIMAGE_PAD_ALLOCS 1
+#define VIMAGE_SSE 1
 #include <xmmintrin.h>
 #include <emmintrin.h>
 #else
+#define VIMAGE_SSE 0
 #define VIMAGE_PAD_ALLOCS 0
-#define VIMAGE_USE_SSE 0
 #endif
 
-
-#if (VIMAGE_PAD_ALLOCS == 1)
-static const bool c_padAllocs = true;
-#else
-static const bool c_padAllocs = false;
-#endif
-
+static const bool c_vImagePadAllocs = (VIMAGE_SSE == 1);
+static const bool c_vImageUseSse2 = c_vImagePadAllocs && (VIMAGE_SSE == 1);
 
 enum
 {
@@ -152,6 +147,15 @@ ACCELERATE_EXPORT vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buff
                                                                const vImage_Buffer* destG,
                                                                const vImage_Buffer* destB,
                                                                vImage_Flags flags);
+
+// vImageConvert_BGRA8888toPlanar8 and vImageConvert_RGBA8888toPlanar8 have nearly identical functionality to vImageConvert_ARGB8888toPlanar8.
+// The only difference is that the client swizzles the input so they can be safely aliased here.
+//using _vImageFunctionInterfaceCvt8888ToPlanar8 = vImage_Error (*)(
+//    const vImage_Buffer*, const vImage_Buffer*, const vImage_Buffer*, const vImage_Buffer*, const vImage_Buffer*, vImage_Flags);
+typedef vImage_Error (*_vImageFunctionInterfaceCvt8888ToPlanar8)(const vImage_Buffer*, const vImage_Buffer*, const vImage_Buffer*, const vImage_Buffer*, const vImage_Buffer*, vImage_Flags);
+
+ACCELERATE_EXPORT _vImageFunctionInterfaceCvt8888ToPlanar8 vImageConvert_BGRA8888toPlanar8;
+ACCELERATE_EXPORT _vImageFunctionInterfaceCvt8888ToPlanar8 vImageConvert_RGBA8888toPlanar8;
 
 ACCELERATE_EXPORT vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
                                                                const vImage_Buffer* srcR,
