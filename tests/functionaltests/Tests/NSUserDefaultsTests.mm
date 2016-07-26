@@ -59,23 +59,21 @@ TEST(NSUserDefaults, KVCArray) {
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
-CF_EXPORT void CFPreferencesFlushCaches(void);
+TEST(NSUserDefaults, Remove) {
+	[[NSUserDefaults standardUserDefaults] setObject:@"Cheddar" forKey:@"FavoriteCheese"];
+	NSString* actualCheese = [[NSUserDefaults standardUserDefaults] stringForKey:@"FavoriteCheese"];
+	EXPECT_OBJCEQ(@"Cheddar", actualCheese);
+	[[NSUserDefaults standardUserDefaults] removeObjectForKey:@"FavoriteCheese"];
+	actualCheese = [[NSUserDefaults standardUserDefaults] stringForKey:@"FavoriteCheese"];
+	EXPECT_OBJCEQ(nil, actualCheese);
+}
 
-TEST(NSUserDefaults, Flush) {
-    [[NSUserDefaults standardUserDefaults] setObject:@"Cheddar" forKey:@"FavoriteCheese"];
-    CFPreferencesFlushCaches();
+TEST(NSUserDefaults, Perf) {
+    NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
+    for (int i = 0; i < 500; i++) {
+        [[NSUserDefaults standardUserDefaults] setValue:@(i) forKey:[NSString stringWithFormat:@"Test%d", i]];
+    }
 
-    NSString* actualCheese = [[NSUserDefaults standardUserDefaults] stringForKey:@"FavoriteCheese"];
-    EXPECT_OBJCEQ(@"Cheddar", actualCheese);
-    [[NSUserDefaults standardUserDefaults] setObject:@"Swiss" forKey:@"FavoriteCheese"];
-    actualCheese = [[NSUserDefaults standardUserDefaults] stringForKey:@"FavoriteCheese"];
-    EXPECT_OBJCEQ(@"Swiss", actualCheese);
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"FavoriteCheese"];
-    actualCheese = [[NSUserDefaults standardUserDefaults] stringForKey:@"FavoriteCheese"];
-    EXPECT_OBJCEQ(nil, actualCheese);
-    CFPreferencesFlushCaches();
-    actualCheese = [[NSUserDefaults standardUserDefaults] stringForKey:@"FavoriteCheese"];
-    EXPECT_OBJCEQ(nil, actualCheese);
-    [[NSUserDefaults standardUserDefaults] setObject:@"Cheddar" forKey:@"FavoriteCheese"];
-    CFPreferencesFlushCaches();
+    NSTimeInterval end = [NSDate timeIntervalSinceReferenceDate];
+    LOG_INFO("NSUserDefaults took %lf s", end - start);
 }

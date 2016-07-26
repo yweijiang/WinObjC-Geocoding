@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -15,19 +16,25 @@
 //******************************************************************************
 
 #pragma once
+
+#ifndef __CGCONTEXTIMPL_TEST_FRIENDS
+#define __CGCONTEXTIMPL_TEST_FRIENDS
+#endif
+
 #include "CGContextInternal.h"
 
-#include "CoreGraphics/CGPath.h"
-#include "CoreGraphics/CGLayer.h"
 #include "CoreGraphics/CGGradient.h"
+#include "CoreGraphics/CGLayer.h"
+#include "CoreGraphics/CGPath.h"
 #include "CoreGraphics/CGShading.h"
 #include "UIKit/UIColor.h"
 #include "UIKit/UIFont.h"
+#import "UIColorInternal.h"
 
 typedef struct {
     id curFillColorObject;
-    ColorQuad curFillColor, curTextColor, curStrokeColor;
-    ColorQuad curPenColor, curForegroundColor;
+    __CGColorQuad curFillColor, curTextColor, curStrokeColor;
+    __CGColorQuad curPenColor, curForegroundColor;
     CGImageRef _imgClip, _imgMask;
     CGRect _imgMaskRect;
     CGAffineTransform curTransform;
@@ -53,6 +60,8 @@ private:
 #define MAX_CG_STATES 16
 
 class CGContextImpl {
+    __CGCONTEXTIMPL_TEST_FRIENDS;
+
 protected:
     CGContextRef _rootContext;
     CGImageRef _imgDest;
@@ -65,6 +74,8 @@ protected:
     virtual void ObtainLock();
 
 public:
+    inline float GetAlpha() const { return curState->curFillColor.a; }
+    inline CGBlendMode GetBlendMode() const { return curState->curBlendMode; }
     virtual void ReleaseLock();
 
     virtual void DrawImage(CGImageRef img, CGRect src, CGRect dest, bool tiled = false);
@@ -107,6 +118,7 @@ public:
     virtual void CGContextSetStrokeColorWithColor(id color);
     virtual void CGContextSetFillColorWithColor(id color);
     virtual void CGContextSetFillColor(float* components);
+    virtual void CGContextSetPatternPhase(CGSize phase);
     virtual void CGContextSetFillPattern(CGPatternRef pattern, const float* components);
     virtual void CGContextSelectFont(char* name, float size, DWORD encoding);
     virtual void CGContextGetTextPosition(CGPoint* pos);
@@ -165,6 +177,8 @@ public:
 
     virtual void CGContextSetShadowWithColor(CGSize offset, float blur, CGColorRef color);
     virtual void CGContextSetShadow(CGSize offset, float blur);
+    virtual bool CGContextIsPointInPath(bool eoFill, float x, float y);
+    virtual CGPathRef CGContextCopyPath(void);
 };
 
 #define LOCK_CAIRO() pthread_mutex_lock(&_cairoLock);
