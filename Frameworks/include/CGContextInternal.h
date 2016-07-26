@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2015 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -17,9 +18,9 @@
 #ifndef __CGCONTEXTINTERNAL_H
 #define __CGCONTEXTINTERNAL_H
 
-#include "Starboard.h"
-#include "CoreGraphics/CGContext.h"
 #include "CGImageInternal.h"
+#include "CoreGraphics/CGContext.h"
+#include "Starboard.h"
 
 #include <objc/runtime.h>
 
@@ -44,16 +45,21 @@ COREGRAPHICS_EXPORT CGImageRef CGPNGImageCreateFromData(NSData* data);
 
 COREGRAPHICS_EXPORT CGImageRef CGJPEGImageCreateFromFile(NSString* path);
 COREGRAPHICS_EXPORT CGImageRef CGJPEGImageCreateFromData(NSData* data);
+COREGRAPHICS_EXPORT bool CGContextIsPointInPath(CGContextRef c, bool eoFill, float x, float y);
 
-class __CGContext: private objc_object {
+class __CGContext : private objc_object {
+private:
+    CGContextImpl* _backing;
+
 public:
     float scale;
-    CGContextImpl* _backing;
 
     __CGContext(CGImageRef pDest);
     ~__CGContext();
 
-    CGContextImpl* Backing();
+    inline CGContextImpl* Backing() {
+        return _backing;
+    }
 };
 #include "CGContextImpl.h"
 

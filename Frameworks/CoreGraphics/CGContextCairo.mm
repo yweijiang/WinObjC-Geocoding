@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -14,18 +15,18 @@
 //
 //******************************************************************************
 
-#import <Starboard.h>
 #import <CoreGraphics/CGGeometry.h>
+#import <Starboard.h>
 #import <memory>
 
-#import "CGContextImpl.h"
-#import "CGImageInternal.h"
-#import "CGGradientInternal.h"
-#import "CGPatternInternal.h"
 #import "CGColorSpaceInternal.h"
 #import "CGContextCairo.h"
+#import "CGContextImpl.h"
 #import "CGFontInternal.h"
+#import "CGGradientInternal.h"
+#import "CGImageInternal.h"
 #import "CGPathInternal.h"
+#import "CGPatternInternal.h"
 #import "UIColorInternal.h"
 
 #define CAIRO_WIN32_STATIC_BUILD
@@ -35,10 +36,10 @@
 extern "C" {
 #import <ft2build.h>
 #import FT_FREETYPE_H
-#import <ftglyph.h>
-#import <tttables.h>
 #import <ftadvanc.h>
+#import <ftglyph.h>
 #import <ftsizes.h>
+#import <tttables.h>
 }
 
 #include "LoggingNative.h"
@@ -212,13 +213,12 @@ void CGContextCairo::_cairoContextStrokePathShadow() {
     cairo_append_path(ctx, path);
 
     NSUInteger componentsNum = CGColorGetNumberOfComponents(curState->shadowColor);
-    CGFloat* components = (CGFloat*)CGColorGetComponents(curState->shadowColor);
+    const CGFloat* components = CGColorGetComponents(curState->shadowColor);
     if (componentsNum == 2) {
         cairo_set_source_rgba(ctx, components[0], components[0], components[0], components[1]);
     } else if (componentsNum == 4) {
         cairo_set_source_rgba(ctx, components[0], components[1], components[2], components[3]);
     }
-    IwFree(components);
 
     // Make the stroke style same as _drawContext
     cairo_set_line_width(ctx, cairo_get_line_width(_drawContext));
@@ -325,7 +325,7 @@ void CGContextCairo::DrawImage(CGImageRef img, CGRect src, CGRect dest, bool til
         cairo_new_path(_drawContext);
         cairo_rectangle(_drawContext, 0, 0, dest.size.width, dest.size.height);
         cairo_clip(_drawContext);
-        cairo_paint(_drawContext);
+        cairo_paint_with_alpha(_drawContext, curState->curFillColor.a);
 
         cairo_restore(_drawContext);
         cairo_new_path(_drawContext);
@@ -375,7 +375,7 @@ void CGContextCairo::DrawImage(CGImageRef img, CGRect src, CGRect dest, bool til
         cairo_clip(_drawContext);
 
         if (curState->_imgMask == NULL) {
-            cairo_paint(_drawContext);
+            cairo_paint_with_alpha(_drawContext, curState->curFillColor.a);
         } else {
             cairo_mask_surface(_drawContext, curState->_imgMask->Backing()->LockCairoSurface(), 0.0, 0.0);
             curState->_imgMask->Backing()->ReleaseCairoSurface();
@@ -700,12 +700,20 @@ void CGContextCairo::CGContextSetStrokeColor(float* components) {
 }
 
 void CGContextCairo::CGContextSetStrokeColorWithColor(id color) {
-    [(UIColor*)color getColors:&curState->curStrokeColor];
+    if (color) {
+        curState->curStrokeColor = *[(UIColor*)color _getColors];
+    } else {
+        _ClearColorQuad(curState->curStrokeColor);
+    }
 }
 
 void CGContextCairo::CGContextSetFillColorWithColor(id color) {
     if ((int)[(UIColor*)color _type] == solidBrush) {
-        [(UIColor*)color getColors:&curState->curFillColor];
+        if (color) {
+            curState->curFillColor = *[(UIColor*)color _getColors];
+        } else {
+            _ClearColorQuad(curState->curFillColor);
+        }
         curState->curFillColorObject = nil;
     } else {
         curState->curFillColorObject = [color retain];
@@ -872,6 +880,10 @@ void CGContextCairo::CGContextFillRect(CGRect rct) {
 
     if (curState->_imgMask == NULL) {
         cairo_fill(_drawContext);
+#if defined(__i386__)
+        // There's a missing call to _mm_empty in cairo somewhere, this will clear out the state so the FPU doesn't return bogus results.
+        __builtin_ia32_emms();
+#endif
     } else {
         cairo_mask_surface(_drawContext, curState->_imgMask->Backing()->LockCairoSurface(), 0.0, 0.0);
         curState->_imgMask->Backing()->ReleaseCairoSurface();
@@ -1416,7 +1428,7 @@ void CGContextCairo::CGContextDrawLinearGradient(CGGradientRef gradient, CGPoint
         cairo_mask_surface(_drawContext, curState->_imgMask->Backing()->LockCairoSurface(), 0.0, 0.0);
         curState->_imgMask->Backing()->ReleaseCairoSurface();
     } else {
-        cairo_paint(_drawContext);
+        cairo_paint_with_alpha(_drawContext, curState->curFillColor.a);
     }
     cairo_pattern_destroy(pattern);
     UNLOCK_CAIRO();
@@ -1457,7 +1469,7 @@ void CGContextCairo::CGContextDrawRadialGradient(
         cairo_mask_surface(_drawContext, curState->_imgMask->Backing()->LockCairoSurface(), 0.0, 0.0);
         curState->_imgMask->Backing()->ReleaseCairoSurface();
     } else {
-        cairo_paint(_drawContext);
+        cairo_paint_with_alpha(_drawContext, curState->curFillColor.a);
     }
     cairo_pattern_destroy(pattern);
     UNLOCK_CAIRO();
@@ -1917,4 +1929,49 @@ CGSize CGContextCairo::CGFontDrawGlyphsToContext(WORD* glyphs, DWORD length, flo
     UNLOCK_CAIRO();
 
     return ret;
+}
+
+bool CGContextCairo::CGContextIsPointInPath(bool eoFill, float x, float y) {
+    ObtainLock();
+    LOCK_CAIRO();
+    if (eoFill) {
+        cairo_set_fill_rule(_drawContext, CAIRO_FILL_RULE_EVEN_ODD);
+    } else {
+        cairo_set_fill_rule(_drawContext, CAIRO_FILL_RULE_WINDING);
+    }
+    bool returnValue = cairo_in_fill(_drawContext, x, y);
+    UNLOCK_CAIRO();
+    return returnValue;
+}
+CGPathRef CGContextCairo::CGContextCopyPath(void) {
+    CGMutablePathRef copyPath = CGPathCreateMutable();
+    ObtainLock();
+    LOCK_CAIRO();
+    cairo_path_t* caPath = cairo_copy_path(_drawContext);
+    UNLOCK_CAIRO();
+    cairo_path_data_t* data;
+
+    for (int i = 0; i < caPath->num_data; i += caPath->data[i].header.length) {
+        data = &caPath->data[i];
+        switch (data->header.type) {
+            case CAIRO_PATH_MOVE_TO:
+                CGPathMoveToPoint(copyPath, NULL, data[1].point.x, data[1].point.y);
+                break;
+            case CAIRO_PATH_LINE_TO:
+                CGPathAddLineToPoint(copyPath, NULL, data[1].point.x, data[1].point.y);
+                break;
+            case CAIRO_PATH_CURVE_TO:
+                CGPathAddCurveToPoint(
+                    copyPath, NULL, data[1].point.x, data[1].point.y, data[2].point.x, data[2].point.y, data[3].point.x, data[3].point.y);
+                break;
+            case CAIRO_PATH_CLOSE_PATH:
+                CGPathCloseSubpath(copyPath);
+                break;
+            default:
+                FAIL_FAST();
+                break;
+        }
+    }
+    cairo_path_destroy(caPath);
+    return (CGPathRef)copyPath;
 }

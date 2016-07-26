@@ -1,5 +1,6 @@
 //******************************************************************************
 //
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
 // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
 //
 // This code is licensed under the MIT License (MIT).
@@ -20,16 +21,16 @@
 #import <CoreGraphics/CGContext.h>
 #import <CoreGraphics/CGPath.h>
 #import <CoreGraphics/CGLayer.h>
+#import "CGColorSpaceInternal.h"
+#import "CGContextInternal.h"
+#include "LoggingNative.h"
+#import "_CGLifetimeBridgingType.h"
 #import <CoreGraphics/CGAffineTransform.h>
 #import <CoreGraphics/CGGradient.h>
 #import <Foundation/NSString.h>
 #import <UIKit/UIImage.h>
 #import <UIKit/UIFont.h>
 #import <UIKit/UIColor.h>
-#import "CGContextInternal.h"
-#import "CGColorSpaceInternal.h"
-#import "_CGLifetimeBridgingType.h"
-#include "LoggingNative.h"
 #import <pthread.h>
 
 static const wchar_t* TAG = L"CGContext";
@@ -70,10 +71,6 @@ __CGContext::~__CGContext() {
     delete _backing;
 }
 
-CGContextImpl* __CGContext::Backing() {
-    return _backing;
-}
-
 /**
  @Status Interoperable
 */
@@ -93,11 +90,10 @@ void CGContextSetFillPattern(CGContextRef ctx, CGPatternRef pattern, const float
 }
 
 /**
- @Status Stub
+ @Status Interoperable
 */
 void CGContextSetPatternPhase(CGContextRef ctx, CGSize phase) {
-    UNIMPLEMENTED();
-    TraceWarning(TAG, L"CGContextSetPatternPhase not implemented");
+    return ctx->Backing()->CGContextSetPatternPhase(phase);
 }
 
 /**
@@ -1137,12 +1133,11 @@ void CGContextBeginTransparencyLayerWithRect(CGContextRef ctx, CGRect rect, CFDi
 }
 
 /**
- @Status Stub
+ @Status Interoperable
  @Notes
 */
 CGPathRef CGContextCopyPath(CGContextRef c) {
-    UNIMPLEMENTED();
-    return StubReturn();
+    return c->Backing()->CGContextCopyPath();
 }
 
 /**
@@ -1297,4 +1292,8 @@ CGImageRef CGJPEGImageCreateFromFile(NSString* path) {
 
 CGImageRef CGJPEGImageCreateFromData(NSData* data) {
     return new CGJPEGDecoderImage(data);
+}
+
+bool CGContextIsPointInPath(CGContextRef c, bool eoFill, float x, float y) {
+    return c->Backing()->CGContextIsPointInPath(eoFill, x, y);
 }

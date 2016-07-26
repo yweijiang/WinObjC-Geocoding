@@ -47,6 +47,7 @@
 
 #import <UWP/WindowsUIViewManagement.h>
 #import <UWP/WindowsDevicesInput.h>
+#import "UIColorInternal.h"
 
 static const wchar_t* TAG = L"CompositorInterface";
 
@@ -296,6 +297,14 @@ public:
     void SetNodeContent(DisplayNode* node, float width, float height, float scale) {
         node->SetContents(_xamlImage, width, height, scale);
     }
+
+    // Add accessor for private variable so that other classes can access it.
+    Microsoft::WRL::ComPtr<IInspectable> GetXamlImage() {
+        Microsoft::WRL::ComPtr<IUnknown> xamlImage(static_cast<IUnknown*>(_xamlImage));
+        Microsoft::WRL::ComPtr<IInspectable> inspectableNode;
+        xamlImage.As(&inspectableNode);
+        return inspectableNode;
+    }
 };
 
 class DisplayTextureText : public DisplayTextureXamlGlyphs {
@@ -329,10 +338,11 @@ public:
         _insets[2] = edgeInsets.right;
         _insets[3] = edgeInsets.bottom;
 
-        ColorQuad colorComponents;
-        [color getColors:&colorComponents];
-
-        ColorQuadToFloatArray(colorComponents, _color);
+        if (color) {
+            memcpy(_color, [color _getColors], sizeof(_color));
+        } else {
+            memset(_color, 0, sizeof(_color));
+        }
 
         _fontSize = [font pointSize];
         _centerVertically = centerVertically;
@@ -399,7 +409,7 @@ private:
                 float byValue = [static_cast<NSNumber*>(_byValue) floatValue];
                 _toValue = [[NSNumber numberWithFloat:(fromValue + byValue)] retain];
             } else {
-                FAIL_FAST_MSG(E_UNEXPECTED, "Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
+                FAIL_FAST_MSG("Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
             }
         } else if (_toValue != nil) {
             if (_byValue != nil) {
@@ -408,10 +418,10 @@ private:
                 float byValue = [static_cast<NSNumber*>(_byValue) floatValue];
                 _fromValue = [[NSNumber numberWithFloat:(toValue - byValue)] retain];
             } else {
-                FAIL_FAST_MSG(E_UNEXPECTED, "Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
+                FAIL_FAST_MSG("Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
             }
         } else if (_byValue != nil) {
-            FAIL_FAST_MSG(E_UNEXPECTED, "Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
+            FAIL_FAST_MSG("Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
         } else {
             UNIMPLEMENTED_WITH_MSG("Unsupported when all CABasicAnimation properties are nil");
         }
@@ -679,7 +689,7 @@ private:
                 performOperation(translationFrom, translationBy, translationTo, dimensions, add);
             } else {
                 // Guaranteed to be taken care of by _createAnimation in CABasicAnimation.
-                FAIL_FAST_MSG(E_UNEXPECTED, "Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
+                FAIL_FAST_MSG("Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
                 isValid = false;
             }
         } else if (_toValue != nil) {
@@ -698,11 +708,11 @@ private:
                 performOperation(scaleTo, scaleBy, scaleFrom, dimensions, divide);
                 performOperation(translationTo, translationBy, translationFrom, dimensions, subtract);
             } else {
-                FAIL_FAST_MSG(E_UNEXPECTED, "Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
+                FAIL_FAST_MSG("Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
                 isValid = false;
             }
         } else if (_byValue != nil) {
-            FAIL_FAST_MSG(E_UNEXPECTED, "Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
+            FAIL_FAST_MSG("Guaranteed to be taken care of by _createAnimation in CABasicAnimation.");
             isValid = false;
         } else {
             UNIMPLEMENTED_WITH_MSG("Unsupported when all interpolation values are nil");
@@ -1073,9 +1083,12 @@ public:
         } else if (strcmp(name, "sublayerTransform") == 0) {
             UNIMPLEMENTED_WITH_MSG("sublayerTransform not implemented");
         } else if (strcmp(name, "backgroundColor") == 0) {
-            ColorQuad color{};
-            [(UIColor*)newValue getColors:&color];
-            SetBackgroundColor(color.r, color.g, color.b, color.a);
+            const __CGColorQuad* color = [(UIColor*)newValue _getColors];
+            if (color) {
+                SetBackgroundColor(color->r, color->g, color->b, color->a);
+            } else {
+                SetBackgroundColor(0.0f, 0.0f, 0.0f, 0.0f);
+            }
         } else {
             FAIL_FAST_HR(E_NOTIMPL);
         }
@@ -1372,6 +1385,13 @@ public:
         return ret;
     }
 
+    virtual Microsoft::WRL::ComPtr<IInspectable> GetBitmapForCGImage(CGImageRef img) override {
+        DisplayTextureContent* content = new DisplayTextureContent(img);
+        Microsoft::WRL::ComPtr<IInspectable> inspectableNode(content->GetXamlImage());
+        delete content;
+        return inspectableNode;
+    }
+
     DisplayTexture* CreateWritableBitmapTexture32(int width, int height) override {
         DisplayTexture* ret = new DisplayTextureContent(width, height);
         return ret;
@@ -1587,12 +1607,8 @@ public:
     }
 
     DisplayTexture* CreateDisplayTextureForElement(id xamlElement) override {
-        GenericControlXaml* genericControlTexture = new GenericControlXaml([(RTObject*)xamlElement comObj].Get());
+        GenericControlXaml* genericControlTexture = new GenericControlXaml([xamlElement comObj].Get());
         return genericControlTexture;
-    }
-
-    virtual void SetAccessibilityInfo(DisplayNode* node, const IWAccessibilityInfo& info) override {
-        node->SetAccessibilityInfo(info);
     }
 
     virtual void SetShouldRasterize(DisplayNode* node, bool rasterize) override {
@@ -1600,25 +1616,12 @@ public:
     }
 };
 
-void SetUIHandlers();
-
 void CreateXamlCompositor(winobjc::Id& root) {
     CGImageAddDestructionListener(UIReleaseDisplayTextureForCGImage);
     static CAXamlCompositor* compIntr = new CAXamlCompositor();
-
     SetCACompositor(compIntr);
-
     EbrGetMediaTime();
-    SetUIHandlers();
     SetRootGrid(root);
-}
-
-void IWXamlTouch(float x, float y, unsigned int touchID, int event, unsigned __int64 timestampMicro) {
-    UIQueueTouchInput(x, y, touchID, event, screenWidth, screenHeight, timestampMicro * 1000);
-}
-
-void IWXamlKeyInput(int key) {
-    UIQueueKeyInput(key);
 }
 
 void GridSizeChanged(float newWidth, float newHeight) {
