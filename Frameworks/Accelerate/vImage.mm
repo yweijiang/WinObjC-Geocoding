@@ -19,7 +19,7 @@
 #include "Accelerate/AccelerateExport.h"
 #import <Accelerate/Accelerate.h>
 //#import "CGImageInternal.h"
-#import "CoreGraphics/CGImage.h"
+#import <CoreGraphics/CGImage.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import "CoreGraphics/CGDataProvider.h"
 #import <Foundation/Foundation.h>
@@ -30,8 +30,8 @@
 */
 vImage_Error vImageBuffer_InitWithCGImage(
     vImage_Buffer* buffer, const vImage_CGImageFormat* format, void* unknown, CGImageRef image, vImage_Flags flags) {
-    const vImagePixelCount width = CGImageGetWidth(image);
-    const vImagePixelCount height = CGImageGetHeight(image);
+    const uint32_t width = CGImageGetWidth(image);
+    const uint32_t height = CGImageGetHeight(image);
 
     vImage_Error result = vImageBuffer_Init(buffer, height, width, format->bitsPerPixel, flags);
 
