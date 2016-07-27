@@ -43,11 +43,12 @@ typedef float CGFloat;
 
 #if defined(_M_IX86) || defined(_M_X64)
 #define VIMAGE_SSE 1
+#define VIMAGE_PIXEL_BLOCK_SIZE 16
 #include <xmmintrin.h>
 #include <emmintrin.h>
 #else
 #define VIMAGE_SSE 0
-#define VIMAGE_PAD_ALLOCS 0
+#define VIMAGE_PIXEL_BLOCK_SIZE 1
 #endif
 
 static const bool c_vImagePadAllocs = (VIMAGE_SSE == 1);
@@ -85,7 +86,8 @@ enum
     kvImageTruncateKernel = 64,
     kvImageGetTempBufferSize = 128,
     kvImagePrintDiagnosticsToConsole = 256,
-    kvImageNoAllocate = 512
+    kvImageNoAllocate = 512,
+    kvImageUnusedFlagBits = ~(1024 - 1)
 };
 
 typedef unsigned long vImagePixelCount;

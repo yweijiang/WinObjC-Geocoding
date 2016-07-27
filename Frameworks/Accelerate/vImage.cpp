@@ -16,7 +16,7 @@
 //******************************************************************************
 
 #include "Accelerate/vImage.h"
-#include <assert.h>
+#include "ErrorHandling.h"
 #include <new>
 
 /**
@@ -942,20 +942,26 @@ vImage_Error vImageConvert_ARGB8888toPlanar8(const vImage_Buffer* srcARGB,
                                              const vImage_Buffer* destG,
                                              const vImage_Buffer* destB,
                                              vImage_Flags flags) {
-    assert((destA != nullptr) && (destR != nullptr) && (destG != nullptr) && (destB != nullptr) && (srcARGB != nullptr));
-    assert((srcARGB->height == destA->height) && (srcARGB->height == destR->height) && (srcARGB->height == destG->height) &&
-           (srcARGB->height == destB->height));
-    assert((srcARGB->width == destA->width) && (srcARGB->width == destR->width) && (srcARGB->width == destG->width) &&
-           (srcARGB->width == destB->width));
+
+    if ((destA == nullptr) || (destR == nullptr) || (destG == nullptr) || (destB == nullptr) || (srcARGB == nullptr)) {
+        FAIL_FAST_MSG("vImage: One or more NULL parameters passed in");
+        return kvImageNullPointerArgument;
+    }
 
     const unsigned int width = srcARGB->width;
     const unsigned int height = srcARGB->height;
 
-    assert(srcARGB->rowBytes >= width * sizeof(srcARGB));
-    assert(destA->rowBytes >= width);
-    assert(destR->rowBytes >= width);
-    assert(destG->rowBytes >= width);
-    assert(destB->rowBytes >= width);
+    if ((height != destA->height) || (height != destR->height) || (height != destG->height) || (height != destB->height) || (width != destA->width) || (width != destR->width) || (width != destG->width) || (width != destB->width)) {
+        FAIL_FAST_MSG("vImage: Buffer sizes don't match");
+        return kvImageBufferSizeMismatch;
+    }
+
+    FAIL_FAST_IF_FALSE((width > 0) && (height > 0));
+    FAIL_FAST_IF_FALSE(destA->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(destR->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(destG->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(destB->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(srcARGB->rowBytes >= width * sizeof(Pixel_8888_s));
 
     unsigned char* pixelRowBytePtr = reinterpret_cast<unsigned char*>(srcARGB->data);
     unsigned char* alphaRowBytePtr = reinterpret_cast<unsigned char*>(destA->data);
@@ -1067,19 +1073,26 @@ vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
                                              const vImage_Buffer* srcB,
                                              const vImage_Buffer* dest,
                                              vImage_Flags flags) {
-    assert((srcA != nullptr) && (srcR != nullptr) && (srcG != nullptr) && (srcB != nullptr) && (dest != nullptr));
-    assert((dest->height == srcA->height) && (dest->height == srcR->height) && (dest->height == srcG->height) &&
-           (dest->height == srcB->height));
-    assert((dest->width == srcA->width) && (dest->width == srcR->width) && (dest->width == srcG->width) && (dest->width == srcB->width));
 
+    if ((srcA == nullptr) || (srcR == nullptr) || (srcG == nullptr) || (srcB == nullptr) || (dest == nullptr)) {
+        FAIL_FAST_MSG("vImage: One or more NULL parameters passed in");
+        return kvImageNullPointerArgument;
+    }
+    
     const unsigned int width = dest->width;
     const unsigned int height = dest->height;
 
-    assert(srcA->rowBytes >= width);
-    assert(srcR->rowBytes >= width);
-    assert(srcG->rowBytes >= width);
-    assert(srcB->rowBytes >= width);
-    assert(dest->rowBytes >= width * sizeof(Pixel_8888_s));
+    if ((height != srcA->height) || (height != srcR->height) || (height != srcG->height) || (height != srcB->height) || (width != srcA->width) || (width != srcR->width) || (width != srcG->width) || (width != srcB->width)) {
+        FAIL_FAST_MSG("vImage: Buffer sizes don't match");
+        return kvImageBufferSizeMismatch;
+    }
+
+    FAIL_FAST_IF_FALSE((width > 0) && (height > 0));
+    FAIL_FAST_IF_FALSE(srcA->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(srcR->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(srcG->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(srcB->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(dest->rowBytes >= width * sizeof(Pixel_8888_s));
 
     unsigned char* pixelRowBytePtr = reinterpret_cast<unsigned char*>(dest->data);
     unsigned char* alphaRowBytePtr = reinterpret_cast<unsigned char*>(srcA->data);
@@ -1173,15 +1186,20 @@ vImage_Error vImageConvert_Planar8toARGB8888(const vImage_Buffer* srcA,
 */
 vImage_Error vImageConvert_Planar8toPlanarF(
     const vImage_Buffer* src, const vImage_Buffer* dest, Pixel_F maxFloat, Pixel_F minFloat, vImage_Flags flags) {
-    assert((src != nullptr) && (dest != nullptr));
-    assert(src->width == dest->width);
-    assert(src->height == dest->height);
+
+    if ((src == nullptr) || (dest == nullptr)) {
+        FAIL_FAST_MSG("vImage: One or more NULL parameters passed in");
+        return kvImageNullPointerArgument;
+    } else if ((src->width != dest->width) || (src->height != dest->height)) {
+        FAIL_FAST_MSG("vImage: Buffer sizes don't match");
+        return kvImageBufferSizeMismatch;
+    }
 
     const unsigned int width = src->width;
     const unsigned int height = src->height;
 
-    assert(src->rowBytes >= width);
-    assert(dest->rowBytes >= width * 4);
+    FAIL_FAST_IF_FALSE(src->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(dest->rowBytes >= width * 4);
 
     unsigned char* srcRowStartPtr = reinterpret_cast<unsigned char*>(src->data);
     unsigned char* dstRowStartPtr = reinterpret_cast<unsigned char*>(dest->data);
@@ -1278,17 +1296,24 @@ vImage_Error vImageConvert_Planar8toRGB888(const vImage_Buffer* planarRed,
                                            const vImage_Buffer* planarBlue,
                                            const vImage_Buffer* rgbDest,
                                            vImage_Flags flags) {
-    assert((planarRed != nullptr) && (planarGreen != nullptr) && (planarBlue != nullptr) && (rgbDest != nullptr));
-    assert(planarRed->width == planarBlue->width == planarGreen->width == rgbDest->width);
-    assert(planarRed->height == planarBlue->height == planarGreen->height == rgbDest->height);
+    if ((planarRed == nullptr) || (planarGreen == nullptr) || (planarBlue == nullptr) || (rgbDest == nullptr)) {
+        FAIL_FAST_MSG("vImage: One or more NULL parameters passed in");
+        return kvImageNullPointerArgument;
+    }
 
     const unsigned int width = rgbDest->width;
     const unsigned int height = rgbDest->height;
 
-    assert(planarRed->rowBytes >= width);
-    assert(planarGreen->rowBytes >= width);
-    assert(planarBlue->rowBytes >= width);
-    assert(rgbDest->rowBytes >= width * 3);
+    if ((height != planarRed->height) || (height != planarGreen->height) || (height != planarBlue->height) || (width != planarRed->width) || (width != planarGreen->width) || (width != planarBlue->width)) {
+        FAIL_FAST_MSG("vImage: Buffer sizes don't match");
+        return kvImageBufferSizeMismatch;
+    }
+
+    FAIL_FAST_IF_FALSE((width > 0) && (height > 0));
+    FAIL_FAST_IF_FALSE(planarRed->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(planarGreen->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(planarBlue->rowBytes >= width);
+    FAIL_FAST_IF_FALSE(rgbDest->rowBytes >= width * sizeof(Pixel_888_s));
 
     unsigned char* pixelRowBytePtr = reinterpret_cast<unsigned char*>(rgbDest->data);
     unsigned char* redRowBytePtr = reinterpret_cast<unsigned char*>(planarRed->data);
@@ -1318,17 +1343,23 @@ vImage_Error vImageConvert_Planar8toRGB888(const vImage_Buffer* planarRed,
 */
 vImage_Error vImageConvert_PlanarFtoPlanar8(
     const vImage_Buffer* src, const vImage_Buffer* dest, Pixel_F maxFloat, Pixel_F minFloat, vImage_Flags flags) {
-    assert((src != nullptr) && (dest != nullptr));
-    assert(src->width == dest->width);
-    assert(src->height == dest->height);
+
+    if ((src == nullptr) || (dest == nullptr)) {
+        FAIL_FAST_MSG("vImage: One or more NULL parameters passed in");
+        return kvImageNullPointerArgument;
+    }
+    else if ((src->width != dest->width) || (src->height != dest->height)) {
+        FAIL_FAST_MSG("vImage: Buffer sizes don't match");
+        return kvImageBufferSizeMismatch;
+    }
 
     const size_t srcRowPitch = src->rowBytes;
     const size_t dstRowPitch = dest->rowBytes;
     const unsigned int width = src->width;
     const unsigned int height = src->height;
 
-    assert(srcRowPitch >= width * sizeof(Pixel_F));
-    assert(dstRowPitch >= width);
+    FAIL_FAST_IF_FALSE(srcRowPitch >= width * sizeof(Pixel_F));
+    FAIL_FAST_IF_FALSE(dstRowPitch >= width);
 
     unsigned char* srcRowStartPtr = reinterpret_cast<unsigned char*>(src->data);
     unsigned char* dstRowStartPtr = reinterpret_cast<unsigned char*>(dest->data);
@@ -1412,17 +1443,23 @@ vImage_Error vImageConvert_PlanarFtoPlanar8(
 }
 
 template<CGImageAlphaInfo alphaInfo> inline vImage_Error _vImageUnpremultiplyData_8888(const vImage_Buffer* src, const vImage_Buffer* dest, vImage_Flags flags) {
-    assert((src != nullptr) && (dest != nullptr));
-    assert(src->width == dest->width);
-    assert(src->height == dest->height);
+
+    if ((src == nullptr) || (dest == nullptr)) {
+        FAIL_FAST_MSG("vImage: One or more NULL parameters passed in");
+        return kvImageNullPointerArgument;
+    }
+    else if ((src->width != dest->width) || (src->height != dest->height)) {
+        FAIL_FAST_MSG("vImage: Buffer sizes don't match");
+        return kvImageBufferSizeMismatch;
+    }
 
     const size_t srcRowPitch = src->rowBytes;
     const size_t dstRowPitch = dest->rowBytes;
     const unsigned int width = src->width;
     const unsigned int height = src->height;
 
-    assert(srcRowPitch >= width * sizeof(Pixel_8888_s));
-    assert(dstRowPitch >= width * sizeof(Pixel_8888_s));
+    FAIL_FAST_IF_FALSE(srcRowPitch >= width * sizeof(Pixel_8888_s));
+    FAIL_FAST_IF_FALSE(dstRowPitch >= width * sizeof(Pixel_8888_s));
 
     Pixel_8888_s* srcRowPixelPtr = reinterpret_cast<Pixel_8888_s*>(src->data);
     Pixel_8888_s* dstRowPixelPtr = reinterpret_cast<Pixel_8888_s*>(dest->data);
@@ -1486,7 +1523,7 @@ vImage_Error vImageUnpremultiplyData_ARGB8888(const vImage_Buffer* src, const vI
 */
 vImage_Error vImageBuffer_Init(
     vImage_Buffer* buffer, vImagePixelCount height, vImagePixelCount width, uint32_t bitsPerFragment, vImage_Flags flags) {
-    assert(flags == kvImageNoFlags);
+    FAIL_FAST_IF_FALSE(flags == kvImageNoFlags);
 
     buffer->height = height;
     buffer->width = width;
